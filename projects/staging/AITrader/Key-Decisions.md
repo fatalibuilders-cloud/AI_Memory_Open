@@ -10,14 +10,17 @@
 |---------|-----------------|-------------|------|
 | regulatory, RIA, broker-dealer, custody, compliance | ~~Pursue RIA + third-party custodian structure~~ — **SUPERSEDED**, see EA license entry below | `decisions-learnings/2026-07-14_regulatory-path.md` | 2026-07-14 |
 | business model, EA, expert advisor, MT5, MetaTrader, Exness, licensing, fee model | Pivot to selling AITrader as a licensed MT5 Expert Advisor (~$300 flat one-time fee); customers keep custody of their own funds at their own broker | `decisions-learnings/2026-07-14b_ea-license-business-model.md` | 2026-07-14 |
+| distribution, MQL5 Market, exit logic, breakeven, take-profit, lot size, money management, volatility, news, TradingView | Distribution via MQL5 Market; dual-mode exit (outright close or breakeven-and-run); 0.01 default lot with equity-based scaling; uncapped trade frequency; must work across volatility regimes; news/TradingView integration scope still open | `decisions-learnings/2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
 
-**2026-07-14 (later same day):** Pivoted from the RIA/discretionary-management model to selling AITrader as a licensed MetaTrader 5 Expert Advisor. Customers run the bot on their own funded Exness account; AITrader never holds customer funds. Fee is a flat one-time ~$300 license, not performance-contingent. This substantially lowers regulatory burden but shifts target market to non-US (Exness doesn't serve US clients) and makes licensing/anti-piracy and marketing-claim compliance the key open risks. See detail file for follow-ups.
+**2026-07-14 (session 3):** Resolved distribution channel (MQL5 Market) and profit-lock exit mechanics (dual-mode: outright close or breakeven-and-run). Added new scope: equity-based lot scaling from a 0.01 base, uncapped trade frequency ("as many trades as suitable"), and a requirement to work across both high- and low-volatility markets. Also introduced a new open scope question — news/TradingView integration — that needs a decision between a simple news filter and a much more complex TradingView bridge. See detail file for the full tradeoff and remaining open items.
 
-**2026-07-14 (earlier, superseded):** Originally selected RIA + third-party broker-dealer/custodian as the regulatory structure for autonomous retail trading of pooled client funds. Superseded by the EA-license pivot above — kept in the record for context, not to be acted on.
+**2026-07-14 (session 2):** Pivoted from the RIA/discretionary-management model to selling AITrader as a licensed MetaTrader 5 Expert Advisor. Customers run the bot on their own funded Exness account; AITrader never holds customer funds. Fee is a flat one-time ~$300 license, not performance-contingent.
+
+**2026-07-14 (session 1, superseded):** Originally selected RIA + third-party broker-dealer/custodian as the regulatory structure for autonomous retail trading of pooled client funds. Superseded by the EA-license pivot — kept in the record for context, not to be acted on.
 
 ---
 
@@ -26,4 +29,5 @@
 | File | Date | Session Focus |
 |------|------|---------------|
 | `2026-07-14_regulatory-path.md` | 2026-07-14 | Initial staging session — project intake, regulatory structure decision (superseded) |
-| `2026-07-14b_ea-license-business-model.md` | 2026-07-14 | Follow-up session — business model pivot to MT5 EA licensing |
+| `2026-07-14b_ea-license-business-model.md` | 2026-07-14 | Session 2 — business model pivot to MT5 EA licensing |
+| `2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 | Session 3 — distribution channel, exit logic, lot sizing, trading scope |

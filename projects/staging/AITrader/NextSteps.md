@@ -6,20 +6,29 @@
 
 ## Priority Queue
 
-1. **[Human] Clarify garbled items from voice session** — several points didn't transcribe clearly: (a) "text tag / who's the key", (b) "piece of tape onto the...", (c) "what happens if you put a starfish? / the AI trade is successful", (d) exact profit-lock mechanism (fixed take-profit order vs. trailing/breakeven-lock once $0.50-$1 floating profit is reached, and whether that's flat-dollar or scales with lot size). Nothing in Document 1/2's strategy section should be treated as final until these are resolved.
-2. **[Human] Lightweight legal review** (replaces the old RIA-registration item, now superseded) — IP/commercial counsel review of licensing terms, ToS, and marketing/disclaimer language; confirm no CTA/investment-adviser registration trigger in target (non-US) jurisdictions.
-3. **[AI+Human] Decide distribution channel** — self-hosted site with own license-key system vs. listing on the official MQL5 Market (which has built-in licensing/delivery) vs. both.
-4. **[AI+Human] Decide multi-broker scope for v1** — Exness-only, or broader MT5-compatible broker support from the start?
-5. **[Human] Evaluate Exness IB/affiliate program** — secondary revenue stream (commission per lot traded by referred users); decide whether to disclose this to customers.
-6. **[AI+Human] Backtest + forward-test plan** — read `Product_Development/agents/Software-Development-advisor.md`; needs a live/demo forward-test track record before launch marketing, since spread/slippage can undermine small fixed-dollar profit targets in ways backtests may not capture.
-7. **[Human] Confirm payment processor** — must accept trading-software/EA merchants (some standard processors restrict this category).
+1. **[Human] Quantify the lot-scaling schedule** — "scale lot size once equity reaches target" needs actual numbers: at what equity thresholds does lot size increase, and by how much each step?
+2. **[Human] Decide news/analysis integration scope** — (a) simple economic-calendar news filter (standard, low-complexity) vs. (b) full TradingView signal bridge (requires building/hosting an external relay service, plus MQL5 Market `WebRequest` policy considerations). See `decisions-learnings/2026-07-14c_strategy-and-distribution-details.md` for the tradeoff.
+3. **[Human] Confirm the "text tag / who's the key" fragment** — likely moot now that MQL5 Market handles licensing, but flag if it meant something else.
+4. **[Human] Lightweight legal review** — IP/commercial counsel review of MQL5 Market listing terms, ToS, and marketing/disclaimer language; confirm no CTA/investment-adviser registration trigger in target (non-US) jurisdictions.
+5. **[AI+Human] Design volatility-adaptive logic** — read `Product_Development/agents/Software-Development-advisor.md`; specify how entry/stop/target sizing adapts between high- and low-volatility conditions (ATR-based is the standard approach).
+6. **[AI+Human] Backtest + forward-test plan** — cover both exit modes (outright close vs. breakeven-and-run), both volatility regimes, and net-of-cost profitability at 0.01 lot / high trade frequency.
+7. **[Human] Confirm MQL5 Market commission structure and review/approval requirements** directly on their site before finalizing the release timeline.
+8. **[Human] Evaluate Exness IB/affiliate program** — secondary revenue stream (commission per lot traded by referred users); decide whether to disclose this to customers.
 
 ---
 
+## Resolved This Session (2026-07-14, follow-up)
+
+- Distribution channel: **MQL5 Market** (not self-hosted).
+- Profit-lock exit mechanism: **dual-mode** — outright close OR move stop to breakeven and let the trade run. Both to be built and backtested.
+- Trade frequency philosophy: **as many trades as suitable setups appear**, no artificial cap.
+- Volatility requirement: must work in **both high- and low-volatility** markets (design still open, see Priority Queue #5).
+
 ## Superseded (no longer critical path)
 
-- ~~Engage a securities attorney for RIA registration~~ — not needed under the EA-license model (AITrader never holds customer funds). Replaced by item 2 above.
+- ~~Engage a securities attorney for RIA registration~~ — not needed under the EA-license model.
 - ~~Evaluate broker-dealer/custodian partners (Alpaca, IBKR, Tradier)~~ — not applicable; broker is customer-selected (Exness named as primary target).
+- ~~Design a self-hosted license-key system~~ — not needed; MQL5 Market handles licensing.
 
 ---
 

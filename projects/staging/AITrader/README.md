@@ -12,12 +12,16 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 ## Current State
 
 - Document 1 (Project Context): In progress — vision, target market, and institutional dependencies drafted for the EA-license model.
-- Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, licensing/anti-piracy system, and broker integration drafted; distribution channel and multi-broker scope still open.
-- Document 3 (Release Plan): Drafted — 5 epics, 4 milestones. See `NextSteps.md` for what's blocking finalization.
+- Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, and money-management module drafted; volatility-adaptive design and news/TradingView integration scope still open.
+- Document 3 (Release Plan): Drafted — 6 epics, 5 milestones. See `NextSteps.md` for what's blocking finalization.
 
-## Biggest Open Risk
+## Biggest Open Items
 
-A handful of details from the founder's voice session didn't transcribe clearly, including the exact profit-lock mechanism. See "Open Questions" in `Master-Context.md` — resolve these before finalizing Documents 1-2 or writing any marketing copy.
+1. **Lot-scaling schedule** — not yet quantified (equity thresholds + increment size).
+2. **News/analysis integration scope** — a simple news filter vs. a full TradingView bridge are very different builds; needs a founder decision.
+3. **Volatility-adaptive design** — the requirement is set (must work in high and low volatility), the design (e.g. ATR-based) is not yet specified.
+
+See "Open Questions" in `Master-Context.md` for full detail.
 
 ## Business Model History
 
