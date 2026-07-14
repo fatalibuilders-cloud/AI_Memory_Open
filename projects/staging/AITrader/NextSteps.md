@@ -6,37 +6,44 @@
 
 ## Priority Queue
 
-1. **[Human] Decide whether the $1/$3 stop-loss and $2–$3 profit-lock are fixed figures in all conditions, or a baseline the volatility/news-adaptive module can widen** during high-volatility/news windows (tight fixed-dollar stops are easily triggered by normal noise and don't account for slippage in fast markets).
-2. **[Human] Confirm exact SL/TP pairing** — strictly $1 SL/$2 TP and $3 SL/$3 TP, or does each tier get the full $2–$3 TP range as a dual/configurable option?
-3. **[Human] Define risk-management gating rules for lot-size changes** — losing-streak cooldown? news-window restriction? max lot size cap? Should size scale back down on drawdown, not just up?
-4. **[AI+Human] Design the volatility/news-adaptive rules** — read `Product_Development/agents/Software-Development-advisor.md`; specify exactly which parameters change (stop distance, lot size, profit-lock threshold) and by how much, per volatility/news-impact level.
-5. **[Human] Confirm the "text tag / who's the key" fragment** — likely moot now that MQL5 Market handles licensing, but flag if it meant something else.
-6. **[Human] Choose economic calendar data source** — MT5's built-in calendar (simplest, no external dependency) vs. a third-party API.
-7. **[Human] Lightweight legal review** — IP/commercial counsel review of MQL5 Market listing terms, ToS, and marketing/disclaimer language; confirm no CTA/investment-adviser registration trigger in target (non-US) jurisdictions.
-8. **[AI+Human] Backtest + forward-test plan** — cover both exit modes, both volatility regimes, major historical news events, the risk-based sizing logic (including explicit slippage modeling), and net-of-cost profitability at high trade frequency. Validate the ~50% break-even win-rate bar against actual backtest results.
-9. **[Human] Confirm MQL5 Market commission structure and review/approval requirements** directly on their site before finalizing the release timeline.
-10. **[Human] Evaluate Exness IB/affiliate program** — secondary revenue stream; decide whether to disclose this to customers.
+1. **[Human] Decide the daily loss limit value** — recommended (from web research) to pair with the daily profit target: prop-firm/professional practice commonly uses 3–5% of daily starting equity. This is currently the strongest missing guardrail, especially for Aggressive Mode.
+2. **[AI+Human] Backtest-validate Safe Mode's win rate at the ≥$50 stop-loss tier specifically** — the stated 80% floor may not clear the 85.7% break-even bar for that tier. If it doesn't hold up, raise the floor for that tier or give it its own target.
+3. **[Human] Decide whether Safe Mode needs its own risk parameters** (separate target/stop) distinct from Aggressive Mode, or whether both share the $0.50 target / tiered stop-loss and differ only in trade selectivity.
+4. **[Human] Decide whether the $1/$3 stop-loss and $0.50 profit-lock are fixed in all conditions, or a baseline the volatility/news-adaptive module can widen** during high-volatility/news windows.
+5. **[Human] Reconsider the $50 stop-loss breakpoint** — research confirms a $3 stop-loss at exactly $50 equity is 6% risk, above the professional 1–2% norm. Consider raising the breakpoint or smoothing the transition.
+6. **[Human] Define risk-management gating rules for lot-size changes** — losing-streak cooldown? news-window restriction? max lot size cap? Should size scale back down on drawdown, not just up?
+7. **[AI+Human] Design the volatility/news-adaptive rules** — specify exactly which parameters change and by how much, per volatility/news-impact level.
+8. **[Human] Confirm the "text tag / who's the key" fragment** — likely moot now that MQL5 Market handles licensing.
+9. **[Human] Choose economic calendar data source** — MT5's built-in calendar vs. a third-party API.
+10. **[Human] Lightweight legal review** — now includes an explicit check that no "$50 to $1,000/day" or similar multiplier claims appear anywhere in public-facing copy (Aggressive Mode's stretch-goal framing is internal only).
+11. **[AI+Human] Backtest + forward-test plan** — cover both exit modes, both trading modes (Safe/Aggressive), both stop-loss tiers, major historical news events, and net-of-cost profitability at high trade frequency, capped at 2 concurrent trades.
+12. **[Human] Confirm MQL5 Market commission structure and review/approval requirements.**
+13. **[Human] Evaluate Exness IB/affiliate program.**
 
 ---
 
 ## Resolved
 
-- Distribution channel: **MQL5 Market** (not self-hosted).
-- Profit-lock exit mechanism: **dual-mode** — outright close OR move stop to breakeven and let the trade run. Both to be built and backtested.
-- Trade frequency philosophy: **as many trades as suitable setups appear**, no artificial cap.
+- Distribution channel: **MQL5 Market**.
+- Profit-lock exit mechanism: **dual-mode** — outright close OR breakeven-and-run.
+- Trade frequency: **as many trades as suitable setups appear**, capped at **2 concurrent open trades**.
 - Volatility requirement: must work in **both high- and low-volatility** markets.
-- News/analysis integration scope: **economic-calendar-driven adaptation** folded into the volatility-adaptive module. **No external TradingView bridge.**
-- Lot-sizing method: **dynamic, risk-based sizing** — the EA analyzes equity and runs risk management before scaling up.
-- Stop-loss: **tiered fixed-dollar** — $1 below $50 equity, $3 at/above $50 equity.
-- Profit-lock target: **raised to $2–$3** (from the original $0.50–$1) to fix the risk:reward ratio at the ≥$50 tier — worst case is now ~50% win rate to break even instead of ~86%.
+- News/analysis integration: **economic-calendar-driven adaptation**, no external TradingView bridge.
+- Lot-sizing method: **dynamic, risk-based sizing**.
+- Stop-loss: **tiered fixed-dollar** — $1 below $50 equity, $3 at/above.
+- Profit-lock target: **$0.50** (reverted from a brief $2–$3 change — see decision history for why).
+- Trading modes: **Safe Mode** (80–100% win-probability filter) and **Aggressive Mode** (opportunistic, no filter).
+- Daily profit target: **configurable, halts trading for the day once reached.**
+- "$50 → $1,000/day": **confirmed internal stretch-goal framing only** — not a build spec, not for marketing.
 
 ## Superseded (no longer critical path)
 
 - ~~Engage a securities attorney for RIA registration~~ — not needed under the EA-license model.
-- ~~Evaluate broker-dealer/custodian partners (Alpaca, IBKR, Tradier)~~ — not applicable; broker is customer-selected (Exness named as primary target).
+- ~~Evaluate broker-dealer/custodian partners~~ — not applicable.
 - ~~Design a self-hosted license-key system~~ — not needed; MQL5 Market handles licensing.
-- ~~Build a TradingView signal bridge~~ — not needed; news handling stays self-contained within the EA via an economic calendar.
-- ~~Fixed equity-threshold lot-scaling table~~ — replaced by dynamic risk-based sizing (now grounded in the tiered stop-loss above).
+- ~~Build a TradingView signal bridge~~ — not needed.
+- ~~Fixed equity-threshold lot-scaling table~~ — replaced by dynamic risk-based sizing.
+- ~~$2–$3 profit-lock target~~ — reverted back to $0.50 per founder decision (2026-07-14h).
 
 ---
 

@@ -14,11 +14,20 @@
 | news, TradingView, economic calendar, volatility-adaptive | News/analysis integration scope resolved: economic-calendar-driven adaptation (not a TradingView bridge), folded into the volatility-adaptive module | `decisions-learnings/2026-07-14d_news-scope-resolved.md` | 2026-07-14 |
 | lot size, money management, risk management, position sizing, stop-loss | Lot sizing uses dynamic, risk-based scaling (equity-and-risk-driven), not fixed thresholds — surfaced a blocking gap: stop-loss/max-loss-per-trade rule is undefined | `decisions-learnings/2026-07-14e_lot-sizing-method-resolved.md` | 2026-07-14 |
 | stop-loss, risk:reward, tiered risk, win rate | Tiered fixed-dollar stop-loss ($1 below $50 equity, $3 at/above) — flagged a high-severity risk:reward concern at the $3 tier, resolved in the next entry | `decisions-learnings/2026-07-14f_tiered-stop-loss.md` | 2026-07-14 |
-| profit-lock, take-profit, risk:reward, target | Profit-lock target raised to $2–$3 (from $0.50–$1) to fix the risk:reward ratio flagged above; worst-case break-even win rate drops from ~86% to ~50% | `decisions-learnings/2026-07-14g_profit-target-raised.md` | 2026-07-14 |
+| profit-lock, take-profit, risk:reward, target | Profit-lock target raised to $2–$3 (from $0.50–$1) to fix the risk:reward ratio flagged above; worst-case break-even win rate drops from ~86% to ~50% — **later reverted, see next entry** | `decisions-learnings/2026-07-14g_profit-target-raised.md` | 2026-07-14 |
+| profit-lock, target reverted, safe mode, aggressive mode, daily target, daily loss limit, max concurrent trades, risk management research | Profit target reverted to $0.50; added Safe/Aggressive trading modes, max 2 concurrent trades, configurable daily profit target; web-researched risk-per-trade and daily-loss-limit best practice; "$50→$1,000/day" confirmed as internal-only framing | `decisions-learnings/2026-07-14h_dual-mode-daily-controls-target-reverted.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 8):** Multiple decisions from founder's latest instructions, cross-checked against web research on professional risk management:
+- Profit-lock target **reverted to $0.50** (the session-7 change to $2–$3 is superseded).
+- **Max 2 concurrent open trades**, and a **configurable daily profit target** that halts trading for the day once reached.
+- **Two trading modes:** Safe Mode (80–100% win-probability filter) and Aggressive Mode (opportunistic, no filter, "turn $50 into $1,000/day" as an internal stretch goal only — founder confirmed this must not be engineered toward or marketed).
+- **Web research** (FTMO, professional trading education sources) confirms 1–2% risk-per-trade as standard, daily loss limits of 3–5% as common practice, and flags that our $3 stop-loss at exactly $50 equity (6% risk) exceeds professional norms.
+- Reverting to $0.50 reintroduces the risk:reward math from session 6 — Safe Mode's win-rate filter is meant to cover this, but the ≥$50 tier's 85.7% break-even requirement may exceed Safe Mode's stated 80% floor. Flagged for backtest validation, not yet resolved.
+- **Daily loss limit is recommended but not yet a founder decision** — the strongest remaining gap in the risk framework.
 
 **2026-07-14 (session 7):** Resolved the risk:reward concern from session 6. Founder chose to keep the tiered stop-loss ($1/$3) as-is and raise the profit-lock target from $0.50–$1 to **$2–$3**. This brings the worst-case break-even win rate down from ~86% to ~50% at the ≥$50 tier, and to ~25–33% at the <$50 tier. All prior references to the $0.50–$1 target across Documents 1–3 have been updated. The high-severity risk flagged in session 6 is now marked resolved (pending backtest validation of actual win rate).
 
@@ -46,4 +55,5 @@
 | `2026-07-14d_news-scope-resolved.md` | 2026-07-14 | Session 4 — news/analysis integration scope resolved |
 | `2026-07-14e_lot-sizing-method-resolved.md` | 2026-07-14 | Session 5 — dynamic risk-based lot sizing; stop-loss gap surfaced |
 | `2026-07-14f_tiered-stop-loss.md` | 2026-07-14 | Session 6 — tiered stop-loss defined; risk:reward concern flagged |
-| `2026-07-14g_profit-target-raised.md` | 2026-07-14 | Session 7 — profit-lock target raised to $2–$3, risk:reward resolved |
+| `2026-07-14g_profit-target-raised.md` | 2026-07-14 | Session 7 — profit-lock target raised to $2–$3, risk:reward resolved (later reverted) |
+| `2026-07-14h_dual-mode-daily-controls-target-reverted.md` | 2026-07-14 | Session 8 — target reverted to $0.50; Safe/Aggressive modes, daily controls, web research |

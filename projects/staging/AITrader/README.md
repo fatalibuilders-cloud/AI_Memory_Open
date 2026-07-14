@@ -15,17 +15,25 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 - Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, money-management module, and volatility/news-adaptive module (self-contained, economic-calendar-based) drafted.
 - Document 3 (Release Plan): Drafted — 5 epics, 4 milestones. See `NextSteps.md` for what's blocking finalization.
 
-## Risk Model (resolved)
+## Risk Model (current)
 
-Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$2–$3** (raised from an original $0.50–$1 after the founder confirmed keeping the stop-loss and raising the reward instead). Worst-case break-even win rate is now ~50%, down from the earlier ~86%. See `decisions-learnings/2026-07-14f_tiered-stop-loss.md` and `2026-07-14g_profit-target-raised.md`.
+Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$0.50** (briefly raised to $2–$3, then reverted per founder decision — see `decisions-learnings/2026-07-14g_profit-target-raised.md` and `2026-07-14h_dual-mode-daily-controls-target-reverted.md`). Two trading modes: **Safe Mode** (only trades 80–100% win-probability setups) and **Aggressive Mode** (opportunistic, no filter). Daily risk controls: configurable daily profit target (halts trading once hit), max 2 concurrent open trades, and a recommended-but-unconfirmed daily loss limit.
 
-## Open Items
+## Biggest Open Item
 
-1. Whether the $1/$3 stop-loss and $2–$3 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen.
-2. Exact SL/TP pairing — strict per-tier pairing vs. a dual/configurable $2–$3 range for both tiers.
-3. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap).
-4. **Volatility/news-adaptive rules** — the requirement and overall approach (economic calendar, no TradingView bridge) are set; the specific parameter-adaptation rules are not yet designed.
-5. **Economic calendar data source** — MT5 built-in vs. third-party API.
+**Safe Mode's 80% win-probability floor may not clear the ≥$50 tier's 85.7% break-even requirement.** Needs backtest validation before that tier ships in Safe Mode — otherwise a strategy marketed as "safe" could structurally lose money at that tier even with an 80-85% win rate.
+
+## Other Open Items
+
+1. **Daily loss limit value** — recommended (web research supports 3–5% of daily equity) but not yet confirmed by founder.
+2. Whether the $1/$3 stop-loss and $0.50 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen.
+3. Whether Safe Mode needs its own risk parameters distinct from Aggressive Mode.
+4. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms).
+5. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap).
+6. **Volatility/news-adaptive rules** — approach is set (economic calendar, no TradingView bridge); specific parameter-adaptation rules are not yet designed.
+7. **Economic calendar data source** — MT5 built-in vs. third-party API.
+
+**Confirmed guardrail:** "$50 → $1,000 in a day" is an internal Aggressive Mode stretch-goal framing only — not a build spec, and explicitly barred from marketing copy (flagged to the Legal epic).
 
 See "Open Questions" in `Master-Context.md` for full detail.
 
