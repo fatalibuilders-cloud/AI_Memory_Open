@@ -17,21 +17,21 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 
 ## Risk Model (current)
 
-Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$0.50** (briefly raised to $2–$3, then reverted per founder decision — see `decisions-learnings/2026-07-14g_profit-target-raised.md` and `2026-07-14h_dual-mode-daily-controls-target-reverted.md`). Two trading modes: **Safe Mode** (only trades 80–100% win-probability setups) and **Aggressive Mode** (opportunistic, no filter). Daily risk controls: configurable daily profit target (halts trading once hit), max 2 concurrent open trades, and a recommended-but-unconfirmed daily loss limit.
+Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$0.50** (briefly raised to $2–$3, then reverted per founder decision). Two trading modes: **Safe Mode** (only trades 80–100% win-probability setups) and **Aggressive Mode** (opportunistic, no filter). Daily risk controls: configurable daily profit target (halts trading once hit), a **3% daily loss limit**, and max 2 concurrent open trades.
 
-## Biggest Open Item
+## Biggest Open Items
 
-**Safe Mode's 80% win-probability floor may not clear the ≥$50 tier's 85.7% break-even requirement.** Needs backtest validation before that tier ships in Safe Mode — otherwise a strategy marketed as "safe" could structurally lose money at that tier even with an 80-85% win rate.
+1. **Daily-loss-limit / stop-loss tier boundary interaction:** at exactly $50 equity, 3% ($1.50) is smaller than the ≥$50 tier's $3 stop-loss — a single losing trade can exceed the whole day's budget. Needs explicit handling before build.
+2. **Safe Mode's 80% win-probability floor may not clear the ≥$50 tier's 85.7% break-even requirement.** Needs backtest validation before that tier ships in Safe Mode — otherwise a strategy marketed as "safe" could structurally lose money at that tier even with an 80-85% win rate.
 
 ## Other Open Items
 
-1. **Daily loss limit value** — recommended (web research supports 3–5% of daily equity) but not yet confirmed by founder.
-2. Whether the $1/$3 stop-loss and $0.50 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen.
-3. Whether Safe Mode needs its own risk parameters distinct from Aggressive Mode.
-4. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms).
-5. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap).
-6. **Volatility/news-adaptive rules** — approach is set (economic calendar, no TradingView bridge); specific parameter-adaptation rules are not yet designed.
-7. **Economic calendar data source** — MT5 built-in vs. third-party API.
+1. Whether the $1/$3 stop-loss and $0.50 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen.
+2. Whether Safe Mode needs its own risk parameters distinct from Aggressive Mode.
+3. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms, and now also exceeds the 3% daily loss limit in one trade).
+4. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap).
+5. **Volatility/news-adaptive rules** — approach is set (economic calendar, no TradingView bridge); specific parameter-adaptation rules are not yet designed.
+6. **Economic calendar data source** — MT5 built-in vs. third-party API.
 
 **Confirmed guardrail:** "$50 → $1,000 in a day" is an internal Aggressive Mode stretch-goal framing only — not a build spec, and explicitly barred from marketing copy (flagged to the Legal epic).
 

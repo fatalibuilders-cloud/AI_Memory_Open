@@ -16,10 +16,13 @@
 | stop-loss, risk:reward, tiered risk, win rate | Tiered fixed-dollar stop-loss ($1 below $50 equity, $3 at/above) — flagged a high-severity risk:reward concern at the $3 tier, resolved in the next entry | `decisions-learnings/2026-07-14f_tiered-stop-loss.md` | 2026-07-14 |
 | profit-lock, take-profit, risk:reward, target | Profit-lock target raised to $2–$3 (from $0.50–$1) to fix the risk:reward ratio flagged above; worst-case break-even win rate drops from ~86% to ~50% — **later reverted, see next entry** | `decisions-learnings/2026-07-14g_profit-target-raised.md` | 2026-07-14 |
 | profit-lock, target reverted, safe mode, aggressive mode, daily target, daily loss limit, max concurrent trades, risk management research | Profit target reverted to $0.50; added Safe/Aggressive trading modes, max 2 concurrent trades, configurable daily profit target; web-researched risk-per-trade and daily-loss-limit best practice; "$50→$1,000/day" confirmed as internal-only framing | `decisions-learnings/2026-07-14h_dual-mode-daily-controls-target-reverted.md` | 2026-07-14 |
+| daily loss limit, 3%, risk management | Daily loss limit set to 3% of daily starting equity, symmetric to the daily profit target — surfaced a new tier-boundary interaction with the $3 stop-loss at $50 equity | `decisions-learnings/2026-07-14i_daily-loss-limit-set.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 9):** Daily loss limit set to **3% of the day's starting equity**, closing the last gap flagged in session 8 (the daily profit target now has a symmetric loss-side counterpart). This also resolves the "Aggressive Mode has no safety margin" risk from session 8's risk register. However, it surfaces a new interaction worth fixing before build: at exactly $50 equity, 3% is only $1.50, but the ≥$50 stop-loss tier is $3 — meaning a single losing trade at that boundary can exceed the entire day's loss budget in one shot. Flagged as a new priority item; not yet resolved.
 
 **2026-07-14 (session 8):** Multiple decisions from founder's latest instructions, cross-checked against web research on professional risk management:
 - Profit-lock target **reverted to $0.50** (the session-7 change to $2–$3 is superseded).
@@ -57,3 +60,4 @@
 | `2026-07-14f_tiered-stop-loss.md` | 2026-07-14 | Session 6 — tiered stop-loss defined; risk:reward concern flagged |
 | `2026-07-14g_profit-target-raised.md` | 2026-07-14 | Session 7 — profit-lock target raised to $2–$3, risk:reward resolved (later reverted) |
 | `2026-07-14h_dual-mode-daily-controls-target-reverted.md` | 2026-07-14 | Session 8 — target reverted to $0.50; Safe/Aggressive modes, daily controls, web research |
+| `2026-07-14i_daily-loss-limit-set.md` | 2026-07-14 | Session 9 — daily loss limit set to 3%; tier-boundary interaction surfaced |

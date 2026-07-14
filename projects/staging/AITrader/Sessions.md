@@ -16,3 +16,4 @@
 | Session 6 — tiered stop-loss defined | 2026-07-14 | stop-loss, tiered risk, risk:reward, win rate, $50 threshold, high-severity flag |
 | Session 7 — profit target raised | 2026-07-14 | profit-lock, take-profit, $2-$3, risk:reward resolved, win rate |
 | Session 8 — dual modes, daily controls, target reverted | 2026-07-14 | Safe Mode, Aggressive Mode, daily profit target, daily loss limit, max concurrent trades, web research, risk per trade, FTMO |
+| Session 9 — daily loss limit set | 2026-07-14 | daily loss limit, 3%, tier boundary, risk management |
