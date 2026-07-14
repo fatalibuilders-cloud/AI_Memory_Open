@@ -15,9 +15,13 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 - Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, money-management module, and volatility/news-adaptive module (self-contained, economic-calendar-based) drafted.
 - Document 3 (Release Plan): Drafted — 5 epics, 4 milestones. See `NextSteps.md` for what's blocking finalization.
 
-## Biggest Open Items
+## Biggest Open Item (blocking)
 
-1. **Lot-scaling schedule** — not yet quantified (equity thresholds + increment size).
+**No stop-loss / max-loss-per-trade rule has been defined.** The founder confirmed lot sizing should be dynamic and risk-based (the EA analyzes equity and runs risk management before scaling up), but that calculation requires knowing the losing side of a trade — which hasn't been specified anywhere yet. This blocks Epic 1 (Document 3) from really starting.
+
+## Other Open Items
+
+1. **Risk-per-trade percentage** and **risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap).
 2. **Volatility/news-adaptive rules** — the requirement and overall approach (economic calendar, no TradingView bridge) are set; the specific parameter-adaptation rules are not yet designed.
 3. **Economic calendar data source** — MT5 built-in vs. third-party API.
 

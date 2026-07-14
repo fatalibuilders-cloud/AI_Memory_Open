@@ -54,12 +54,15 @@ Most items from the original voice-transcription session are now resolved (see `
 - **"Text tag / who's the key"** — still unclear, but likely **moot**: now that distribution is via MQL5 Market (which handles licensing natively), a self-built license-key system is probably not needed. Revisit only if the founder confirms this was about something else.
 
 - ~~News/analysis integration scope~~ — **RESOLVED (2026-07-14d):** economic-calendar-driven news awareness that adapts EA behavior around news-driven volatility (widen stops, reduce lot size, adjust profit-lock threshold, etc.), folded into the volatility-adaptive module. No external TradingView bridge. See `decisions-learnings/2026-07-14d_news-scope-resolved.md`.
+- ~~Lot-sizing method~~ — **RESOLVED (2026-07-14e):** dynamic, risk-based sizing (the EA analyzes equity and runs risk management before scaling up) rather than a fixed manual threshold table. See `decisions-learnings/2026-07-14e_lot-sizing-method-resolved.md` — **this surfaced a new blocking gap, see item 1 below.**
 
 **Still open:**
-1. **Lot-scaling schedule** — "scale lot size once equity reaches target" is directional, not yet quantified. Need exact equity thresholds and lot-size increments.
-2. **Volatility/news-adaptive logic design** — the requirement (adapt to both volatility regimes and news events) is set; the specific rules (which parameters change, by how much, per condition) are not yet designed. See open items in `2026-07-14d_news-scope-resolved.md`.
-3. **Exit-mode default** — once both exit modes are backtested, which becomes the default vs. a user-configurable setting in the listing?
-4. **Economic calendar source** — MT5's built-in calendar vs. a third-party API.
+1. **Stop-loss / max-loss-per-trade rule — BLOCKING.** Risk-based lot sizing (just decided) cannot be designed or backtested without knowing what the losing side of a trade looks like. Nothing has been specified yet for what happens if a trade moves against the position. Needs founder input before Epic 1 can really start.
+2. **Risk-per-trade percentage** — how much of equity can a single trade risk before the EA sizes up (e.g., 1%, 2%)?
+3. **Risk-management gating rules** — what specifically blocks/allows a lot-size increase (losing-streak cooldown, news-window restriction, max lot size cap)? Also: should lot size scale back down on drawdown, not just up?
+4. **Volatility/news-adaptive logic design** — the requirement (adapt to both volatility regimes and news events) is set; the specific rules (which parameters change, by how much, per condition) are not yet designed. See open items in `2026-07-14d_news-scope-resolved.md`.
+5. **Exit-mode default** — once both exit modes are backtested, which becomes the default vs. a user-configurable setting in the listing?
+6. **Economic calendar source** — MT5's built-in calendar vs. a third-party API.
 
 ---
 
@@ -142,7 +145,7 @@ See "Institutional Dependencies" section above.
   - Signal/entry logic, designed to trade opportunistically (as many setups as the market presents, no artificial trade cap)
   - Volatility/news-adaptive module (single coherent system, see below) so the strategy remains viable in both high- and low-volatility conditions and can respond to news-driven fluctuations — design TBD, see Open Questions
   - Dual-mode profit-lock exit logic: (a) outright close at $0.50–$1 profit, or (b) move stop to breakeven and let the position run. Both modes configurable/testable.
-  - Money-management module: default lot size 0.01, with equity-based lot scaling (exact thresholds/increments TBD, see Open Questions)
+  - Money-management module (dynamic, risk-based): starting lot size 0.01; the EA continuously analyzes account equity and runs a risk-management assessment before scaling lot size up (fixed-fractional risk-based sizing — lot size derived from equity × risk% ÷ stop-loss distance), rather than a fixed manual threshold table. **Blocked on defining the stop-loss/max-loss-per-trade rule** (see Open Questions #1) — risk-based sizing can't be computed without it.
 - **Volatility/news-adaptive module:** Uses an economic calendar (MT5 built-in calendar data, or a third-party API — source TBD) to detect high-impact news events, and adapts EA parameters (stop distance, lot size, profit-lock threshold, and/or general volatility filters) so the EA can keep trading through news-driven and general volatility fluctuations rather than either ignoring them or standing aside entirely. Confirmed scope (2026-07-14d) — no external TradingView bridge needed; this is a self-contained MQL5 component.
 - **Licensing & distribution:** Listed on the **official MQL5 Market**, which provides its own licensing/delivery infrastructure — no separate license-key system needs to be built.
 - **Broker integration:** MT5's standard broker-agnostic API for order execution; Exness is the primary target/tested broker. Confirm with founder whether broader MT5-compatible broker support is in scope for v1 or Exness-only.
@@ -174,8 +177,9 @@ See "Institutional Dependencies" section above.
 ### Epics
 
 **Epic 1: Core EA Strategy & Backtesting**
+- **Define the stop-loss / max-loss-per-trade rule (blocking — nothing downstream in this epic can be built without it)**
 - Build dual-mode exit logic (outright close vs. breakeven-and-run) and decide the default via backtest comparison
-- Build money-management module: 0.01 default lot, equity-based scaling (needs thresholds defined — see Open Questions)
+- Build the dynamic risk-based money-management module: 0.01 starting lot, equity-and-risk-driven scaling (risk % per trade, gating rules, up/down scaling — needs values defined, see Open Questions)
 - Design and implement the volatility/news-adaptive module: economic-calendar-driven detection of high-impact events plus parameter adaptation (stop distance, lot size, profit-lock threshold) so the EA holds up across volatility regimes and news-driven fluctuations. Self-contained MQL5 component — no external services.
 - Build and run MT5 Strategy Tester backtests across representative historical periods, explicitly including both high- and low-volatility windows and major news events
 - Start a live/demo forward-test to build a verifiable track record ahead of launch marketing
@@ -215,6 +219,8 @@ See "Institutional Dependencies" section above.
   - **Mitigation:** Backtest net-of-cost performance (not just gross), and validate that the volatility/news-adaptive logic (Epic 1) doesn't over-trade in low-volatility/choppy conditions where costs dominate.
 - **Risk:** The volatility/news-adaptive module misjudges a genuine high-impact news event (e.g., stale/delayed calendar data) and trades into it with default parameters, risking outsized slippage.
   - **Mitigation:** Backtest specifically around major historical news events (Epic 1); consider a hard pause (not just adapted parameters) for the very highest-impact event tier as a fallback rule.
+- **Risk:** Risk-based lot scaling compounds losses if not paired with a defined stop-loss and downside gating (a losing streak could otherwise coincide with — or even be worsened by — an ill-timed size increase).
+  - **Mitigation:** Stop-loss/max-loss-per-trade rule is a hard prerequisite for Epic 1 (see Open Questions #1); require explicit losing-streak and drawdown gating rules before any size-up logic, and confirm whether lot size should scale back down on drawdown, not just up.
 
 ---
 

@@ -12,10 +12,13 @@
 | business model, EA, expert advisor, MT5, MetaTrader, Exness, licensing, fee model | Pivot to selling AITrader as a licensed MT5 Expert Advisor (~$300 flat one-time fee); customers keep custody of their own funds at their own broker | `decisions-learnings/2026-07-14b_ea-license-business-model.md` | 2026-07-14 |
 | distribution, MQL5 Market, exit logic, breakeven, take-profit, lot size, money management, volatility, news, TradingView | Distribution via MQL5 Market; dual-mode exit (outright close or breakeven-and-run); 0.01 default lot with equity-based scaling; uncapped trade frequency; must work across volatility regimes; news/TradingView integration scope raised as open question | `decisions-learnings/2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 |
 | news, TradingView, economic calendar, volatility-adaptive | News/analysis integration scope resolved: economic-calendar-driven adaptation (not a TradingView bridge), folded into the volatility-adaptive module | `decisions-learnings/2026-07-14d_news-scope-resolved.md` | 2026-07-14 |
+| lot size, money management, risk management, position sizing, stop-loss | Lot sizing uses dynamic, risk-based scaling (equity-and-risk-driven), not fixed thresholds — surfaced a blocking gap: stop-loss/max-loss-per-trade rule is undefined | `decisions-learnings/2026-07-14e_lot-sizing-method-resolved.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 5):** Lot sizing confirmed as dynamic, risk-based scaling — the EA analyzes account equity and runs its own risk-management check before increasing lot size, rather than following a fixed manual threshold table. This is the standard "fixed-fractional risk-based position sizing" approach. It surfaced a **blocking gap**: no stop-loss/max-loss-per-trade rule has been defined yet, and risk-based sizing can't be computed without one. This is now the top priority item.
 
 **2026-07-14 (session 4):** Resolved the news/analysis integration scope: the EA will use an economic calendar to detect high-impact news and adapt its own parameters (stop distance, lot size, profit-lock threshold) around news-driven volatility — a self-contained MQL5 module, not a TradingView signal bridge. Folded into the existing volatility-adaptive module; Document 3's Epic 2 (TradingView-bridge option) was removed and epics renumbered.
 
@@ -35,3 +38,4 @@
 | `2026-07-14b_ea-license-business-model.md` | 2026-07-14 | Session 2 — business model pivot to MT5 EA licensing |
 | `2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 | Session 3 — distribution channel, exit logic, lot sizing, trading scope |
 | `2026-07-14d_news-scope-resolved.md` | 2026-07-14 | Session 4 — news/analysis integration scope resolved |
+| `2026-07-14e_lot-sizing-method-resolved.md` | 2026-07-14 | Session 5 — dynamic risk-based lot sizing; stop-loss gap surfaced |
