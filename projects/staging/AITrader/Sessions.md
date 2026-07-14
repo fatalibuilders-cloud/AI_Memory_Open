@@ -18,3 +18,4 @@
 | Session 8 — dual modes, daily controls, target reverted | 2026-07-14 | Safe Mode, Aggressive Mode, daily profit target, daily loss limit, max concurrent trades, web research, risk per trade, FTMO |
 | Session 9 — daily loss limit set | 2026-07-14 | daily loss limit, 3%, tier boundary, risk management |
 | Session 10 — launch readiness & realistic targets | 2026-07-14 | MQL5 Market, seller registration, marketing red flags, realistic daily return, 5-20%, checklist |
+| Session 11 — aggressive mode target set | 2026-07-14 | 20%, daily target, Aggressive Mode default, Safe Mode default open |
