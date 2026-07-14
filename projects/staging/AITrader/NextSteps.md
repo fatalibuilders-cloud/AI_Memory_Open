@@ -6,10 +6,10 @@
 
 ## Priority Queue
 
-1. **[Human] Design the real entry-signal logic — the biggest open gap in the whole project.** Nothing in staging ever specified what actually triggers a trade. `Product_Development/MQL5_EA/AITrader.mq5` has a clearly-labeled placeholder (EMA crossover + RSI) with no claimed edge, just to make the EA structurally testable. Likely deserves its own dedicated design session.
-2. **[Dev] Compile `AITrader.mq5` in MetaEditor and fix any syntax errors** — written but not compiled (no MT5 environment available during staging).
-3. **[Dev] Run the draft through MT5's Strategy Tester** (even with the placeholder signal) to validate the risk-management plumbing works mechanically — daily halt logic, lot sizing, tier boundaries. This checks "does the machinery work," not "is this profitable."
-4. **[Human] Design a real signal-confidence model for Safe Mode's win-probability filter** — currently stubbed to a fixed placeholder value in the code.
+1. **[Dev] Compile `AITrader.mq5` in MetaEditor and fix any syntax errors** — written but not compiled (no MT5 environment available during staging).
+2. **[Dev] Run the draft through MT5's Strategy Tester** — now with a real v1 strategy (multi-timeframe trend + pullback, 2026-07-14q) instead of a throwaway placeholder. Check actual win rate against the documented break-even bars, not just that the plumbing works.
+3. **[Human] Consider walk-forward testing** the v1 signal (validate on a period the parameters weren't tuned on) to guard against curve-fitting before trusting results.
+4. **[Human] Validate `GetSignalConfidence()`'s ADX+RSI heuristic against real win-rate outcomes** — it's explainable now (2026-07-14q) but still not a calibrated probability.
 5. **[Human] Apply for MQL5 Market Seller registration early** — review takes up to 10 working days, don't let it gate the launch timeline. See `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md` for the full listing/readiness checklist.
 6. **[Human] Decide whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions, or a baseline the volatility/news-adaptive module can widen** during high-volatility/news windows — the draft code only skips new entries near high-impact news, it doesn't widen/adapt parameters yet.
 7. **[Human] Reconsider the $50 stop-loss breakpoint** — research confirms a $3 stop-loss at exactly $50 equity is 6% risk, above the professional 1–2% norm, and now also exceeds the 3% daily loss limit in a single trade. Consider raising the breakpoint or smoothing the transition.
@@ -50,6 +50,7 @@
 - **Entry-condition filters added (v0.20):** volume, volatility, range/ADX, data-feed sanity, and weekend protection — researched independently and inspired by (not copied from) a third-party reference EA's settings panel. "AI Filter" branding and the reference EA's fixed 3.1 lot size / short-window results were deliberately not adopted — see `2026-07-14o` for why.
 - **MQL5 Market submission assets drafted:** listing description text and a full submission checklist (`Product_Development/MQL5_EA/`) — confirmed the EA is not ready to submit (uncompiled, unbacktested, placeholder signal), and that logo images can't be generated in this environment (no image tool available; spec provided instead).
 - **Declined to receive MT5/MQL5 login credentials** — no technical capability to run MetaEditor/MT5 or browse to mql5.com here, and sharing live trading/marketplace credentials with an AI agent isn't good security practice regardless. See `2026-07-14p`.
+- **Real v1 entry signal designed:** multi-timeframe trend + pullback momentum entry replaces the naive EMA-crossover placeholder — grounded in published methodology, agreed with founder to start rule-based rather than ML-first. `GetSignalConfidence()` upgraded to a rule-based (ADX+RSI) heuristic. See `2026-07-14q`. **Still unbacktested — this is a hypothesis, not a proven strategy.**
 
 ## Superseded (no longer critical path)
 

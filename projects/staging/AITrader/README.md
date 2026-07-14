@@ -21,21 +21,22 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/AITrader.mq5` (v0.20) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness — plus entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection), independently researched and inspired by a third-party reference EA's settings panel (not a copy of its logic — see `Product_Development/MQL5_EA/README.md` for exactly what was and wasn't adopted, including why "AI Filter" branding and a 3.1 fixed lot size were declined). **Not compiled, not backtested** (no MT5 environment available during staging).
+`Product_Development/MQL5_EA/AITrader.mq5` (v0.30) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus, as of v0.30, a **real v1 entry signal**: multi-timeframe trend + pullback momentum entry, replacing the earlier throwaway EMA-crossover placeholder. Grounded in published/widely-taught methodology (see `decisions-learnings/2026-07-14q_signal_design_v1.md`), chosen as a rule-based v1 with ML treated as a v2 aspiration, not a blocker. **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
 
 ## Biggest Open Item
 
-**The entry-signal logic was never designed.** Every decision made during staging covered risk management, exits, or sizing — not what actually triggers a trade. The code draft uses a placeholder (EMA crossover + RSI) with no claimed edge, purely to be structurally testable. This is now the single largest gap before AITrader has anything resembling a real strategy.
+**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.30 has a real, research-grounded strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on AITrader's target instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
 
 ## Other Open Items
 
-1. Compile the draft in MetaEditor and run it through MT5's Strategy Tester (even with the placeholder signal) to validate the risk-management plumbing.
-2. Design a real signal-confidence model for Safe Mode's win-probability filter (currently a stub).
-3. Whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions or a baseline the volatility/news-adaptive module can widen — the draft only skips new entries near high-impact news, it doesn't adapt parameters yet.
-4. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms, and now also exceeds the 3% daily loss limit in one trade).
-5. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap) — not implemented in the draft.
-6. **Volatility/news-adaptive rules** — the draft implements only a simple skip-entries reaction, not the full parameter-adaptation system described in Document 2.
-7. Confirm MT5's built-in calendar (used in the draft) as the final economic calendar data source.
+1. Compile the draft in MetaEditor and run it through MT5's Strategy Tester — now with a real strategy to actually evaluate, not just plumbing to check.
+2. Consider walk-forward testing to guard against curve-fitting the v1 parameters (200/20 MA periods, RSI 40/60) before trusting results.
+3. Validate `GetSignalConfidence()`'s ADX+RSI heuristic against real win-rate outcomes — explainable now, but still not a calibrated probability.
+4. Whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions or a baseline the volatility/news-adaptive module can widen — the draft only skips new entries near high-impact news, it doesn't adapt parameters yet.
+5. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms, and now also exceeds the 3% daily loss limit in one trade).
+6. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap) — not implemented in the draft.
+7. **Volatility/news-adaptive rules** — the draft implements only a simple skip-entries reaction, not the full parameter-adaptation system described in Document 2.
+8. Confirm MT5's built-in calendar (used in the draft) as the final economic calendar data source.
 
 **Confirmed guardrail:** "$50 → $1,000 in a day" and "$10 → $100 in a day" are both internal Aggressive Mode narrative framing only — neither is a build spec or realistic (professional day traders consider 1-2% a very good day; if an internal aggressive-mode number is ever needed, 5-20%/day is the research-backed ceiling). Explicitly barred from marketing copy — flagged to the Legal epic with a concrete pre-launch checklist.
 
