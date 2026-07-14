@@ -39,6 +39,7 @@ Once these three documents are complete and approved, this project will be promo
 **Status:** [ ] Not Started [x] In Progress [ ] Complete
 **Description:** EA architecture (MQL5), MQL5 Market distribution, broker integration, dual-mode exit logic, volatility-adaptive design, news/analysis integration
 **Progress note (2026-07-14n):** first structural MQL5 code draft written — `Product_Development/MQL5_EA/AITrader.mq5`. Uncompiled, unbacktested, and uses a placeholder entry signal (see the file's README) — the real entry-signal design is now the largest open gap.
+**Progress note (2026-07-14o):** added entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — see `Product_Development/MQL5_EA/README.md` "v0.20 additions" for what was and wasn't adopted from a third-party reference EA's settings panel.
 
 ### Document 3: Release Plan
 **Status:** [ ] Not Started [x] In Progress [ ] Complete
@@ -210,6 +211,7 @@ See "Institutional Dependencies" section above.
 - [x] Build Aggressive Mode (no filter) — explicitly without any compounding/martingale lot-sizing logic aimed at a daily multiplier target
 - [x] Build daily risk controls: configurable daily profit target, max 2 concurrent open trades, 3% daily loss limit with the tier-boundary fix — first draft implemented
 - [~] Volatility/news-adaptive module — only a first-pass "skip entries near high-impact news" check implemented (via MT5's native calendar), not the full stop/lot/target parameter-adaptation system described in Document 2
+- [x] Entry-condition filters added (2026-07-14o): volume, volatility (ATR ratio band), range/trend-strength (ADX), data-feed sanity (spread/staleness), weekend protection (Friday close-all / Monday start-block) — see `Product_Development/MQL5_EA/README.md` "v0.20 additions" for sourcing and what was deliberately not adopted from a reference EA
 - [ ] **Design the real entry-signal logic** — never specified anywhere in staging; the current draft uses a placeholder EMA-crossover/RSI filter with no claimed edge. This is now the largest open item in the whole project.
 - [ ] Compile the draft in MetaEditor and fix any syntax errors (not done — no MT5 environment available during staging)
 - [ ] Run real MT5 Strategy Tester backtests — per mode, per stop-loss tier, across volatility regimes and major news events — to confirm actual win rate clears the break-even bars (40%/50% Safe Mode, 66.7%/85.7% Aggressive Mode). **Nothing has been backtested against real data yet** — the only validation so far is the Monte Carlo expectancy simulation, which checks arithmetic, not market behavior.

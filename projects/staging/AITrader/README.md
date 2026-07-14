@@ -21,7 +21,7 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/AITrader.mq5` implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness. **Not compiled, not backtested** (no MT5 environment available during staging). See `Product_Development/MQL5_EA/README.md` for the full placeholder list.
+`Product_Development/MQL5_EA/AITrader.mq5` (v0.20) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness — plus entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection), independently researched and inspired by a third-party reference EA's settings panel (not a copy of its logic — see `Product_Development/MQL5_EA/README.md` for exactly what was and wasn't adopted, including why "AI Filter" branding and a 3.1 fixed lot size were declined). **Not compiled, not backtested** (no MT5 environment available during staging).
 
 ## Biggest Open Item
 

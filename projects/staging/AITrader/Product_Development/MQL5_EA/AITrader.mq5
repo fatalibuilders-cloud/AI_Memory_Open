@@ -8,11 +8,17 @@
 //| any part of this for real trading. Not yet compiled or backtested.|
 //+------------------------------------------------------------------+
 #property copyright "AITrader"
-#property version   "0.10"
+#property version   "0.20"
 #property strict
 
 #include <Trade\Trade.mqh>
 CTrade trade;
+
+// MqlDateTime.day_of_week is 0=Sunday..6=Saturday; MQL5 has no named
+// weekday constants, so these are defined explicitly to keep the
+// weekend-protection logic below readable.
+#define DOW_MONDAY 1
+#define DOW_FRIDAY 5
 
 //+------------------------------------------------------------------+
 //| OPEN ITEMS / PLACEHOLDERS -- read before using this file          |
@@ -42,6 +48,22 @@ CTrade trade;
 //|    NOT implemented here -- gating rules for that were flagged as   |
 //|    still open in NextSteps.md. This draft only implements the      |
 //|    downside protections (tiered stop-loss, daily loss limit).      |
+//|                                                                    |
+//| 5. v0.20 adds named entry-condition filters (volume/volatility/     |
+//|    range/data-feed/weekend), inspired by filter *names* seen on a  |
+//|    third-party commercial EA's settings panel (screenshot, not     |
+//|    source code). These are honest, well-established retail-EA      |
+//|    concepts (see Product_Development/MQL5_EA/README.md for what    |
+//|    each one actually does and the research behind it) -- they are  |
+//|    NOT a reproduction of that EA's real logic, which was never     |
+//|    visible, only its input names. "AI Filter" in that reference EA |
+//|    is left unreplicated here: labeling a rule-based filter "AI"    |
+//|    without a real trained model would repeat the exact kind of     |
+//|    unsubstantiated claim already flagged as a marketing/legal risk |
+//|    elsewhere in this project (see decisions-learnings 2026-07-14j).|
+//|    That reference account's result (+533% equity in ~2 days on a   |
+//|    3.1 fixed lot size) is NOT something this file targets or       |
+//|    should be benchmarked against -- see README for why.            |
 //+------------------------------------------------------------------+
 
 //=== Trading mode / exit mode ========================================
@@ -77,10 +99,43 @@ input int    InpFastEmaPeriod = 12;
 input int    InpSlowEmaPeriod = 26;
 input int    InpRsiPeriod     = 14;
 
+//=== Entry-condition filters (v0.20) -- see header note above ========
+// Reference concept: "Volume Filter" -- avoid illiquid periods with poor
+// execution / wide spreads (research: confirms activity before entry).
+input bool   InpUseVolumeFilter      = true;
+input int    InpVolumeAvgPeriod      = 20;
+
+// Reference concept: "Volatility Filter" -- reject dead markets (poor
+// R:R) and abnormal volatility spikes (often news/gap, not clean trend).
+input bool   InpUseVolatilityFilter  = true;
+input double InpVolatilityRatioMin   = 0.5;
+input double InpVolatilityRatioMax   = 2.5;
+
+// Reference concept: "Range Filter" -- our EMA-crossover signal is
+// trend-following, so the useful pairing is a trend-strength gate
+// (ADX) that skips choppy/ranging conditions where crossovers whipsaw.
+input bool   InpUseRangeFilter       = true;
+input int    InpAdxPeriod            = 14;
+input double InpAdxTrendThreshold    = 20.0;
+
+// Reference concept: "Information Feed Filter" -- interpreted here as a
+// data-sanity check: reject trading on stale quotes or abnormal spread.
+input bool   InpUseDataFeedFilter    = true;
+input double InpMaxSpreadPoints      = 30.0;
+input int    InpMaxQuoteStaleSeconds = 60;
+
+// Reference concept: "Weekend Protection" / Friday-close / Monday-start
+// -- avoids holding new risk into a weekend gap. Not present in prior
+// drafts; added here as a straightforward, well-justified risk control.
+input bool   InpUseWeekendProtection = true;
+input int    InpFridayCloseAllHour   = 20;  // server time
+input int    InpFridayEntryBlockHour = 16;  // server time
+input int    InpMondayStartHour      = 2;   // server time
+
 //=== Global state ======================================================
 double   g_dayStartEquity = 0;
 MqlDateTime g_dayKey;
-int      g_handleFastEma, g_handleSlowEma, g_handleRsi, g_handleAtr;
+int      g_handleFastEma, g_handleSlowEma, g_handleRsi, g_handleAtr, g_handleAdx;
 bool     g_dailyHalted = false;
 
 //+------------------------------------------------------------------+
@@ -90,9 +145,11 @@ int OnInit()
    g_handleSlowEma = iMA(_Symbol, PERIOD_CURRENT, InpSlowEmaPeriod, 0, MODE_EMA, PRICE_CLOSE);
    g_handleRsi     = iRSI(_Symbol, PERIOD_CURRENT, InpRsiPeriod, PRICE_CLOSE);
    g_handleAtr     = iATR(_Symbol, PERIOD_CURRENT, InpAtrPeriod);
+   g_handleAdx     = iADX(_Symbol, PERIOD_CURRENT, InpAdxPeriod);
 
    if(g_handleFastEma == INVALID_HANDLE || g_handleSlowEma == INVALID_HANDLE ||
-      g_handleRsi == INVALID_HANDLE || g_handleAtr == INVALID_HANDLE)
+      g_handleRsi == INVALID_HANDLE || g_handleAtr == INVALID_HANDLE ||
+      g_handleAdx == INVALID_HANDLE)
    {
       Print("AITrader: failed to create indicator handles");
       return(INIT_FAILED);
@@ -107,6 +164,7 @@ void OnDeinit(const int reason)
 {
    IndicatorRelease(g_handleFastEma);
    IndicatorRelease(g_handleSlowEma);
+   IndicatorRelease(g_handleAdx);
    IndicatorRelease(g_handleRsi);
    IndicatorRelease(g_handleAtr);
 }
@@ -265,8 +323,125 @@ bool IsHighImpactNewsWindow()
 }
 
 //+------------------------------------------------------------------+
+//| Entry-condition filters (v0.20) -- see header note. Each is an     |
+//| honest, well-established retail-EA concept, not a reproduction of  |
+//| any specific third-party product's internal logic.                 |
+//+------------------------------------------------------------------+
+
+// "Volume Filter": only trade when current bar's tick volume is at or
+// above its recent average -- avoids illiquid periods (poor execution,
+// wider spreads).
+bool PassesVolumeFilter()
+{
+   if(!InpUseVolumeFilter) return true;
+
+   long vol[];
+   ArraySetAsSeries(vol, true);
+   if(CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, InpVolumeAvgPeriod + 1, vol) <= 0)
+      return true; // fail open -- don't block trading on a data hiccup
+
+   long sum = 0;
+   for(int i = 1; i <= InpVolumeAvgPeriod; i++)
+      sum += vol[i];
+   double avgVol = (double)sum / InpVolumeAvgPeriod;
+
+   return (double)vol[0] >= avgVol;
+}
+
+// "Volatility Filter": reject both dead markets (ATR far below its own
+// recent average -- poor risk:reward, spread dominates) and abnormal
+// spikes (ATR far above average -- often a news/gap event, not a clean
+// trend the placeholder signal is designed for).
+bool PassesVolatilityFilter()
+{
+   if(!InpUseVolatilityFilter) return true;
+
+   double atr[];
+   ArraySetAsSeries(atr, true);
+   if(CopyBuffer(g_handleAtr, 0, 0, 20, atr) <= 0)
+      return true;
+
+   double sum = 0;
+   for(int i = 1; i < 20; i++)
+      sum += atr[i];
+   double avg = sum / 19.0;
+   if(avg <= 0) return true;
+
+   double ratio = atr[0] / avg;
+   return (ratio >= InpVolatilityRatioMin && ratio <= InpVolatilityRatioMax);
+}
+
+// "Range Filter": the placeholder signal (EMA crossover) is trend-
+// following, so the useful pairing is an ADX trend-strength gate --
+// skip choppy/ranging conditions where crossovers tend to whipsaw.
+bool PassesRangeFilter()
+{
+   if(!InpUseRangeFilter) return true;
+
+   double adx[];
+   ArraySetAsSeries(adx, true);
+   if(CopyBuffer(g_handleAdx, MAIN_LINE, 0, 1, adx) <= 0)
+      return true;
+
+   return adx[0] >= InpAdxTrendThreshold;
+}
+
+// "Information Feed Filter": interpreted as a data-sanity check --
+// reject trading on stale quotes or an abnormally wide spread, both
+// signs of a bad/thin data feed moment rather than a real setup.
+bool PassesDataFeedSanityCheck()
+{
+   if(!InpUseDataFeedFilter) return true;
+
+   double spread = (SymbolInfoDouble(_Symbol, SYMBOL_ASK) - SymbolInfoDouble(_Symbol, SYMBOL_BID))
+                     / SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(spread > InpMaxSpreadPoints)
+      return false;
+
+   datetime lastTick = (datetime)SymbolInfoInteger(_Symbol, SYMBOL_TIME);
+   if(TimeCurrent() - lastTick > InpMaxQuoteStaleSeconds)
+      return false;
+
+   return true;
+}
+
+// "Weekend Protection": avoid opening new risk into a weekend gap, and
+// block new entries approaching Friday close / just after Monday open.
+bool IsWeekendEntryBlocked()
+{
+   if(!InpUseWeekendProtection) return false;
+
+   MqlDateTime t;
+   TimeToStruct(TimeCurrent(), t);
+
+   if(t.day_of_week == DOW_FRIDAY && t.hour >= InpFridayEntryBlockHour) return true;
+   if(t.day_of_week == DOW_MONDAY && t.hour < InpMondayStartHour)       return true;
+   return false;
+}
+
+// Force-close all AITrader positions ahead of the weekend close.
+void ApplyWeekendCloseAll()
+{
+   if(!InpUseWeekendProtection) return;
+
+   MqlDateTime t;
+   TimeToStruct(TimeCurrent(), t);
+   if(t.day_of_week != DOW_FRIDAY || t.hour < InpFridayCloseAllHour)
+      return;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == InpMagicNumber)
+         trade.PositionClose(ticket);
+   }
+}
+
+//+------------------------------------------------------------------+
 //| PLACEHOLDER SIGNAL LOGIC -- see OPEN ITEMS block at top of file.  |
 //| Simple EMA crossover + RSI filter, purely a structural stand-in.  |
+//| ("AI Filter" from the reference EA is deliberately NOT replicated |
+//| here -- see header note on why.)                                  |
 //+------------------------------------------------------------------+
 enum ENUM_SIGNAL { SIGNAL_NONE, SIGNAL_BUY, SIGNAL_SELL };
 
@@ -294,7 +469,11 @@ ENUM_SIGNAL GetEntrySignal()
 //| filter (2026-07-14m). No real model exists; stub returns a fixed   |
 //| value so the EA is structurally complete. Must be replaced with a  |
 //| real, backtested confidence estimate before this filter means      |
-//| anything.                                                          |
+//| anything. This is the closest equivalent to the reference EA's     |
+//| "AI Filter" toggle -- deliberately NOT labeled "AI" here, since     |
+//| doing so without a real trained model would be the same kind of    |
+//| unsubstantiated claim already flagged as a marketing/legal risk     |
+//| elsewhere in this project.                                         |
 //+------------------------------------------------------------------+
 double GetSignalConfidence(ENUM_SIGNAL signal)
 {
@@ -350,6 +529,7 @@ void ManageOpenPositions()
 void OnTick()
 {
    ManageOpenPositions();
+   ApplyWeekendCloseAll();
 
    if(CheckDailyLimits())
       return; // daily profit target or loss limit reached -- no new trades today
@@ -357,8 +537,17 @@ void OnTick()
    if(CountOpenPositions() >= InpMaxConcurrentTrades)
       return; // 2026-07-14h: max 2 concurrent trades
 
+   if(IsWeekendEntryBlocked())
+      return; // v0.20: weekend protection -- no new risk into a weekend gap
+
+   if(!PassesDataFeedSanityCheck())
+      return; // v0.20: stale quotes / abnormal spread
+
    if(IsHighImpactNewsWindow())
       return; // first-pass reaction: skip new entries near high-impact news
+
+   if(!PassesVolumeFilter() || !PassesVolatilityFilter() || !PassesRangeFilter())
+      return; // v0.20: entry-condition filters -- see header note
 
    ENUM_SIGNAL signal = GetEntrySignal();
    if(signal == SIGNAL_NONE)
