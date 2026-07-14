@@ -51,6 +51,7 @@
 - **MQL5 Market submission assets drafted:** listing description text and a full submission checklist (`Product_Development/MQL5_EA/`) — confirmed the EA is not ready to submit (uncompiled, unbacktested, placeholder signal), and that logo images can't be generated in this environment (no image tool available; spec provided instead).
 - **Declined to receive MT5/MQL5 login credentials** — no technical capability to run MetaEditor/MT5 or browse to mql5.com here, and sharing live trading/marketplace credentials with an AI agent isn't good security practice regardless. See `2026-07-14p`.
 - **Real v1 entry signal designed:** multi-timeframe trend + pullback momentum entry replaces the naive EMA-crossover placeholder — grounded in published methodology, agreed with founder to start rule-based rather than ML-first. `GetSignalConfidence()` upgraded to a rule-based (ADX+RSI) heuristic. See `2026-07-14q`. **Still unbacktested — this is a hypothesis, not a proven strategy.**
+- **Step-by-step compile guide written:** `Product_Development/MQL5_EA/compile_guide.md` — exact MetaEditor menu paths, folder locations, and what to do with compile errors. Flags that the founder's earlier reference screenshot was from MT4, not MT5 — `.mq5` files require MT5 specifically.
 
 ## Superseded (no longer critical path)
 
