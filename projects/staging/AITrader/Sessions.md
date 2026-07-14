@@ -21,3 +21,4 @@
 | Session 11 — aggressive mode target set | 2026-07-14 | 20%, daily target, Aggressive Mode default, Safe Mode default open |
 | Session 12 — safe mode target set | 2026-07-14 | 5%, daily target, Safe Mode default, risk framework complete |
 | Session 13 — safe mode redesigned, simulation run | 2026-07-14 | Safe Mode redesign, win rate, risk:reward, Monte Carlo simulation, expectancy, real backtest still needed |
+| Session 14 — first MQL5 EA draft written | 2026-07-14 | MQL5, AITrader.mq5, entry signal placeholder, EMA crossover, not compiled, not backtested |

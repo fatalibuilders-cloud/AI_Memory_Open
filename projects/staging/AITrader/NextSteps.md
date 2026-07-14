@@ -6,19 +6,21 @@
 
 ## Priority Queue
 
-1. **[Human/Dev] Write the actual MQL5 EA code (Epic 1) — nothing has been built yet.** Every "backtest" so far is a mathematical simulation of the design's arithmetic (`Product_Development/simulations/`), not a real test against market data. Real validation requires actual code run through MT5's Strategy Tester.
-2. **[AI+Human] Resolve the daily-loss-limit / stop-loss tier boundary interaction** — at exactly $50 equity, the 3% daily loss limit ($1.50) is *smaller* than the ≥$50 tier's single-trade stop-loss ($3). A single loss can blow past the whole day's budget. Needs explicit logic (e.g., cap a trade's max loss at the remaining daily budget) rather than assuming the two limits compose cleanly.
-3. **[Human] Apply for MQL5 Market Seller registration early** — review takes up to 10 working days, don't let it gate the launch timeline. See `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md` for the full listing/readiness checklist.
-4. **[Human] Decide whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions, or a baseline the volatility/news-adaptive module can widen** during high-volatility/news windows.
-5. **[Human] Reconsider the $50 stop-loss breakpoint** — research confirms a $3 stop-loss at exactly $50 equity is 6% risk, above the professional 1–2% norm, and now also exceeds the 3% daily loss limit in a single trade. Consider raising the breakpoint or smoothing the transition.
-6. **[Human] Define risk-management gating rules for lot-size changes** — losing-streak cooldown? news-window restriction? max lot size cap? Should size scale back down on drawdown, not just up?
-7. **[AI+Human] Design the volatility/news-adaptive rules** — specify exactly which parameters change and by how much, per volatility/news-impact level.
-8. **[Human] Confirm the "text tag / who's the key" fragment** — likely moot now that MQL5 Market handles licensing.
-9. **[Human] Choose economic calendar data source** — MT5's built-in calendar vs. a third-party API.
-10. **[Human] Lightweight legal review** — use the concrete pre-launch checklist in `2026-07-14j_realistic-targets-launch-readiness.md` (no multiplier claims, no guarantee language, required risk disclosure, accurate mode descriptions).
-11. **[AI+Human] Real backtest + forward-test plan (once Epic 1 code exists)** — cover both exit modes, both trading modes (Safe/Aggressive) with their now-distinct targets, both stop-loss tiers, the 3% daily loss limit and both daily targets (5%/20%), major historical news events, and net-of-cost profitability at high trade frequency, capped at 2 concurrent trades. Compare real results against the Monte Carlo simulation's assumptions.
-12. **[Human] Confirm MQL5 Market commission structure** (registration/review process is now researched — commission % specifically still needs confirming).
-13. **[Human] Evaluate Exness IB/affiliate program.**
+1. **[Human] Design the real entry-signal logic — the biggest open gap in the whole project.** Nothing in staging ever specified what actually triggers a trade. `Product_Development/MQL5_EA/AITrader.mq5` has a clearly-labeled placeholder (EMA crossover + RSI) with no claimed edge, just to make the EA structurally testable. Likely deserves its own dedicated design session.
+2. **[Dev] Compile `AITrader.mq5` in MetaEditor and fix any syntax errors** — written but not compiled (no MT5 environment available during staging).
+3. **[Dev] Run the draft through MT5's Strategy Tester** (even with the placeholder signal) to validate the risk-management plumbing works mechanically — daily halt logic, lot sizing, tier boundaries. This checks "does the machinery work," not "is this profitable."
+4. **[Human] Design a real signal-confidence model for Safe Mode's win-probability filter** — currently stubbed to a fixed placeholder value in the code.
+5. **[Human] Apply for MQL5 Market Seller registration early** — review takes up to 10 working days, don't let it gate the launch timeline. See `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md` for the full listing/readiness checklist.
+6. **[Human] Decide whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions, or a baseline the volatility/news-adaptive module can widen** during high-volatility/news windows — the draft code only skips new entries near high-impact news, it doesn't widen/adapt parameters yet.
+7. **[Human] Reconsider the $50 stop-loss breakpoint** — research confirms a $3 stop-loss at exactly $50 equity is 6% risk, above the professional 1–2% norm, and now also exceeds the 3% daily loss limit in a single trade. Consider raising the breakpoint or smoothing the transition.
+8. **[Human] Define risk-management gating rules for lot-size changes** — losing-streak cooldown? news-window restriction? max lot size cap? Should size scale back down on drawdown, not just up? Not implemented in the draft code.
+9. **[AI+Human] Design the full volatility/news-adaptive rules** — specify exactly which parameters change and by how much, per volatility/news-impact level (the draft only implements a simple skip-new-entries reaction).
+10. **[Human] Confirm the "text tag / who's the key" fragment** — likely moot now that MQL5 Market handles licensing.
+11. ~~Choose economic calendar data source~~ — the draft code defaults to **MT5's built-in calendar** (simplest, no external dependency); confirm this is the final choice.
+12. **[Human] Lightweight legal review** — use the concrete pre-launch checklist in `2026-07-14j_realistic-targets-launch-readiness.md` (no multiplier claims, no guarantee language, required risk disclosure, accurate mode descriptions).
+13. **[AI+Human] Real backtest + forward-test plan (once the code compiles)** — cover both exit modes, both trading modes (Safe/Aggressive) with their now-distinct targets, both stop-loss tiers, the 3% daily loss limit and both daily targets (5%/20%), major historical news events, and net-of-cost profitability at high trade frequency, capped at 2 concurrent trades. Compare real results against the Monte Carlo simulation's assumptions.
+14. **[Human] Confirm MQL5 Market commission structure** (registration/review process is now researched — commission % specifically still needs confirming).
+15. **[Human] Evaluate Exness IB/affiliate program.**
 
 ---
 
@@ -40,7 +42,8 @@
 - MQL5 Market listing requirements and pre-launch marketing checklist: **researched and documented** (Seller registration timeline, logo sizes, description rules, technical review process, prohibited-claim checklist).
 - Aggressive Mode's internal daily target: **set to 20%** (top of the 5-20% research range), now the default for the daily-profit-target setting in that mode.
 - Safe Mode's internal daily target: **set to 5%** (top of the 1-5% research range). Both modes now have concrete daily-target defaults.
-- Safe Mode redesigned: **own $1.50 (<$50 tier) / $3.00 (≥$50 tier) profit-lock targets, 65-75% win-probability filter** (down from unrealistic 80-100%), validated via Monte Carlo simulation to have positive expectancy at realistic win rates — **simulation only, real backtest still required (Priority Queue #1)**.
+- Safe Mode redesigned: **own $1.50 (<$50 tier) / $3.00 (≥$50 tier) profit-lock targets, 65-75% win-probability filter** (down from unrealistic 80-100%), validated via Monte Carlo simulation to have positive expectancy at realistic win rates — **simulation only, real backtest still required**.
+- **First MQL5 code draft written:** `Product_Development/MQL5_EA/AITrader.mq5` implements every risk-management/mode/daily-control decision above, including the tier-boundary daily-loss-budget fix. Not compiled, not backtested, and uses a placeholder entry signal (see Priority Queue #1-3).
 
 ## Superseded (no longer critical path)
 

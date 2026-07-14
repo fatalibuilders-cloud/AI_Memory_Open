@@ -38,6 +38,7 @@ Once these three documents are complete and approved, this project will be promo
 ### Document 2: Architecture/Design
 **Status:** [ ] Not Started [x] In Progress [ ] Complete
 **Description:** EA architecture (MQL5), MQL5 Market distribution, broker integration, dual-mode exit logic, volatility-adaptive design, news/analysis integration
+**Progress note (2026-07-14n):** first structural MQL5 code draft written — `Product_Development/MQL5_EA/AITrader.mq5`. Uncompiled, unbacktested, and uses a placeholder entry signal (see the file's README) — the real entry-signal design is now the largest open gap.
 
 ### Document 3: Release Plan
 **Status:** [ ] Not Started [x] In Progress [ ] Complete
@@ -203,15 +204,16 @@ See "Institutional Dependencies" section above.
 ### Epics
 
 **Epic 1: Core EA Strategy & Backtesting**
-- Decide whether the $1/$3 stop-loss and $0.50 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen
-- Build dual-mode exit logic (outright close vs. breakeven-and-run) and decide the default via backtest comparison
-- Build the dynamic risk-based money-management module: 0.01 starting lot, tiered stop-loss ($1 below $50 equity / $3 at or above) paired with the $0.50 profit-lock target, equity-and-risk-driven scaling, gating rules, up/down scaling (some values still need defining, see Open Questions)
-- Build Safe Mode's own exit logic ($1.50 / $3.00 profit-lock by tier) and win-probability signal filter (target 65–75%, revised 2026-07-14m), then **run real MT5 Strategy Tester backtests to confirm actual win rate clears the 40%/50% break-even bars** — the Monte Carlo simulation only validated the design's arithmetic, not real signal performance
-- Build Aggressive Mode (no filter) — explicitly without any compounding/martingale lot-sizing logic aimed at a daily multiplier target
-- Build daily risk controls: configurable daily profit target (halts trading once hit), max 2 concurrent open trades, and a **3% daily loss limit** — including explicit logic so a single trade's stop-loss can't blow past the remaining daily loss budget at tier boundaries (see flagged interaction in Document 2)
-- Design and implement the volatility/news-adaptive module: economic-calendar-driven detection of high-impact events plus parameter adaptation (stop distance, lot size, profit-lock threshold) so the EA holds up across volatility regimes and news-driven fluctuations. Self-contained MQL5 component — no external services.
-- Build and run MT5 Strategy Tester backtests across representative historical periods, explicitly including both high- and low-volatility windows and major news events, **per mode and per stop-loss tier**
-- Start a live/demo forward-test to build a verifiable track record ahead of launch marketing
+- [x] Build dual-mode exit logic (outright close vs. breakeven-and-run) — first draft in `Product_Development/MQL5_EA/AITrader.mq5` (2026-07-14n); default still to be chosen via backtest comparison
+- [x] Build the dynamic risk-based money-management module: 0.01 starting lot, tiered stop-loss, mode-specific profit-lock targets — first draft implemented, including the tier-boundary daily-loss-budget fix. Equity-based up-scaling on winning streaks still NOT implemented (see Open Questions/NextSteps).
+- [x] Build Safe Mode's own exit logic (2026-07-14m targets) and a **stub** win-probability filter — real confidence-scoring model still needed (currently a fixed placeholder value)
+- [x] Build Aggressive Mode (no filter) — explicitly without any compounding/martingale lot-sizing logic aimed at a daily multiplier target
+- [x] Build daily risk controls: configurable daily profit target, max 2 concurrent open trades, 3% daily loss limit with the tier-boundary fix — first draft implemented
+- [~] Volatility/news-adaptive module — only a first-pass "skip entries near high-impact news" check implemented (via MT5's native calendar), not the full stop/lot/target parameter-adaptation system described in Document 2
+- [ ] **Design the real entry-signal logic** — never specified anywhere in staging; the current draft uses a placeholder EMA-crossover/RSI filter with no claimed edge. This is now the largest open item in the whole project.
+- [ ] Compile the draft in MetaEditor and fix any syntax errors (not done — no MT5 environment available during staging)
+- [ ] Run real MT5 Strategy Tester backtests — per mode, per stop-loss tier, across volatility regimes and major news events — to confirm actual win rate clears the break-even bars (40%/50% Safe Mode, 66.7%/85.7% Aggressive Mode). **Nothing has been backtested against real data yet** — the only validation so far is the Monte Carlo expectancy simulation, which checks arithmetic, not market behavior.
+- [ ] Start a live/demo forward-test to build a verifiable track record ahead of launch marketing
 
 **Epic 2: MQL5 Market Listing**
 - Confirm current MQL5 Market commission structure (not yet independently confirmed — see NextSteps)
