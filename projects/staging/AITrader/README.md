@@ -17,17 +17,16 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 
 ## Risk Model (current)
 
-Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$0.50** (briefly raised to $2–$3, then reverted per founder decision). Two trading modes: **Safe Mode** (only trades 80–100% win-probability setups, **5% daily target default**) and **Aggressive Mode** (opportunistic, no filter, **20% daily target default**). Daily risk controls: configurable daily profit target (halts trading once hit), a **3% daily loss limit**, and max 2 concurrent open trades. The full risk framework is now fully specified — remaining work is backtest validation, not further parameter decisions.
+Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trading modes with **distinct** profit-lock targets: **Safe Mode** ($1.50 / $3.00 by tier, 65–75% win-probability filter, **5% daily target**) and **Aggressive Mode** ($0.50 shared target, no filter, **20% daily target**). Daily risk controls: configurable daily profit target, a **3% daily loss limit**, and max 2 concurrent open trades. A Monte Carlo simulation (`Product_Development/simulations/`) confirms the redesigned Safe Mode has positive expectancy across realistic win rates — **this is a math simulation, not a real backtest.**
 
-## Biggest Open Items
+## Biggest Open Item
 
-1. **Daily-loss-limit / stop-loss tier boundary interaction:** at exactly $50 equity, 3% ($1.50) is smaller than the ≥$50 tier's $3 stop-loss — a single losing trade can exceed the whole day's budget. Needs explicit handling before build.
-2. **Safe Mode's 80% win-probability floor may not clear the ≥$50 tier's 85.7% break-even requirement.** Needs backtest validation before that tier ships in Safe Mode — otherwise a strategy marketed as "safe" could structurally lose money at that tier even with an 80-85% win rate.
+**No real backtesting has happened yet — no MQL5 code exists.** Every risk parameter in this project (stop-loss, targets, daily controls, win-rate assumptions) is a design decision validated only by arithmetic/simulation so far. The next real milestone is Epic 1: build the EA in MQL5 and run it through MT5's Strategy Tester against historical data.
 
 ## Other Open Items
 
-1. Whether the $1/$3 stop-loss and $0.50 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen.
-2. Whether Safe Mode needs its own risk parameters distinct from Aggressive Mode.
+1. **Daily-loss-limit / stop-loss tier boundary interaction:** at exactly $50 equity, 3% ($1.50) is smaller than the ≥$50 tier's $3 stop-loss — a single losing trade can exceed the whole day's budget. Needs explicit handling before build.
+2. Whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions or a baseline the volatility/news-adaptive module can widen.
 3. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms, and now also exceeds the 3% daily loss limit in one trade).
 4. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap).
 5. **Volatility/news-adaptive rules** — approach is set (economic calendar, no TradingView bridge); specific parameter-adaptation rules are not yet designed.

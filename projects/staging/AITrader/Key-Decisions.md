@@ -20,10 +20,13 @@
 | MQL5 Market, launch readiness, marketing red flags, realistic returns, daily target | Researched realistic daily-return norms (professional traders: 1-2%/day is a very good day) and MQL5 Market's actual submission/review requirements; confirmed $50→$1,000 and $10→$100 per day are both internal-only framing, never marketing claims | `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md` | 2026-07-14 |
 | aggressive mode, daily target, 20%, default | Aggressive Mode's internal daily profit-target default set to 20% (top of the researched 5-20% range), replacing the retired multiplier narrative; Safe Mode's own default still unset | `decisions-learnings/2026-07-14k_aggressive-mode-daily-target-set-20pct.md` | 2026-07-14 |
 | safe mode, daily target, 5%, default | Safe Mode's internal daily profit-target default set to 5% (top of the researched 1-5% range) — both modes now have concrete defaults | `decisions-learnings/2026-07-14l_safe-mode-daily-target-set-5pct.md` | 2026-07-14 |
+| safe mode, redesign, win rate, risk:reward, expectancy, simulation, backtest, Monte Carlo | Safe Mode redesigned with its own $1.50/$3.00 profit-lock targets and a realistic 65-75% win-probability filter (down from unrealistic 80-100%); Monte Carlo simulation confirms positive expectancy at achievable win rates — explicitly not a real backtest | `decisions-learnings/2026-07-14m_safe-mode-revised-and-simulated.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 13):** Founder asked to make Safe Mode "more realistic and profitable" and requested backtesting. Redesigned Safe Mode: instead of patching the old 80-100% win-probability floor, identified that requiring an 80-100% win rate was itself the design flaw (very few real strategies sustain that). Gave Safe Mode its own profit-lock targets ($1.50 at the <$50 tier, $3.00 at the ≥$50 tier — vs. Aggressive Mode's shared $0.50) and lowered the win-probability filter to a realistic 65-75%. Ran a Monte Carlo expectancy simulation (`Product_Development/simulations/`) confirming positive expectancy across 50-75% assumed win rates, a dramatic improvement over the old design (which lost money even at 75% win rate). **Important caveat documented clearly:** this is a mathematical simulation of the stated parameters, not a real backtest — no MQL5 code exists yet (Epic 1 hasn't started), so no actual historical-data backtesting was possible. Real backtesting remains the top priority item.
 
 **2026-07-14 (session 12):** Safe Mode's daily target set to **5%** (top of the 1-5% recommended range), closing the last open item from the trading-modes design. Both modes now have concrete defaults: Safe Mode 5%, Aggressive Mode 20%. Full risk framework is now fully specified end-to-end (stop-loss tiers, profit-lock, daily loss limit, both daily targets, max concurrent trades) — remaining work is backtest validation, not further parameter decisions.
 
@@ -73,3 +76,4 @@
 | `2026-07-14j_realistic-targets-launch-readiness.md` | 2026-07-14 | Session 10 — realistic daily-return research; MQL5 Market launch-readiness checklist |
 | `2026-07-14k_aggressive-mode-daily-target-set-20pct.md` | 2026-07-14 | Session 11 — Aggressive Mode daily target set to 20% |
 | `2026-07-14l_safe-mode-daily-target-set-5pct.md` | 2026-07-14 | Session 12 — Safe Mode daily target set to 5%, risk framework complete |
+| `2026-07-14m_safe-mode-revised-and-simulated.md` | 2026-07-14 | Session 13 — Safe Mode redesigned for realistic profitability; Monte Carlo simulation (not a real backtest) |
