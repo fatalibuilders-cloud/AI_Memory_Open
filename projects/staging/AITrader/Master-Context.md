@@ -10,7 +10,7 @@
 
 ## Project Vision
 
-AITrader is an AI-driven trading bot (Expert Advisor) for MetaTrader 5. Customers open and fund their own account with a supported broker (Exness is the primary target broker), purchase a one-time license (~$300), and run the EA on their own MT5 terminal/VPS. The EA trades automatically, using a profit-lock strategy that closes each position once a small target profit (roughly $0.50–$1) is secured, rather than letting positions run and risk giving profit back.
+AITrader is an AI-driven trading bot (Expert Advisor) for MetaTrader 5. Customers open and fund their own account with a supported broker (Exness is the primary target broker), purchase a one-time license (~$300), and run the EA on their own MT5 terminal/VPS. The EA trades automatically, using a profit-lock strategy that closes each position once a target profit (roughly $2–$3) is secured, rather than letting positions run and risk giving profit back.
 
 > **Business model note (2026-07-14):** This supersedes an earlier draft that assumed AITrader would hold discretionary trading authority over pooled client funds via an RIA + custodian structure. See `decisions-learnings/2026-07-14b_ea-license-business-model.md` for the full rationale. AITrader never holds or trades customer funds directly — customers keep their own broker account at all times.
 
@@ -56,18 +56,17 @@ Most items from the original voice-transcription session are now resolved (see `
 - ~~News/analysis integration scope~~ — **RESOLVED (2026-07-14d):** economic-calendar-driven news awareness that adapts EA behavior around news-driven volatility (widen stops, reduce lot size, adjust profit-lock threshold, etc.), folded into the volatility-adaptive module. No external TradingView bridge. See `decisions-learnings/2026-07-14d_news-scope-resolved.md`.
 - ~~Lot-sizing method~~ — **RESOLVED (2026-07-14e):** dynamic, risk-based sizing (the EA analyzes equity and runs risk management before scaling up) rather than a fixed manual threshold table. See `decisions-learnings/2026-07-14e_lot-sizing-method-resolved.md` — **this surfaced a new blocking gap, see item 1 below.**
 
-- ~~Stop-loss / max-loss-per-trade rule~~ — **RESOLVED (2026-07-14f):** tiered fixed-dollar stop-loss — **$1 for accounts below $50 equity, $3 for accounts at/above $50 equity.** See `decisions-learnings/2026-07-14f_tiered-stop-loss.md` — **this surfaced a real risk:reward concern flagged below, needs founder confirmation.**
-
-**⚠️ Needs founder confirmation (not just a design detail — a math/viability concern):**
-- The ≥$50 tier risks $3 to make only $0.50–$1 profit — a 3:1 to 6:1 risk:reward ratio *against* the trade, requiring a 75–86% win rate just to break even before spread/commission. See the full table in `2026-07-14f_tiered-stop-loss.md`. **Is this intentional, or should the profit-lock target scale up with the stop-loss tier too (not just the stop-loss)?**
-- Should the $1/$3 stop-loss be a hard fixed figure in all conditions, or a *baseline* that the volatility/news-adaptive module widens during high-volatility/news windows? As stated, a fixed tight dollar stop is in tension with the "must work in high volatility" requirement (easily triggered by normal noise, and actual losses can exceed the stated amount due to slippage in fast markets).
+- ~~Stop-loss / max-loss-per-trade rule~~ — **RESOLVED (2026-07-14f):** tiered fixed-dollar stop-loss — **$1 for accounts below $50 equity, $3 for accounts at/above $50 equity.**
+- ~~Risk:reward asymmetry at the ≥$50 tier~~ — **RESOLVED (2026-07-14g):** founder chose to keep the tiered stop-loss ($1/$3) and raise the profit-lock target to **$2–$3** instead. Worst case is now 1:1 (50% win rate to break even) instead of the prior 6:1. See `decisions-learnings/2026-07-14g_profit-target-raised.md` for the full updated table.
 
 **Still open:**
-1. **Risk-per-trade percentage** — now partially superseded by the fixed-dollar tiers above, but worth confirming: should risk scale continuously with equity (e.g., a %) once accounts grow well beyond $50, rather than staying flat at $3 forever?
-2. **Risk-management gating rules** — what specifically blocks/allows a lot-size increase (losing-streak cooldown, news-window restriction, max lot size cap)? Also: should lot size scale back down on drawdown, not just up?
-3. **Volatility/news-adaptive logic design** — the requirement (adapt to both volatility regimes and news events) is set; the specific rules (which parameters change, by how much, per condition) are not yet designed. See open items in `2026-07-14d_news-scope-resolved.md`.
-4. **Exit-mode default** — once both exit modes are backtested, which becomes the default vs. a user-configurable setting in the listing?
-5. **Economic calendar source** — MT5's built-in calendar vs. a third-party API.
+1. **Volatility/news adjustment to risk parameters** — should the $1/$3 stop-loss and $2–$3 profit-lock be hard fixed figures in all conditions, or a *baseline* that the volatility/news-adaptive module widens during high-volatility/news windows? A fixed tight dollar stop is in tension with the "must work in high volatility" requirement (easily triggered by normal noise, and actual losses can exceed the stated amount due to slippage in fast markets).
+2. **Risk-per-trade percentage** — now partially superseded by the fixed-dollar tiers above, but worth confirming: should risk scale continuously with equity (e.g., a %) once accounts grow well beyond $50, rather than staying flat at $3 forever?
+3. **Risk-management gating rules** — what specifically blocks/allows a lot-size increase (losing-streak cooldown, news-window restriction, max lot size cap)? Also: should lot size scale back down on drawdown, not just up?
+4. **Volatility/news-adaptive logic design** — the requirement (adapt to both volatility regimes and news events) is set; the specific rules (which parameters change, by how much, per condition) are not yet designed. See open items in `2026-07-14d_news-scope-resolved.md`.
+5. **Exit-mode default** — once both exit modes are backtested, which becomes the default vs. a user-configurable setting in the listing?
+6. **Economic calendar source** — MT5's built-in calendar vs. a third-party API.
+7. **Exact SL/TP pairing** — is it strictly $1 SL/$2 TP and $3 SL/$3 TP, or does each tier have access to the full $2–$3 TP range as a dual/configurable option (matching how the original target was structured)? See `2026-07-14g_profit-target-raised.md`.
 
 ---
 
@@ -114,7 +113,7 @@ Most items from the original voice-transcription session are now resolved (see `
 ## Document 1: Project Context
 
 ### Vision & Goals
-- **Vision Statement:** AITrader is an AI-driven MetaTrader 5 Expert Advisor. Customers fund their own Exness (or other supported) broker account, buy a one-time license (~$300), and run the EA, which trades automatically and locks in a small target profit (~$0.50–$1) per trade.
+- **Vision Statement:** AITrader is an AI-driven MetaTrader 5 Expert Advisor. Customers fund their own Exness (or other supported) broker account, buy a one-time license (~$300), and run the EA, which trades automatically and locks in a target profit (~$2–$3) per trade.
 - **Primary Goal:** Sell a reliable, transparent EA with a defensible (backtested + live-verified) track record, at a licensing volume that sustains the business without relying on exaggerated marketing claims.
 - **Secondary Goals:** Ship a strategy that's robust across volatility regimes (not tuned to one market condition); establish an Exness IB/affiliate relationship as a secondary revenue stream.
 
@@ -126,7 +125,7 @@ Most items from the original voice-transcription session are now resolved (see `
 ### Success Metrics
 - License sales volume / revenue (via MQL5 Market)
 - License activation → active-usage retention (are buyers still running it 30/60/90 days later?)
-- Live-track-record performance (win rate, average net profit-per-trade vs. the $0.50–$1 target after spread/commission, max drawdown), tracked separately across high- and low-volatility periods
+- Live-track-record performance (win rate, average net profit-per-trade vs. the $2–$3 target after spread/commission, max drawdown), tracked separately across high- and low-volatility periods
 - Trade frequency vs. profitability (guard against over-trading eroding net profit via transaction costs)
 - Refund/chargeback and MQL5 Market review-rating trends
 - Exness IB commission revenue (if pursued)
@@ -149,8 +148,8 @@ See "Institutional Dependencies" section above.
 - **EA core (MQL5):** The trading algorithm itself, written in MQL5 for MetaTrader 5. Includes:
   - Signal/entry logic, designed to trade opportunistically (as many setups as the market presents, no artificial trade cap)
   - Volatility/news-adaptive module (single coherent system, see below) so the strategy remains viable in both high- and low-volatility conditions and can respond to news-driven fluctuations — design TBD, see Open Questions
-  - Dual-mode profit-lock exit logic: (a) outright close at $0.50–$1 profit, or (b) move stop to breakeven and let the position run. Both modes configurable/testable.
-  - Money-management module (dynamic, risk-based): starting lot size 0.01. Stop-loss is a tiered fixed-dollar figure — **$1 max loss/trade below $50 equity, $3 max loss/trade at/above $50 equity.** Lot size is derived from that stop-loss tier and the current stop distance, and the EA continuously re-analyzes equity/risk before scaling lot size up. **⚠️ Flagged for founder confirmation before finalizing:** the ≥$50 tier's $3 risk against a $0.50–$1 reward is a 3:1–6:1 risk:reward ratio, needing a 75–86% win rate just to break even before costs — see Open Questions.
+  - Dual-mode profit-lock exit logic: (a) outright close at $2–$3 profit, or (b) move stop to breakeven and let the position run. Both modes configurable/testable.
+  - Money-management module (dynamic, risk-based): starting lot size 0.01. Stop-loss is a tiered fixed-dollar figure — **$1 max loss/trade below $50 equity, $3 max loss/trade at/above $50 equity** — paired with a **$2–$3 profit-lock target** (raised from the original $0.50–$1 per 2026-07-14g to fix the risk:reward ratio). Lot size is derived from the stop-loss tier and current stop distance, and the EA continuously re-analyzes equity/risk before scaling lot size up.
 - **Volatility/news-adaptive module:** Uses an economic calendar (MT5 built-in calendar data, or a third-party API — source TBD) to detect high-impact news events, and adapts EA parameters (stop distance, lot size, profit-lock threshold, and/or general volatility filters) so the EA can keep trading through news-driven and general volatility fluctuations rather than either ignoring them or standing aside entirely. Confirmed scope (2026-07-14d) — no external TradingView bridge needed; this is a self-contained MQL5 component.
 - **Licensing & distribution:** Listed on the **official MQL5 Market**, which provides its own licensing/delivery infrastructure — no separate license-key system needs to be built.
 - **Broker integration:** MT5's standard broker-agnostic API for order execution; Exness is the primary target/tested broker. Confirm with founder whether broader MT5-compatible broker support is in scope for v1 or Exness-only.
@@ -182,10 +181,9 @@ See "Institutional Dependencies" section above.
 ### Epics
 
 **Epic 1: Core EA Strategy & Backtesting**
-- **Confirm the risk:reward asymmetry at the ≥$50 tier ($3 stop-loss vs. $0.50–$1 target) before building — either accept the high win-rate requirement or scale the profit-lock target with the stop-loss tier**
-- Decide whether the $1/$3 stop-loss is fixed in all conditions or a baseline the volatility/news-adaptive module can widen
+- Decide whether the $1/$3 stop-loss and $2–$3 profit-lock are fixed in all conditions or a baseline the volatility/news-adaptive module can widen
 - Build dual-mode exit logic (outright close vs. breakeven-and-run) and decide the default via backtest comparison
-- Build the dynamic risk-based money-management module: 0.01 starting lot, tiered stop-loss ($1 below $50 equity / $3 at or above), equity-and-risk-driven scaling, gating rules, up/down scaling (some values still need defining, see Open Questions)
+- Build the dynamic risk-based money-management module: 0.01 starting lot, tiered stop-loss ($1 below $50 equity / $3 at or above) paired with a $2–$3 profit-lock target, equity-and-risk-driven scaling, gating rules, up/down scaling (some values still need defining, see Open Questions)
 - Design and implement the volatility/news-adaptive module: economic-calendar-driven detection of high-impact events plus parameter adaptation (stop distance, lot size, profit-lock threshold) so the EA holds up across volatility regimes and news-driven fluctuations. Self-contained MQL5 component — no external services.
 - Build and run MT5 Strategy Tester backtests across representative historical periods, explicitly including both high- and low-volatility windows and major news events
 - Start a live/demo forward-test to build a verifiable track record ahead of launch marketing
@@ -227,8 +225,7 @@ See "Institutional Dependencies" section above.
   - **Mitigation:** Backtest specifically around major historical news events (Epic 1); consider a hard pause (not just adapted parameters) for the very highest-impact event tier as a fallback rule.
 - **Risk:** Risk-based lot scaling compounds losses if not paired with downside gating (a losing streak could otherwise coincide with — or even be worsened by — an ill-timed size increase).
   - **Mitigation:** Require explicit losing-streak and drawdown gating rules before any size-up logic, and confirm whether lot size should scale back down on drawdown, not just up.
-- **Risk (high severity, needs founder sign-off):** The ≥$50 equity tier's stop-loss/profit-lock combination ($3 risk vs. $0.50–$1 reward) requires a 75–86% win rate just to break even *before* spread/commission. Most trading strategies, including well-tuned ones, don't sustain win rates that high — if actual win rate lands in a more typical 40–60% range, this tier loses money by design, independent of signal quality.
-  - **Mitigation:** Do not proceed to build/backtest the ≥$50 tier until the founder confirms this is intentional or adjusts the profit-lock target to scale with the stop-loss tier (see Open Questions).
+- ~~**Risk (high severity):** The ≥$50 equity tier's stop-loss/profit-lock combination required a 75–86% win rate just to break even.~~ — **RESOLVED (2026-07-14g):** profit-lock target raised to $2–$3, bringing worst-case break-even win rate down to ~50%. Still worth validating via backtest that actual win rate clears this bar, but the ratio itself is no longer structurally unfavorable.
 
 ---
 

@@ -14,3 +14,4 @@
 | Session 4 — news scope resolved | 2026-07-14 | economic calendar, news-adaptive, volatility-adaptive, no TradingView bridge, epic renumbering |
 | Session 5 — lot sizing method resolved | 2026-07-14 | risk-based sizing, fixed-fractional, position sizing, stop-loss gap, blocking item |
 | Session 6 — tiered stop-loss defined | 2026-07-14 | stop-loss, tiered risk, risk:reward, win rate, $50 threshold, high-severity flag |
+| Session 7 — profit target raised | 2026-07-14 | profit-lock, take-profit, $2-$3, risk:reward resolved, win rate |
