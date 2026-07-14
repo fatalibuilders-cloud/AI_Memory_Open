@@ -162,7 +162,7 @@ See "Institutional Dependencies" section above.
   - Money-management module (dynamic, risk-based): starting lot size 0.01. Stop-loss is a tiered fixed-dollar figure — **$1 max loss/trade below $50 equity, $3 max loss/trade at/above $50 equity** — paired with the **$0.50 profit-lock target** (reverted from the briefly-adopted $2–$3 per 2026-07-14h; see the risk:reward table there — Safe Mode's win-rate filter is meant to cover the resulting math). Lot size is derived from the stop-loss tier and current stop distance, and the EA continuously re-analyzes equity/risk before scaling lot size up.
 - **Trading Modes:**
   - **Safe Mode:** Only takes trades the EA's internal signal-confidence filter rates at 80–100% historical win probability. Lower trade frequency, prioritizes high-confidence setups. ⚠️ Flagged: the filter's 80% floor may not clear the ≥$50 stop-loss tier's 85.7% break-even requirement — needs backtest validation (see Open Questions).
-  - **Aggressive Mode:** No win-probability filter; trades whenever conditions look suitable. Framed internally as a stretch goal ("turn $50 into $1,000 in a day") — **per founder decision, this is not to be engineered toward (no compounding/martingale lot-sizing) or referenced in marketing.**
+  - **Aggressive Mode:** No win-probability filter; trades whenever conditions look suitable. Internal-only narrative framing ("turn $50 into $1,000/day," or equivalently "$10 into $100/day" — founder confirmed both are the same order of unrealistic claim, +1,900% and +900% respectively) — **not engineered toward (no compounding/martingale lot-sizing), not a spec, and never referenced in marketing or the MQL5 Market listing.** Research-grounded reality check: professional day traders consider 1–2% a very good day; if a numeric aggressive-mode target is ever needed for internal backtesting purposes, **5–20%/day** is the recommended outer ceiling for "aggressive but defensible" — still far above professional norms, but not in obviously-fraudulent territory. See `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md`.
   - Mode selection is user-configurable (a setting the customer picks, not something AITrader decides for them).
 - **Daily Risk Controls:**
   - **Daily profit target (configurable):** user sets a daily profit goal; once equity gains reach it, the EA stops trading for the rest of the day.
@@ -210,15 +210,26 @@ See "Institutional Dependencies" section above.
 - Start a live/demo forward-test to build a verifiable track record ahead of launch marketing
 
 **Epic 2: MQL5 Market Listing**
-- Confirm current MQL5 Market commission structure and product review/approval requirements
-- Prepare listing assets (description, verified backtest/forward-test performance history, screenshots)
-- Submit for MQL5 Market review
+- Confirm current MQL5 Market commission structure (not yet independently confirmed — see NextSteps)
+- Apply for Seller registration (MQL5's own process — review typically takes up to 10 working days, apply early so it doesn't gate the launch timeline)
+- Set correct Expert Advisor "Type" field (buyers filter by this)
+- Prepare logo images in the three required sizes: **200×200, 140×140, 60×60**
+- Write the listing description covering: trading strategy overview, risk management methods (stop-loss tiers, daily loss limit, max concurrent trades), and system parameters — per MQL5's own guidance, this is what they expect to see
+- Description formatting: **no icons/emojis, clean text, don't overuse styles** — this is an MQL5 service rule, not just a style preference
+- Consider multi-language descriptions (MQL5 notes this has a positive effect on sales)
+- Attach verified backtest/forward-test performance history (feeds both the MQL5 automated Strategy Tester check and buyer trust)
+- Submit for MQL5 Market review (automated Strategy Tester check + manual check for known programming errors)
 
 **Epic 3: Legal & Marketing Compliance Review**
 - IP/commercial counsel review of ToS, licensing terms, and disclaimer language
 - Confirm no CTA/investment-adviser registration trigger in target jurisdictions
 - Draft marketing copy using only verified backtest/forward-test data, with required risk disclosures
-- **Explicit prohibited-claim check:** no "$50 to $1,000 in a day" or similar multiplier/guarantee language anywhere in marketing, listing copy, or product naming — Aggressive Mode's internal stretch-goal framing must never surface externally (founder-confirmed, 2026-07-14h)
+- **Concrete pre-launch checklist** (see `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md` for the full list):
+  - No "$50→$1,000," "$10→$100," or any multiplier/guarantee framing anywhere in the description, images, or product name
+  - No "guaranteed profit," "risk-free," or "no losing trades" language
+  - Performance claims sourced only from verified backtest/forward-test data, explicitly labeled historical/hypothetical
+  - Explicit risk disclosure present (trading forex/CFDs carries substantial risk of loss; past performance ≠ future results)
+  - Safe Mode and Aggressive Mode both described accurately, including Aggressive Mode's higher risk profile stated plainly, not minimized
 
 **Epic 4: Support & Documentation**
 - Installation and setup documentation (including VPS guidance for near-continuous uptime)

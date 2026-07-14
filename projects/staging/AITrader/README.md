@@ -33,7 +33,11 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-l
 5. **Volatility/news-adaptive rules** — approach is set (economic calendar, no TradingView bridge); specific parameter-adaptation rules are not yet designed.
 6. **Economic calendar data source** — MT5 built-in vs. third-party API.
 
-**Confirmed guardrail:** "$50 → $1,000 in a day" is an internal Aggressive Mode stretch-goal framing only — not a build spec, and explicitly barred from marketing copy (flagged to the Legal epic).
+**Confirmed guardrail:** "$50 → $1,000 in a day" and "$10 → $100 in a day" are both internal Aggressive Mode narrative framing only — neither is a build spec or realistic (professional day traders consider 1-2% a very good day; if an internal aggressive-mode number is ever needed, 5-20%/day is the research-backed ceiling). Explicitly barred from marketing copy — flagged to the Legal epic with a concrete pre-launch checklist.
+
+## MQL5 Market Launch Readiness
+
+Researched and documented (`decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md`): Seller registration process (~10 business days, apply early), logo size requirements, listing description content/formatting rules, and MQL5's technical review (automated Strategy Tester + manual programming-error check). Paired with an AITrader-specific compliance checklist covering marketing red flags. See Document 3, Epics 2-3 in `Master-Context.md`.
 
 See "Open Questions" in `Master-Context.md` for full detail.
 
