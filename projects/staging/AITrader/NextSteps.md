@@ -20,8 +20,7 @@
 12. **[AI+Human] Backtest + forward-test plan** — cover both exit modes, both trading modes (Safe/Aggressive), both stop-loss tiers, the 3% daily loss limit and daily profit target, major historical news events, and net-of-cost profitability at high trade frequency, capped at 2 concurrent trades.
 13. **[Human] Confirm MQL5 Market commission structure** (registration/review process is now researched — commission % specifically still needs confirming).
 14. **[Human] Evaluate Exness IB/affiliate program.**
-15. **[Human] Set Safe Mode's own daily target default** — Aggressive Mode now defaults to 20%; Safe Mode should be meaningfully lower given its "safe" branding, recommend 1–5%/day, not yet decided.
-16. **[AI+Human] Validate the 20% Aggressive Mode target against real backtest data** once Epic 1 backtesting exists — it's a best-case default, not a guarantee; revisit if real results fall well short.
+15. **[AI+Human] Validate the 5%/20% daily targets against real backtest data** once Epic 1 backtesting exists — both are best-case defaults, not guarantees; revisit if real results fall well short.
 
 ---
 
@@ -42,6 +41,7 @@
 - "$50→$1,000" and "$10→$100" per day: **both confirmed internal-only narrative framing**, not build specs, not marketing claims. Research-grounded realistic ceiling for an internal aggressive-mode number, if one is ever needed: **5–20%/day**.
 - MQL5 Market listing requirements and pre-launch marketing checklist: **researched and documented** (Seller registration timeline, logo sizes, description rules, technical review process, prohibited-claim checklist).
 - Aggressive Mode's internal daily target: **set to 20%** (top of the 5-20% research range), now the default for the daily-profit-target setting in that mode.
+- Safe Mode's internal daily target: **set to 5%** (top of the 1-5% research range). Both modes now have concrete daily-target defaults.
 
 ## Superseded (no longer critical path)
 

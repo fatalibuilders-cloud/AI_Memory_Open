@@ -19,10 +19,13 @@
 | daily loss limit, 3%, risk management | Daily loss limit set to 3% of daily starting equity, symmetric to the daily profit target — surfaced a new tier-boundary interaction with the $3 stop-loss at $50 equity | `decisions-learnings/2026-07-14i_daily-loss-limit-set.md` | 2026-07-14 |
 | MQL5 Market, launch readiness, marketing red flags, realistic returns, daily target | Researched realistic daily-return norms (professional traders: 1-2%/day is a very good day) and MQL5 Market's actual submission/review requirements; confirmed $50→$1,000 and $10→$100 per day are both internal-only framing, never marketing claims | `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md` | 2026-07-14 |
 | aggressive mode, daily target, 20%, default | Aggressive Mode's internal daily profit-target default set to 20% (top of the researched 5-20% range), replacing the retired multiplier narrative; Safe Mode's own default still unset | `decisions-learnings/2026-07-14k_aggressive-mode-daily-target-set-20pct.md` | 2026-07-14 |
+| safe mode, daily target, 5%, default | Safe Mode's internal daily profit-target default set to 5% (top of the researched 1-5% range) — both modes now have concrete defaults | `decisions-learnings/2026-07-14l_safe-mode-daily-target-set-5pct.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 12):** Safe Mode's daily target set to **5%** (top of the 1-5% recommended range), closing the last open item from the trading-modes design. Both modes now have concrete defaults: Safe Mode 5%, Aggressive Mode 20%. Full risk framework is now fully specified end-to-end (stop-loss tiers, profit-lock, daily loss limit, both daily targets, max concurrent trades) — remaining work is backtest validation, not further parameter decisions.
 
 **2026-07-14 (session 11):** Founder adopted the research recommendation from session 10: Aggressive Mode's internal daily profit target is now a concrete **20%** (the top of the 5-20% recommended range), replacing the retired "$50→$1,000/day" narrative. This becomes the default for the EA's daily-profit-target setting in Aggressive Mode. Still open: Safe Mode needs its own, lower default (recommend 1-5%/day, not yet decided), and 20% needs backtest validation before being trusted rather than treated as a guarantee.
 
@@ -69,3 +72,4 @@
 | `2026-07-14i_daily-loss-limit-set.md` | 2026-07-14 | Session 9 — daily loss limit set to 3%; tier-boundary interaction surfaced |
 | `2026-07-14j_realistic-targets-launch-readiness.md` | 2026-07-14 | Session 10 — realistic daily-return research; MQL5 Market launch-readiness checklist |
 | `2026-07-14k_aggressive-mode-daily-target-set-20pct.md` | 2026-07-14 | Session 11 — Aggressive Mode daily target set to 20% |
+| `2026-07-14l_safe-mode-daily-target-set-5pct.md` | 2026-07-14 | Session 12 — Safe Mode daily target set to 5%, risk framework complete |

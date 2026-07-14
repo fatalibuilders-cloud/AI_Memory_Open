@@ -17,7 +17,7 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 
 ## Risk Model (current)
 
-Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$0.50** (briefly raised to $2–$3, then reverted per founder decision). Two trading modes: **Safe Mode** (only trades 80–100% win-probability setups, daily target not yet set) and **Aggressive Mode** (opportunistic, no filter, **20% daily target default**). Daily risk controls: configurable daily profit target (halts trading once hit), a **3% daily loss limit**, and max 2 concurrent open trades.
+Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Profit-lock target is **$0.50** (briefly raised to $2–$3, then reverted per founder decision). Two trading modes: **Safe Mode** (only trades 80–100% win-probability setups, **5% daily target default**) and **Aggressive Mode** (opportunistic, no filter, **20% daily target default**). Daily risk controls: configurable daily profit target (halts trading once hit), a **3% daily loss limit**, and max 2 concurrent open trades. The full risk framework is now fully specified — remaining work is backtest validation, not further parameter decisions.
 
 ## Biggest Open Items
 
