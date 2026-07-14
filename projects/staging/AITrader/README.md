@@ -41,7 +41,7 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Market Launch Readiness
 
-Researched and documented (`decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md`): Seller registration process (~10 business days, apply early), logo size requirements, listing description content/formatting rules, and MQL5's technical review (automated Strategy Tester + manual programming-error check). Paired with an AITrader-specific compliance checklist covering marketing red flags. See Document 3, Epics 2-3 in `Master-Context.md`.
+**Assessed as NOT ready (2026-07-14p).** Blocking: uncompiled, unbacktested, placeholder entry signal. Two submission assets are drafted and ready for when the EA is: `Product_Development/MQL5_EA/mql5_listing_description.md` (full listing text) and `mql5_submission_checklist.md` (every MQL5 requirement, done/not-done, with clear ownership). Logo images (200×200/140×140/60×60) can't be generated in this environment — a precise spec is in the checklist for a designer instead. Login credentials for MT5/MQL5 were declined — no technical capability to operate those systems here, and sharing live trading/marketplace credentials with an AI agent isn't good practice regardless.
 
 See "Open Questions" in `Master-Context.md` for full detail.
 

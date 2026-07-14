@@ -23,3 +23,4 @@
 | Session 13 — safe mode redesigned, simulation run | 2026-07-14 | Safe Mode redesign, win rate, risk:reward, Monte Carlo simulation, expectancy, real backtest still needed |
 | Session 14 — first MQL5 EA draft written | 2026-07-14 | MQL5, AITrader.mq5, entry signal placeholder, EMA crossover, not compiled, not backtested |
 | Session 15 — reference EA filters researched & added | 2026-07-14 | volume filter, volatility filter, range filter, ADX, weekend protection, AI filter declined, reference EA screenshot |
+| Session 16 — launch readiness, listing assets, credentials declined | 2026-07-14 | MQL5 submission checklist, listing description, logo spec, not ready, credentials declined, security |

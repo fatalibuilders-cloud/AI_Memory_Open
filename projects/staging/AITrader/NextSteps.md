@@ -22,6 +22,8 @@
 14. **[Human] Confirm MQL5 Market commission structure** (registration/review process is now researched — commission % specifically still needs confirming).
 15. **[Human] Evaluate Exness IB/affiliate program.**
 16. **[Human] Validate/tune the new entry-condition filter thresholds** (volume average period, volatility ratio bounds, ADX threshold, spread/staleness limits, weekend hours) once real backtesting is possible — current values are reasonable defaults, not tuned or tested.
+17. **[Human] Produce the 3 logo images** (200×200, 140×140, 60×60) — spec in `Product_Development/MQL5_EA/mql5_submission_checklist.md`; needs a designer or design tool, not producible by AI here.
+18. **[Human] Fill in the placeholder fields in `mql5_listing_description.md`** (symbol/timeframe, minimum balance, any performance figures) — only once real backtesting exists. Do not publish with invented numbers.
 
 ---
 
@@ -46,6 +48,8 @@
 - Safe Mode redesigned: **own $1.50 (<$50 tier) / $3.00 (≥$50 tier) profit-lock targets, 65-75% win-probability filter** (down from unrealistic 80-100%), validated via Monte Carlo simulation to have positive expectancy at realistic win rates — **simulation only, real backtest still required**.
 - **First MQL5 code draft written:** `Product_Development/MQL5_EA/AITrader.mq5` implements every risk-management/mode/daily-control decision above, including the tier-boundary daily-loss-budget fix. Not compiled, not backtested, and uses a placeholder entry signal (see Priority Queue #1-3).
 - **Entry-condition filters added (v0.20):** volume, volatility, range/ADX, data-feed sanity, and weekend protection — researched independently and inspired by (not copied from) a third-party reference EA's settings panel. "AI Filter" branding and the reference EA's fixed 3.1 lot size / short-window results were deliberately not adopted — see `2026-07-14o` for why.
+- **MQL5 Market submission assets drafted:** listing description text and a full submission checklist (`Product_Development/MQL5_EA/`) — confirmed the EA is not ready to submit (uncompiled, unbacktested, placeholder signal), and that logo images can't be generated in this environment (no image tool available; spec provided instead).
+- **Declined to receive MT5/MQL5 login credentials** — no technical capability to run MetaEditor/MT5 or browse to mql5.com here, and sharing live trading/marketplace credentials with an AI agent isn't good security practice regardless. See `2026-07-14p`.
 
 ## Superseded (no longer critical path)
 
