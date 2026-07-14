@@ -39,7 +39,7 @@ The system operates at two levels:
 
 | Project | Folder | Type | Status | Description |
 |---------|--------|------|--------|-------------|
-| *(Your projects will appear here after staging and initialization)* | | | | |
+| AITrader | `projects/staging/AITrader/` | Software | Staging | Fully autonomous AI trading platform for retail investors; regulatory path (RIA + third-party custodian) selected, tech stack and release plan still open |
 
 ---
 
