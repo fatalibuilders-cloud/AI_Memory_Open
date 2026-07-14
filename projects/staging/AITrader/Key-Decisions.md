@@ -10,11 +10,14 @@
 |---------|-----------------|-------------|------|
 | regulatory, RIA, broker-dealer, custody, compliance | ~~Pursue RIA + third-party custodian structure~~ — **SUPERSEDED**, see EA license entry below | `decisions-learnings/2026-07-14_regulatory-path.md` | 2026-07-14 |
 | business model, EA, expert advisor, MT5, MetaTrader, Exness, licensing, fee model | Pivot to selling AITrader as a licensed MT5 Expert Advisor (~$300 flat one-time fee); customers keep custody of their own funds at their own broker | `decisions-learnings/2026-07-14b_ea-license-business-model.md` | 2026-07-14 |
-| distribution, MQL5 Market, exit logic, breakeven, take-profit, lot size, money management, volatility, news, TradingView | Distribution via MQL5 Market; dual-mode exit (outright close or breakeven-and-run); 0.01 default lot with equity-based scaling; uncapped trade frequency; must work across volatility regimes; news/TradingView integration scope still open | `decisions-learnings/2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 |
+| distribution, MQL5 Market, exit logic, breakeven, take-profit, lot size, money management, volatility, news, TradingView | Distribution via MQL5 Market; dual-mode exit (outright close or breakeven-and-run); 0.01 default lot with equity-based scaling; uncapped trade frequency; must work across volatility regimes; news/TradingView integration scope raised as open question | `decisions-learnings/2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 |
+| news, TradingView, economic calendar, volatility-adaptive | News/analysis integration scope resolved: economic-calendar-driven adaptation (not a TradingView bridge), folded into the volatility-adaptive module | `decisions-learnings/2026-07-14d_news-scope-resolved.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 4):** Resolved the news/analysis integration scope: the EA will use an economic calendar to detect high-impact news and adapt its own parameters (stop distance, lot size, profit-lock threshold) around news-driven volatility — a self-contained MQL5 module, not a TradingView signal bridge. Folded into the existing volatility-adaptive module; Document 3's Epic 2 (TradingView-bridge option) was removed and epics renumbered.
 
 **2026-07-14 (session 3):** Resolved distribution channel (MQL5 Market) and profit-lock exit mechanics (dual-mode: outright close or breakeven-and-run). Added new scope: equity-based lot scaling from a 0.01 base, uncapped trade frequency ("as many trades as suitable"), and a requirement to work across both high- and low-volatility markets. Also introduced a new open scope question — news/TradingView integration — that needs a decision between a simple news filter and a much more complex TradingView bridge. See detail file for the full tradeoff and remaining open items.
 
@@ -31,3 +34,4 @@
 | `2026-07-14_regulatory-path.md` | 2026-07-14 | Initial staging session — project intake, regulatory structure decision (superseded) |
 | `2026-07-14b_ea-license-business-model.md` | 2026-07-14 | Session 2 — business model pivot to MT5 EA licensing |
 | `2026-07-14c_strategy-and-distribution-details.md` | 2026-07-14 | Session 3 — distribution channel, exit logic, lot sizing, trading scope |
+| `2026-07-14d_news-scope-resolved.md` | 2026-07-14 | Session 4 — news/analysis integration scope resolved |

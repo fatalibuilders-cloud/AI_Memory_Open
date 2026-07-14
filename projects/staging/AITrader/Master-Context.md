@@ -53,11 +53,13 @@ Most items from the original voice-transcription session are now resolved (see `
 - ~~"Piece of tape" / "starfish" fragments~~ — **RESOLVED**, both were garbled references to the breakeven/exit-mode question above.
 - **"Text tag / who's the key"** — still unclear, but likely **moot**: now that distribution is via MQL5 Market (which handles licensing natively), a self-built license-key system is probably not needed. Revisit only if the founder confirms this was about something else.
 
-**Still open, newly surfaced:**
+- ~~News/analysis integration scope~~ — **RESOLVED (2026-07-14d):** economic-calendar-driven news awareness that adapts EA behavior around news-driven volatility (widen stops, reduce lot size, adjust profit-lock threshold, etc.), folded into the volatility-adaptive module. No external TradingView bridge. See `decisions-learnings/2026-07-14d_news-scope-resolved.md`.
+
+**Still open:**
 1. **Lot-scaling schedule** — "scale lot size once equity reaches target" is directional, not yet quantified. Need exact equity thresholds and lot-size increments.
-2. **News/TradingView integration scope** — a simple economic-calendar news filter (standard, low-complexity) vs. a full TradingView signal bridge (requires an external relay service and has MQL5-Market `WebRequest` policy implications) are very different builds. See decision file for details — needs founder input on which is actually wanted.
-3. **Volatility-adaptive logic design** — "must work in high and low volatility markets" is a requirement, not yet a design (e.g., ATR-based dynamic stop/target sizing is the standard approach — needs to be specified).
-4. **Exit-mode default** — once both exit modes are backtested, which becomes the default vs. a user-configurable setting in the listing?
+2. **Volatility/news-adaptive logic design** — the requirement (adapt to both volatility regimes and news events) is set; the specific rules (which parameters change, by how much, per condition) are not yet designed. See open items in `2026-07-14d_news-scope-resolved.md`.
+3. **Exit-mode default** — once both exit modes are backtested, which becomes the default vs. a user-configurable setting in the listing?
+4. **Economic calendar source** — MT5's built-in calendar vs. a third-party API.
 
 ---
 
@@ -74,7 +76,7 @@ Most items from the original voice-transcription session are now resolved (see `
 
 - **Legal:** Lighter than originally scoped — no RIA/broker-dealer registration needed since AITrader never holds customer funds. Still need: IP/commercial counsel review of licensing terms, ToS, and marketing/disclaimer language (avoid profit-guarantee claims), and confirmation that this doesn't trigger CTA-style "trading advisor" registration in target jurisdictions.
 - **Finance:** One-time $300 license pricing, payment processing (needs a processor that accepts trading-software sales — some standard processors restrict "forex signal/EA" merchants), possible secondary revenue via Exness IB/affiliate commissions.
-- **Security:** Licensing/anti-piracy is now largely delegated to MQL5 Market's built-in protections rather than custom-built. If a TradingView bridge is built (Epic 2, Option B), that external service becomes its own security surface.
+- **Security:** Licensing/anti-piracy is now largely delegated to MQL5 Market's built-in protections rather than custom-built. No external TradingView bridge is planned, so there's no added external-service security surface for the news/volatility module.
 - **Marketing:** Must avoid guaranteed-return language; performance claims should be backed by verifiable backtest/live-track-record data and clearly labeled as historical, not promised, results. Distribution channel decision (MQL5 Market vs. self-hosted) affects what marketing claims are even permitted.
 - **Operations:** Customer support for installation/setup on customer-owned MT5 terminals/VPS; license activation/deactivation support.
 - **Executive:** Distribution channel decision, IB/affiliate partnership decision with Exness.
@@ -138,23 +140,22 @@ See "Institutional Dependencies" section above.
 ### System Architecture
 - **EA core (MQL5):** The trading algorithm itself, written in MQL5 for MetaTrader 5. Includes:
   - Signal/entry logic, designed to trade opportunistically (as many setups as the market presents, no artificial trade cap)
-  - Volatility-adaptive filters (e.g., ATR-based dynamic adjustment of entry criteria, stop distance, and/or target sizing) so the strategy remains viable in both high- and low-volatility conditions — design TBD, see Open Questions
+  - Volatility/news-adaptive module (single coherent system, see below) so the strategy remains viable in both high- and low-volatility conditions and can respond to news-driven fluctuations — design TBD, see Open Questions
   - Dual-mode profit-lock exit logic: (a) outright close at $0.50–$1 profit, or (b) move stop to breakeven and let the position run. Both modes configurable/testable.
   - Money-management module: default lot size 0.01, with equity-based lot scaling (exact thresholds/increments TBD, see Open Questions)
-- **News/analysis integration:** Requirement to incorporate news and TradingView-referenced analysis. Two very different implementation paths under consideration — see `decisions-learnings/2026-07-14c_strategy-and-distribution-details.md` for the news-filter-only vs. full-TradingView-bridge tradeoff. This is an open scope decision, not yet designed.
+- **Volatility/news-adaptive module:** Uses an economic calendar (MT5 built-in calendar data, or a third-party API — source TBD) to detect high-impact news events, and adapts EA parameters (stop distance, lot size, profit-lock threshold, and/or general volatility filters) so the EA can keep trading through news-driven and general volatility fluctuations rather than either ignoring them or standing aside entirely. Confirmed scope (2026-07-14d) — no external TradingView bridge needed; this is a self-contained MQL5 component.
 - **Licensing & distribution:** Listed on the **official MQL5 Market**, which provides its own licensing/delivery infrastructure — no separate license-key system needs to be built.
 - **Broker integration:** MT5's standard broker-agnostic API for order execution; Exness is the primary target/tested broker. Confirm with founder whether broader MT5-compatible broker support is in scope for v1 or Exness-only.
-- **Backtesting/validation pipeline:** Historical tick-data backtesting in MT5's Strategy Tester across both high- and low-volatility historical periods (to validate the volatility-adaptive design), plus a live/demo forward-test track record to support (non-guaranteed) marketing performance claims.
+- **Backtesting/validation pipeline:** Historical tick-data backtesting in MT5's Strategy Tester across both high- and low-volatility historical periods, including major news events (to validate the volatility/news-adaptive design), plus a live/demo forward-test track record to support (non-guaranteed) marketing performance claims.
 - **Customer support tooling:** Installation guides, MQL5 Market activation flow, VPS setup guidance for 24/5 uptime (important given the "as many trades as suitable" design implies near-continuous market monitoring).
 
 ### Technology Stack
-- **EA/strategy logic:** MQL5 (native MetaTrader 5 language)
-- **News/TradingView bridge (if Option B is chosen):** Would require an external relay/webhook service — not yet designed, pending scope decision
+- **EA/strategy logic:** MQL5 (native MetaTrader 5 language) — self-contained, no external services required
 - **Distribution:** MQL5 Market (decided)
 
 ### Security Model
 - Licensing/anti-piracy is handled by the MQL5 Market platform rather than custom-built — reduces this project's security-engineering scope compared to the self-hosted option.
-- If a news/TradingView bridge (Option B) is built, that external service becomes a new security surface (webhook authentication, no exposure of trading logic or account data) and a `WebRequest` URL that end users must explicitly whitelist per MQL5 Market policy.
+- No external bridge/relay service is planned, so there's no added external-service attack surface.
 - No funds-custody security model needed — AITrader never touches customer funds.
 
 ### Deployment & Operations
@@ -175,51 +176,45 @@ See "Institutional Dependencies" section above.
 **Epic 1: Core EA Strategy & Backtesting**
 - Build dual-mode exit logic (outright close vs. breakeven-and-run) and decide the default via backtest comparison
 - Build money-management module: 0.01 default lot, equity-based scaling (needs thresholds defined — see Open Questions)
-- Design and implement volatility-adaptive logic (e.g., ATR-based) so the strategy holds up in both high- and low-volatility regimes
-- Build and run MT5 Strategy Tester backtests across representative historical periods, explicitly including both high- and low-volatility windows
+- Design and implement the volatility/news-adaptive module: economic-calendar-driven detection of high-impact events plus parameter adaptation (stop distance, lot size, profit-lock threshold) so the EA holds up across volatility regimes and news-driven fluctuations. Self-contained MQL5 component — no external services.
+- Build and run MT5 Strategy Tester backtests across representative historical periods, explicitly including both high- and low-volatility windows and major news events
 - Start a live/demo forward-test to build a verifiable track record ahead of launch marketing
 
-**Epic 2: News/Analysis Integration**
-- Decide scope: news-event filter only (economic calendar, lower complexity) vs. full TradingView signal bridge (external relay service, higher complexity, MQL5-Market `WebRequest` policy implications)
-- Build and backtest whichever scope is chosen
-- If Option B (TradingView bridge): stand up and secure the external relay service
-
-**Epic 3: MQL5 Market Listing**
+**Epic 2: MQL5 Market Listing**
 - Confirm current MQL5 Market commission structure and product review/approval requirements
 - Prepare listing assets (description, verified backtest/forward-test performance history, screenshots)
 - Submit for MQL5 Market review
 
-**Epic 4: Legal & Marketing Compliance Review**
+**Epic 3: Legal & Marketing Compliance Review**
 - IP/commercial counsel review of ToS, licensing terms, and disclaimer language
 - Confirm no CTA/investment-adviser registration trigger in target jurisdictions
 - Draft marketing copy using only verified backtest/forward-test data, with required risk disclosures
 
-**Epic 5: Support & Documentation**
+**Epic 4: Support & Documentation**
 - Installation and setup documentation (including VPS guidance for near-continuous uptime)
 - Support process for MQL5 Market activation/licensing issues (checkout/payment itself is handled by MQL5 Market, not built in-house)
 
-**Epic 6 (optional, secondary revenue): Exness IB/Affiliate Setup**
+**Epic 5 (optional, secondary revenue): Exness IB/Affiliate Setup**
 - Apply for Exness introducing-broker/affiliate program
 - Decide whether to disclose this revenue relationship to customers (recommended for trust/transparency)
 
 ### Milestones
-- **M1 — Strategy Locked:** Exit modes, lot-scaling, and volatility-adaptive logic designed and backtested
-- **M2 — News/Analysis Scope Decided & Built:** Epic 2 scope chosen and implemented
-- **M3 — Legal Clear:** Marketing/ToS language reviewed and approved
-- **M4 — MQL5 Market Listed:** Product submitted and approved on MQL5 Market
-- **M5 — Public Launch:** First paid licenses sold
+- **M1 — Strategy Locked:** Exit modes, lot-scaling, and volatility/news-adaptive logic designed and backtested (including net-of-cost performance)
+- **M2 — Legal Clear:** Marketing/ToS language reviewed and approved
+- **M3 — MQL5 Market Listed:** Product submitted and approved on MQL5 Market
+- **M4 — Public Launch:** First paid licenses sold
 
 ### Risks & Mitigation
 - **Risk:** Marketing claims read as a profit guarantee → regulatory/reputational exposure.
-  - **Mitigation:** Legal review (Epic 4) before any public marketing copy ships; always pair performance claims with risk disclosures.
+  - **Mitigation:** Legal review (Epic 3) before any public marketing copy ships; always pair performance claims with risk disclosures.
 - **Risk:** EA piracy undermines license revenue.
-  - **Mitigation:** Rely on MQL5 Market's built-in licensing/anti-piracy protections (Epic 3) rather than building a custom system.
+  - **Mitigation:** Rely on MQL5 Market's built-in licensing/anti-piracy protections (Epic 2) rather than building a custom system.
 - **Risk:** Profit-lock strategy performs differently in live markets than backtests (a common failure mode for scalping-style EAs — spread/slippage can eat small fixed-dollar profit targets, especially at high trade frequency).
   - **Mitigation:** Require a live/demo forward-test period (Epic 1) before relying on backtest numbers alone; both exit modes need to explicitly account for spread and commission per trade, not just price movement.
 - **Risk:** "As many trades as possible" combined with small fixed-dollar profit targets could mean transaction costs (spread + commission) eat a large share of gross profit, especially at 0.01 lot size.
-  - **Mitigation:** Backtest net-of-cost performance (not just gross), and validate that the volatility-adaptive logic (Epic 1) doesn't over-trade in low-volatility/choppy conditions where costs dominate.
-- **Risk:** If the TradingView bridge (Epic 2, Option B) is chosen, its uptime/latency becomes a dependency for trade decisions, and MQL5 Market's review process may scrutinize or restrict the external `WebRequest` call.
-  - **Mitigation:** Confirm MQL5 Market's current policy before committing to Option B; default to the simpler news-filter approach (Option A) if there's any doubt.
+  - **Mitigation:** Backtest net-of-cost performance (not just gross), and validate that the volatility/news-adaptive logic (Epic 1) doesn't over-trade in low-volatility/choppy conditions where costs dominate.
+- **Risk:** The volatility/news-adaptive module misjudges a genuine high-impact news event (e.g., stale/delayed calendar data) and trades into it with default parameters, risking outsized slippage.
+  - **Mitigation:** Backtest specifically around major historical news events (Epic 1); consider a hard pause (not just adapted parameters) for the very highest-impact event tier as a fallback rule.
 
 ---
 
