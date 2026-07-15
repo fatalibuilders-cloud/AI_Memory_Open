@@ -1,4 +1,4 @@
-# AITrader — MQL5 Market Listing Description (Draft)
+# FatalibuildersTrader — MQL5 Market Listing Description (Draft)
 
 **Status:** Draft text, ready to use once the EA itself is compiled, backtested, and has a real verified track record. Do not publish this description while any placeholder logic (see `README.md`) is still in the product — MQL5's rules require descriptions to accurately reflect the product, and this text currently describes the *intended* final product, not the current placeholder-signal state.
 
@@ -8,13 +8,13 @@
 
 ## Short Description (for listing summary / search results)
 
-AITrader is a MetaTrader 5 Expert Advisor with two trading modes — a selective Safe Mode and an opportunistic Aggressive Mode — built around tiered risk management, daily loss and profit limits, and configurable entry filters.
+FatalibuildersTrader is a MetaTrader 5 Expert Advisor with two trading modes — a selective Safe Mode and an opportunistic Aggressive Mode — built around tiered risk management, daily loss and profit limits, and configurable entry filters.
 
 ## Full Description
 
 ### Overview
 
-AITrader is an Expert Advisor for MetaTrader 5 designed around risk management first. It offers two operating modes so you can choose the risk profile that fits your account:
+FatalibuildersTrader is an Expert Advisor for MetaTrader 5 designed around risk management first. It offers two operating modes so you can choose the risk profile that fits your account:
 
 - **Safe Mode** — trades only setups that clear an internal confidence filter, prioritizing selectivity over frequency.
 - **Aggressive Mode** — trades more opportunistically, with no selectivity filter, accepting more trades and more risk in exchange for higher potential activity.
@@ -31,7 +31,7 @@ AITrader is an Expert Advisor for MetaTrader 5 designed around risk management f
 
 ### Entry Filters
 
-AITrader evaluates multiple conditions before entering a trade, including recent trading volume, current volatility relative to its recent average, and trend strength — designed to avoid illiquid periods, abnormal volatility spikes, and choppy, range-bound conditions that don't suit the underlying strategy.
+FatalibuildersTrader evaluates multiple conditions before entering a trade, including recent trading volume, current volatility relative to its recent average, and trend strength — designed to avoid illiquid periods, abnormal volatility spikes, and choppy, range-bound conditions that don't suit the underlying strategy.
 
 ### Recommended Setup
 
@@ -42,7 +42,7 @@ AITrader evaluates multiple conditions before entering a trade, including recent
 
 ### Important Risk Disclosure
 
-Trading forex and CFDs carries a substantial risk of loss and is not suitable for all investors. Past performance, including any backtest or historical results shown, does not guarantee future results. You should only trade with capital you can afford to lose. AITrader does not guarantee profits, and no trading strategy can eliminate the risk of loss.
+Trading forex and CFDs carries a substantial risk of loss and is not suitable for all investors. Past performance, including any backtest or historical results shown, does not guarantee future results. You should only trade with capital you can afford to lose. FatalibuildersTrader does not guarantee profits, and no trading strategy can eliminate the risk of loss.
 
 ---
 

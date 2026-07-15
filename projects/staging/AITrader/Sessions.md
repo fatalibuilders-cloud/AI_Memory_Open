@@ -25,3 +25,5 @@
 | Session 15 — reference EA filters researched & added | 2026-07-14 | volume filter, volatility filter, range filter, ADX, weekend protection, AI filter declined, reference EA screenshot |
 | Session 16 — launch readiness, listing assets, credentials declined | 2026-07-14 | MQL5 submission checklist, listing description, logo spec, not ready, credentials declined, security |
 | Session 17 — real v1 entry signal designed | 2026-07-14 | multi-timeframe trend, pullback, momentum, moving average, RSI, ADX, confidence score, rule-based, not ML |
+| Session 18 — no-trades bug diagnosed and fixed | 2026-07-14 | volume filter bug, forming bar, diagnostic logging, verbose logging, Experts log |
+| Session 19 — product renamed | 2026-07-14 | FatalibuildersTrader, rename, branding, product name |

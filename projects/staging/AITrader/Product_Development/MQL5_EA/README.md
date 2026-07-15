@@ -1,4 +1,4 @@
-# AITrader.mq5 — Draft Expert Advisor (v0.30)
+# FatalibuildersTrader.mq5 — Draft Expert Advisor (v0.30)
 
 **Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, and (v0.30) real signal-design decisions from `Master-Context.md`, not a finished product.
 
@@ -8,7 +8,7 @@
 
 `GetSignalConfidence()` (Safe Mode's win-probability filter) was also upgraded from a hardcoded placeholder to a rule-based heuristic combining ADX trend strength and RSI momentum conviction. **Still explicitly not a calibrated probability** — needs real backtest validation.
 
-**This is a starting hypothesis, not a proven edge.** The methodology is well-established in general; this specific parameter combination on AITrader's target instruments has never been tested.
+**This is a starting hypothesis, not a proven edge.** The methodology is well-established in general; this specific parameter combination on FatalibuildersTrader's target instruments has never been tested.
 
 ## What's implemented (matches staging decisions)
 
@@ -29,11 +29,11 @@ Founder shared a screenshot of a third-party commercial EA's settings panel ("Fo
 - **`PassesVolatilityFilter()`** ("Volatility Filter") — rejects both dead markets (ATR far below average — poor risk:reward) and abnormal spikes (ATR far above average — often a news/gap event).
 - **`PassesRangeFilter()`** ("Range Filter") — implemented as an ADX trend-strength gate. The signal (multi-timeframe trend + pullback, v0.30) is trend-following, so the useful pairing is skipping choppy/ranging conditions — the opposite use-case from a range-scalping strategy, chosen to match our actual signal type.
 - **`PassesDataFeedSanityCheck()`** ("Information Feed Filter") — rejects trading on stale quotes or an abnormally wide spread.
-- **`IsWeekendEntryBlocked()` / `ApplyWeekendCloseAll()`** ("Weekend Protection") — blocks new entries near Friday close / just after Monday open, and force-closes open positions before the weekend. This is a genuinely valuable addition AITrader didn't have before (avoids weekend gap risk) — added because it's straightforward, well-justified pure risk reduction, not because the reference EA had it.
+- **`IsWeekendEntryBlocked()` / `ApplyWeekendCloseAll()`** ("Weekend Protection") — blocks new entries near Friday close / just after Monday open, and force-closes open positions before the weekend. This is a genuinely valuable addition FatalibuildersTrader didn't have before (avoids weekend gap risk) — added because it's straightforward, well-justified pure risk reduction, not because the reference EA had it.
 
 **Deliberately NOT added:**
 - The reference EA's **"AI Filter"** toggle. Labeling `GetSignalConfidence()` (already a placeholder stub) as "AI" without a real trained model would repeat the exact kind of unsubstantiated marketing claim already flagged as a legal risk in `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md`. If genuine AI/ML signal scoring is wanted later, that's a real, separate model-training project.
-- The reference EA's **3.1 fixed lot size** and any lot-sizing approach resembling "Deposit Acceleration." AITrader's dynamic risk-based sizing (starting at 0.01) was decided carefully over multiple sessions — a large fixed lot contradicts it and was not adopted.
+- The reference EA's **3.1 fixed lot size** and any lot-sizing approach resembling "Deposit Acceleration." FatalibuildersTrader's dynamic risk-based sizing (starting at 0.01) was decided carefully over multiple sessions — a large fixed lot contradicts it and was not adopted.
 - **The reference account's result is not a target.** The screenshot showed a ~$5,000 account reaching ~$31,600 in roughly 2 days (+533%) — the same order of magnitude as the "$50→$1,000/day" claim already ruled out earlier in this project as unrealistic and a marketing red flag (see `2026-07-14j`). It most likely reflects the oversized 3.1-lot position sizing catching a favorable run, not a repeatable edge, and should not be used as a benchmark.
 
 ## What's still a placeholder / unvalidated — do not treat these as final

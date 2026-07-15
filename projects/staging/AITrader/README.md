@@ -1,9 +1,11 @@
 # AITrader — Staging
 
+**Product name (2026-07-14t):** the actual product is now called **FatalibuildersTrader** — "AITrader" continues as this staging project's internal folder/codename only. See `decisions-learnings/2026-07-14t_product-renamed-fatalibuilderstrader.md`.
+
 **Status:** Staging (Ideation & Preparation)
 **Category:** Software — MetaTrader 5 Expert Advisor (licensed trading bot, ~$300 one-time fee; runs on the customer's own funded Exness account)
 
-This folder is being used to plan AITrader before full project initialization. See `Master-Context.md` for the master reference, `Key-Decisions.md` for the decision index, and `NextSteps.md` for the current priority queue.
+This folder is being used to plan FatalibuildersTrader before full project initialization. See `Master-Context.md` for the master reference, `Key-Decisions.md` for the decision index, and `NextSteps.md` for the current priority queue.
 
 ## Quick Start (Resuming a Session)
 
@@ -12,7 +14,7 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 ## Current State
 
 - Document 1 (Project Context): In progress — vision, target market, and institutional dependencies drafted for the EA-license model.
-- Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, money-management module, and volatility/news-adaptive module (self-contained, economic-calendar-based) drafted. **First MQL5 code draft written** (`Product_Development/MQL5_EA/AITrader.mq5`) — see below.
+- Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, money-management module, and volatility/news-adaptive module (self-contained, economic-calendar-based) drafted. **First MQL5 code draft written** (`Product_Development/MQL5_EA/FatalibuildersTrader.mq5`) — see below.
 - Document 3 (Release Plan): Drafted — 5 epics, 4 milestones. See `NextSteps.md` for what's blocking finalization.
 
 ## Risk Model (current)
@@ -21,7 +23,7 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/AITrader.mq5` (v0.30) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus, as of v0.30, a **real v1 entry signal**: multi-timeframe trend + pullback momentum entry, replacing the earlier throwaway EMA-crossover placeholder. Grounded in published/widely-taught methodology (see `decisions-learnings/2026-07-14q_signal_design_v1.md`), chosen as a rule-based v1 with ML treated as a v2 aspiration, not a blocker. **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
+`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.30) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus, as of v0.30, a **real v1 entry signal**: multi-timeframe trend + pullback momentum entry, replacing the earlier throwaway EMA-crossover placeholder. Grounded in published/widely-taught methodology (see `decisions-learnings/2026-07-14q_signal_design_v1.md`), chosen as a rule-based v1 with ML treated as a v2 aspiration, not a blocker. **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
 
 ## Biggest Open Item
 

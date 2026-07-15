@@ -1,4 +1,4 @@
-# MQL5 Market Submission Checklist — AITrader
+# MQL5 Market Submission Checklist — FatalibuildersTrader
 
 **Purpose:** Everything MQL5 Market requires for submission, what's done, what's missing, and what I can vs. can't produce in this environment.
 

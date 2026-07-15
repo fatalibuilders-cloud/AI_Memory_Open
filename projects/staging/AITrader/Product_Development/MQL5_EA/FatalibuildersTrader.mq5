@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| AITrader.mq5                                                      |
+//| FatalibuildersTrader.mq5                                          |
 //| Draft v0.30 (Market tag 1.00) -- implements the risk-management,   |
 //| dual-mode, daily-control, entry-filter, and signal-design          |
 //| decisions from Master-Context.md as of 2026-07-14, plus (2026-07-  |
@@ -10,7 +10,7 @@
 //| any part of this for real trading. Compiles (per founder), still  |
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
-#property copyright "AITrader"
+#property copyright "FatalibuildersTrader"
 #property version   "1.00"
 #property strict
 
@@ -32,8 +32,8 @@ CTrade trade;
 //|    taught methodology (see decisions-learnings/2026-07-14q). This  |
 //|    replaces the earlier naive single-timeframe EMA crossover.      |
 //|    IMPORTANT: "grounded in published methodology" is NOT the same  |
-//|    as "proven to work for AITrader" -- this specific parameter set |
-//|    has never been backtested. Treat it as a serious starting point |
+//|    as "proven to work" -- this specific parameter set has never    |
+//|    been backtested. Treat it as a serious starting point           |
 //|    to validate, not a finished strategy.                           |
 //|                                                                    |
 //| 2. GetSignalConfidence() (Safe Mode's 65-75% win-probability       |
@@ -176,7 +176,7 @@ int OnInit()
       g_handleRsi == INVALID_HANDLE || g_handleAtr == INVALID_HANDLE ||
       g_handleAdx == INVALID_HANDLE)
    {
-      Print("AITrader: failed to create indicator handles");
+      Print("FatalibuildersTrader: failed to create indicator handles");
       return(INIT_FAILED);
    }
 
@@ -228,7 +228,7 @@ bool CheckDailyLimits()
    if(changePct <= -lossLimitPct || changePct >= profitTargetPct)
    {
       if(!g_dailyHalted)
-         PrintFormat("AITrader: daily limit reached (%.2f%%), halting until next day", changePct);
+         PrintFormat("FatalibuildersTrader: daily limit reached (%.2f%%), halting until next day", changePct);
       g_dailyHalted = true;
    }
    return g_dailyHalted;
@@ -450,7 +450,7 @@ bool IsWeekendEntryBlocked()
    return false;
 }
 
-// Force-close all AITrader positions ahead of the weekend close.
+// Force-close all FatalibuildersTrader positions ahead of the weekend close.
 void ApplyWeekendCloseAll()
 {
    if(!InpUseWeekendProtection) return;
@@ -476,7 +476,7 @@ void ApplyWeekendCloseAll()
 //| decisions-learnings/2026-07-14q_signal_design_v1.md for sourcing. |
 //| It is still a v1 HYPOTHESIS: real behind it is published research |
 //| on the general approach, not a backtest of THIS specific parameter|
-//| set on real AITrader data. Treat as a starting point to validate, |
+//| set on real FatalibuildersTrader data. Treat as a starting point to validate, |
 //| not a proven edge.                                                |
 //|                                                                    |
 //| Logic:                                                             |
@@ -604,7 +604,7 @@ void ManageOpenPositions()
       if(profit >= target && !alreadyBreakeven)
       {
          trade.PositionModify(ticket, openPrice, PositionGetDouble(POSITION_TP));
-         PrintFormat("AITrader: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
+         PrintFormat("FatalibuildersTrader: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
       }
    }
 }
@@ -621,7 +621,7 @@ void LogBlockReason(string reason)
    if(barTime == g_lastLogBarTime) return; // already logged this bar
 
    g_lastLogBarTime = barTime;
-   PrintFormat("AITrader [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
+   PrintFormat("FatalibuildersTrader [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
 }
 
 //+------------------------------------------------------------------+
@@ -723,18 +723,18 @@ void OnTick()
    {
       double sl = ask - stopDistancePoints * point;
       double tp = useHardTp ? ask + targetDistancePoints * point : 0;
-      if(trade.Buy(lots, _Symbol, ask, sl, tp, "AITrader"))
-         PrintFormat("AITrader: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      if(trade.Buy(lots, _Symbol, ask, sl, tp, "FatalibuildersTrader"))
+         PrintFormat("FatalibuildersTrader: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
       else
-         PrintFormat("AITrader: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
+         PrintFormat("FatalibuildersTrader: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
    else if(signal == SIGNAL_SELL)
    {
       double sl = bid + stopDistancePoints * point;
       double tp = useHardTp ? bid - targetDistancePoints * point : 0;
-      if(trade.Sell(lots, _Symbol, bid, sl, tp, "AITrader"))
-         PrintFormat("AITrader: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      if(trade.Sell(lots, _Symbol, bid, sl, tp, "FatalibuildersTrader"))
+         PrintFormat("FatalibuildersTrader: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
       else
-         PrintFormat("AITrader: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
+         PrintFormat("FatalibuildersTrader: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
 }
