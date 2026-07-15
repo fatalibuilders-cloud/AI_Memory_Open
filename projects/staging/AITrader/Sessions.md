@@ -28,3 +28,4 @@
 | Session 18 — no-trades bug diagnosed and fixed | 2026-07-14 | volume filter bug, forming bar, diagnostic logging, verbose logging, Experts log |
 | Session 19 — product renamed | 2026-07-14 | FatalibuildersTrader, rename, branding, product name |
 | Session 20 — v2 scalping signal built | 2026-07-14 | Bollinger Bands, RSI, Stochastic, mean reversion, scalping, forex, metals, instrument restriction, range filter flip |
+| Session 21 — more aggressive configuration | 2026-07-14 | aggressive mode, confidence gate, 50%, ADX ceiling, default mode, risk exposure |

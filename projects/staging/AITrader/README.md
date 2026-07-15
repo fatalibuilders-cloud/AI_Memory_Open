@@ -23,15 +23,16 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.40) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
+`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.50) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
 
 ## Biggest Open Item
 
-**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.40 has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
+**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.50 has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
 
 ## Other Open Items
 
 1. Compile the draft in MetaEditor and run it through MT5's Strategy Tester on a forex or metals symbol at M1/M5 — now with a real strategy to actually evaluate, not just plumbing to check.
+1a. Decide whether `InpMaxConcurrentTrades` (2) and `InpDailyLossLimitPct` (3%) should also be raised as part of "more aggressive" (2026-07-14v) — deliberately not changed, since those increase total risk exposure rather than just opportunity capture.
 2. Tune `InpMaxSpreadPoints` per symbol — the 30-point default is sized for forex majors, almost certainly too tight for metals.
 3. Verify `IsAllowedInstrument()` against your actual broker's real symbol names — it's a heuristic, not a guaranteed-correct classification.
 4. Consider walk-forward testing to guard against curve-fitting the v2 parameters (Bollinger 20/2.0, RSI 30/70, Stochastic 14,1,3/20/80) before trusting results.

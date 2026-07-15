@@ -1,6 +1,10 @@
-# FatalibuildersTrader.mq5 — Draft Expert Advisor (v0.40)
+# FatalibuildersTrader.mq5 — Draft Expert Advisor (v0.50)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, and (v0.40) short-timeframe scalping signal decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, and (v0.50) more-aggressive-configuration decisions from `Master-Context.md`, not a finished product.
+
+### v0.50 — more aggressive configuration (2026-07-14v)
+
+Founder asked to make the EA more aggressive and auto-trade opportunities the confidence heuristic rates above 50%. Three changes: **Aggressive Mode now gates on confidence** (`InpAggressiveModeMinWinProbabilityPct`, default 50%) instead of having no filter at all; **the Range Filter's ADX ceiling raised from 25 to 30** to admit more setups; **default `InpTradingMode` changed to Aggressive**. Deliberately did NOT raise `InpMaxConcurrentTrades` or `InpDailyLossLimitPct` — those are separate, more consequential risk-exposure decisions, not "take more opportunities" decisions. See `decisions-learnings/2026-07-14v_more-aggressive-config.md` for the full reasoning and what's flagged for follow-up.
 
 ### v0.40 — v2 scalping signal, forex/metals restricted (2026-07-14u)
 

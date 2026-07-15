@@ -6,8 +6,9 @@
 
 ## Priority Queue
 
-1. **[Dev] Recompile `FatalibuildersTrader.mq5` in MetaEditor** — v2 scalping signal added (2026-07-14u), needs a fresh compile check.
+1. **[Dev] Recompile `FatalibuildersTrader.mq5` in MetaEditor** — v0.50 changes added (2026-07-14v: aggressive-mode confidence gate, ADX ceiling raised, default mode changed), needs a fresh compile check.
 2. **[Dev] Run the draft through MT5's Strategy Tester on a forex or metals symbol at M1/M5** — now with the v2 Bollinger/RSI/Stochastic scalping signal instead of the retired v1 trend+pullback. Check actual win rate against the documented break-even bars, not just that the plumbing works.
+3. **[Human] Decide whether `InpMaxConcurrentTrades` (2) and/or `InpDailyLossLimitPct` (3%) should also be raised** as part of "more aggressive" — deliberately not changed in 2026-07-14v since those are separate risk-exposure decisions, not opportunity-capture ones.
 3. **[Human] Tune `InpMaxSpreadPoints` per symbol before testing metals** — the 30-point default is sized for forex majors and is almost certainly too tight for XAUUSD/XAGUSD.
 4. **[Human] Verify `IsAllowedInstrument()` against your actual broker's symbol names** (e.g., Exness's exact naming/suffixes) — it's a heuristic, confirm it correctly allows your forex/metals symbols and blocks everything else.
 5. **[Human] Consider walk-forward testing** the v2 signal (validate on a period the parameters weren't tuned on) to guard against curve-fitting before trusting results.
@@ -58,6 +59,7 @@
 - **EA attached to a live chart but placed no trades — real bug found and fixed:** `PassesVolumeFilter()` was comparing the still-forming bar's volume to a completed-bar average, which almost always evaluated false. Fixed to compare the last completed bar. Also added verbose diagnostic logging (`InpVerboseLogging`, on by default) so the Experts log now shows exactly which gate blocks each bar's entry. See `2026-07-14s`.
 - **Product renamed:** AITrader → **FatalibuildersTrader**. File is now `FatalibuildersTrader.mq5`; code, logs, and MQL5 listing materials updated. Staging folder name (`projects/staging/AITrader/`) intentionally left as internal codename — see `2026-07-14t` if the whole folder should be renamed too.
 - **v2 scalping signal built:** Bollinger Bands + RSI + Stochastic mean-reversion scalping replaces the v1 trend+pullback entry, per founder request for a genuine short-timeframe (M1-M5) scalper. Restricted to forex and metals only via `IsAllowedInstrument()`. **Fixed a real logic conflict**: the Range Filter and confidence heuristic were built for a trend-following signal (wanted high ADX) — flipped both to suit mean-reversion (wants low/contained ADX). See `2026-07-14u`. **Still unbacktested — this is a hypothesis, not a proven strategy.**
+- **More aggressive default configuration:** Aggressive Mode now gates on >50% confidence (was no filter at all), the Range Filter's ADX ceiling raised from 25 to 30, default trading mode changed to Aggressive. `InpMaxConcurrentTrades` and `InpDailyLossLimitPct` deliberately left unchanged (separate risk-exposure decision, see Priority Queue). See `2026-07-14v`.
 
 ## Superseded (no longer critical path)
 

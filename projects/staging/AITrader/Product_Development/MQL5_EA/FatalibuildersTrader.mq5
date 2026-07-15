@@ -1,12 +1,15 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTrader.mq5                                          |
-//| Draft v0.40 (Market tag 1.10) -- implements the risk-management,   |
+//| Draft v0.50 (Market tag 1.20) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
-//| diagnostic logging (2026-07-14s), and (2026-07-14u) a v2 short-     |
-//| timeframe scalping signal (Bollinger Bands + RSI + Stochastic       |
-//| mean-reversion) restricted to forex and metals instruments only,   |
-//| replacing the earlier v1 trend+pullback swing entry.               |
+//| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
+//| signal (Bollinger Bands + RSI + Stochastic mean-reversion)          |
+//| restricted to forex/metals (2026-07-14u), and (2026-07-14v) a more  |
+//| aggressive default configuration: Aggressive Mode now takes any     |
+//| signal the confidence heuristic rates above 50% (previously no      |
+//| filter at all), the Range Filter's ADX ceiling was raised to admit  |
+//| more setups, and the default trading mode is now Aggressive.        |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
@@ -14,7 +17,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader"
-#property version   "1.10"
+#property version   "1.20"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -98,7 +101,10 @@ enum ENUM_TRADING_MODE  { MODE_SAFE, MODE_AGGRESSIVE };
 enum ENUM_EXIT_MODE     { EXIT_OUTRIGHT_CLOSE, EXIT_BREAKEVEN_AND_RUN };
 
 //=== Inputs -- values below match Master-Context.md decisions =======
-input ENUM_TRADING_MODE InpTradingMode              = MODE_SAFE;
+// Default mode changed to MODE_AGGRESSIVE (2026-07-14v) per founder
+// request to make the EA more aggressive out of the box. Still
+// user-configurable in the input panel.
+input ENUM_TRADING_MODE InpTradingMode              = MODE_AGGRESSIVE;
 input ENUM_EXIT_MODE    InpExitMode                 = EXIT_OUTRIGHT_CLOSE;
 
 input double InpEquityTierBreakpoint                = 50.0;   // 2026-07-14f
@@ -109,6 +115,11 @@ input double InpSafeModeTargetDollarsLowTier        = 1.50;   // 2026-07-14m
 input double InpSafeModeTargetDollarsHighTier       = 3.00;   // 2026-07-14m
 input double InpSafeModeMinWinProbabilityPct        = 65.0;   // 2026-07-14m (65-75% range; floor used here)
 input double InpAggressiveModeTargetDollars         = 0.50;   // 2026-07-14h
+// (2026-07-14v) Aggressive Mode previously had NO confidence filter at
+// all -- took every raw signal regardless of estimated quality. Founder
+// asked for it to take any opportunity the confidence heuristic rates
+// above 50% (barely better than a coin flip), not literally everything.
+input double InpAggressiveModeMinWinProbabilityPct  = 50.0;   // 2026-07-14v
 
 input double InpDailyLossLimitPct                   = 3.0;    // 2026-07-14i
 input double InpDailyProfitTargetSafePct            = 5.0;    // 2026-07-14l
@@ -162,9 +173,14 @@ input double InpVolatilityRatioMax   = 2.5;
 // straight through a Bollinger extreme without reverting. This filter
 // now REJECTS entries when ADX is too high (too trendy), and favors
 // ranging/choppy conditions instead.
+// (2026-07-14v) Ceiling raised from 25 to 30 per founder's request for
+// more trade frequency/opportunities -- lets moderately-trending
+// conditions through, not just calm ranges. This is a direct
+// frequency-vs-risk tradeoff: more setups qualify, but more of them
+// will be entered while a real trend is starting to build.
 input bool   InpUseRangeFilter            = true;
 input int    InpAdxPeriod                 = 14;
-input double InpAdxMaxForMeanReversion    = 25.0;  // reject entries when ADX exceeds this
+input double InpAdxMaxForMeanReversion    = 30.0;  // reject entries when ADX exceeds this
 
 // Reference concept: "Information Feed Filter" -- interpreted here as a
 // data-sanity check: reject trading on stale quotes or abnormal spread.
@@ -750,14 +766,22 @@ void OnTick()
       return;
    }
 
-   if(InpTradingMode == MODE_SAFE)
+   // (2026-07-14v) Both modes now gate on confidence, not just Safe Mode
+   // -- previously Aggressive Mode took every raw signal with no filter
+   // at all. Founder asked it to take any opportunity rated above 50%
+   // (barely better than a coin flip) rather than literally everything,
+   // so it's "as aggressive as possible" while still applying a floor.
    {
       double confidence = GetSignalConfidence(signal);
-      if(confidence < InpSafeModeMinWinProbabilityPct)
+      double requiredConfidence = (InpTradingMode == MODE_SAFE)
+                                    ? InpSafeModeMinWinProbabilityPct        // 65-75%, 2026-07-14m
+                                    : InpAggressiveModeMinWinProbabilityPct; // 50%, 2026-07-14v
+      if(confidence < requiredConfidence)
       {
-         LogBlockReason(StringFormat("Safe Mode confidence too low (%.1f < %.1f required)",
-                        confidence, InpSafeModeMinWinProbabilityPct));
-         return; // 2026-07-14m: Safe Mode only takes 65-75%+ confidence setups
+         LogBlockReason(StringFormat("confidence too low for %s (%.1f < %.1f required)",
+                        (InpTradingMode == MODE_SAFE ? "Safe Mode" : "Aggressive Mode"),
+                        confidence, requiredConfidence));
+         return;
       }
    }
 
