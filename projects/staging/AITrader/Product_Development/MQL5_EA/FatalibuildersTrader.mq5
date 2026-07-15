@@ -1,15 +1,16 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTrader.mq5                                          |
-//| Draft v0.50 (Market tag 1.20) -- implements the risk-management,   |
+//| Draft v0.60 (Market tag 1.30) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
 //| signal (Bollinger Bands + RSI + Stochastic mean-reversion)          |
-//| restricted to forex/metals (2026-07-14u), and (2026-07-14v) a more  |
-//| aggressive default configuration: Aggressive Mode now takes any     |
-//| signal the confidence heuristic rates above 50% (previously no      |
-//| filter at all), the Range Filter's ADX ceiling was raised to admit  |
-//| more setups, and the default trading mode is now Aggressive.        |
+//| restricted to forex/metals (2026-07-14u), a more aggressive default |
+//| configuration (2026-07-14v), and (2026-07-14w) a pre-trade margin   |
+//| sufficiency check -- small accounts may not have enough free margin |
+//| for even the minimum lot size on some symbols (especially metals),  |
+//| so this checks before sending an order and logs why, instead of     |
+//| letting the broker silently reject it.                              |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
@@ -17,7 +18,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader"
-#property version   "1.20"
+#property version   "1.30"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -516,6 +517,24 @@ bool PassesDataFeedSanityCheck()
    return true;
 }
 
+// Margin sufficiency check (2026-07-14w) -- small accounts may not have
+// enough free margin to open even the minimum lot size, especially on
+// metals (which require more margin per lot than most forex pairs).
+// This checks BEFORE sending an order instead of letting the broker
+// silently reject it, and logs a clear reason. Margin required depends
+// on the account's leverage setting, which this code has no control
+// over -- it can only check what MT5 reports, not guarantee a specific
+// balance is "enough" in the abstract.
+bool HasSufficientMargin(ENUM_ORDER_TYPE orderType, double lots, double price)
+{
+   double marginRequired = 0;
+   if(!OrderCalcMargin(orderType, _Symbol, lots, price, marginRequired))
+      return true; // fail open -- can't calculate, don't block on that alone
+
+   double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   return freeMargin >= marginRequired;
+}
+
 // "Weekend Protection": avoid opening new risk into a weekend gap, and
 // block new entries approaching Friday close / just after Monday open.
 bool IsWeekendEntryBlocked()
@@ -806,6 +825,15 @@ void OnTick()
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
    bool useHardTp = (InpExitMode == EXIT_OUTRIGHT_CLOSE);
+   ENUM_ORDER_TYPE orderType = (signal == SIGNAL_BUY) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   double checkPrice = (signal == SIGNAL_BUY) ? ask : bid;
+
+   if(!HasSufficientMargin(orderType, lots, checkPrice))
+   {
+      LogBlockReason(StringFormat("insufficient free margin for %.2f lots on %s -- account may be too small for this symbol/leverage",
+                     lots, _Symbol));
+      return;
+   }
 
    if(signal == SIGNAL_BUY)
    {

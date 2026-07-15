@@ -37,7 +37,7 @@ FatalibuildersTrader evaluates multiple conditions before entering a trade, incl
 
 - **Symbol(s):** Forex pairs and metals (gold, silver) only — the EA will not initialize on other instrument types
 - **Timeframe:** M1 or M5 (short-timeframe scalping)
-- **Minimum recommended balance:** [fill in once backtested]
+- **Minimum recommended balance:** [fill in once backtested — depends heavily on account leverage and traded symbol; the EA includes a pre-trade margin check (2026-07-14w) so a too-small account gets a clear log message rather than silently failing, but that's not a substitute for testing a realistic minimum]
 - **Recommended broker:** compatible with any MT5 broker; developed and tested with Exness. Spread settings should be reviewed per symbol — metals typically require a wider allowed-spread setting than forex majors.
 
 ### Important Risk Disclosure

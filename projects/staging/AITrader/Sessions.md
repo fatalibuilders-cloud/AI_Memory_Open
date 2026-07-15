@@ -29,3 +29,4 @@
 | Session 19 — product renamed | 2026-07-14 | FatalibuildersTrader, rename, branding, product name |
 | Session 20 — v2 scalping signal built | 2026-07-14 | Bollinger Bands, RSI, Stochastic, mean reversion, scalping, forex, metals, instrument restriction, range filter flip |
 | Session 21 — more aggressive configuration | 2026-07-14 | aggressive mode, confidence gate, 50%, ADX ceiling, default mode, risk exposure |
+| Session 22 — margin check added, unrealistic targets declined | 2026-07-14 | margin check, OrderCalcMargin, starting equity, leverage, declined profit target, risk of ruin |

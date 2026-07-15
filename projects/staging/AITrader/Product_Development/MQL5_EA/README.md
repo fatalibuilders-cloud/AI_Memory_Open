@@ -1,6 +1,10 @@
-# FatalibuildersTrader.mq5 — Draft Expert Advisor (v0.50)
+# FatalibuildersTrader.mq5 — Draft Expert Advisor (v0.60)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, and (v0.50) more-aggressive-configuration decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, and (v0.60) margin-check decisions from `Master-Context.md`, not a finished product.
+
+### v0.60 — pre-trade margin check (2026-07-14w)
+
+Founder asked to raise "starting equity" from $10 to $100, following a declined request to hit an unrealistic profit target ($10→$1,000 in 12 hours) — clarified this was actually about whether $10 is enough margin to place trades at all, not the target. Real concern, real fix: added `HasSufficientMargin()`, checked before every order via MT5's native `OrderCalcMargin()`. If free margin can't cover the calculated lot size, the EA logs why and skips the trade instead of risking a silent broker rejection. **Not a hardcoded "$100 minimum"** — actual margin requirements depend on account leverage, which this code can't know in advance, so it checks the real number via MT5's API instead of guessing. See `decisions-learnings/2026-07-14w_margin-check-added.md`.
 
 ### v0.50 — more aggressive configuration (2026-07-14v)
 

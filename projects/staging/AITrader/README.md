@@ -23,11 +23,11 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.50) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
+`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.60) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
 
 ## Biggest Open Item
 
-**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.50 has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
+**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.60 has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
 
 ## Other Open Items
 
@@ -42,8 +42,9 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 8. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap) — not implemented in the draft.
 9. **Volatility/news-adaptive rules** — the draft implements only a simple skip-entries reaction, not the full parameter-adaptation system described in Document 2.
 10. Confirm MT5's built-in calendar (used in the draft) as the final economic calendar data source.
+11. Check your account's actual leverage setting to understand realistic minimum balance for your intended symbols — the new margin check (2026-07-14w) will log a clear reason if the account can't cover a trade.
 
-**Confirmed guardrail:** "$50 → $1,000 in a day" and "$10 → $100 in a day" are both internal Aggressive Mode narrative framing only — neither is a build spec or realistic (professional day traders consider 1-2% a very good day; if an internal aggressive-mode number is ever needed, 5-20%/day is the research-backed ceiling). Explicitly barred from marketing copy — flagged to the Legal epic with a concrete pre-launch checklist.
+**Confirmed guardrail:** "$50 → $1,000 in a day," "$10 → $100 in a day," and later "$10/$100 → $1,000 in 12 hours" are all internal Aggressive Mode narrative framing at best, and were explicitly declined as build targets (2026-07-14v/w) — none are a build spec or realistic (professional day traders consider 1-2% a very good day; if an internal aggressive-mode number is ever needed, 5-20%/day is the research-backed ceiling). Explicitly barred from marketing copy — flagged to the Legal epic with a concrete pre-launch checklist. A "$10 vs $100 starting equity" follow-up turned out to be a legitimate margin-sufficiency question, not a revival of the profit-multiplier target — addressed with a real `OrderCalcMargin()`-based check (2026-07-14w) rather than a hardcoded balance.
 
 ## MQL5 Market Launch Readiness
 

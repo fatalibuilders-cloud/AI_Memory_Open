@@ -6,7 +6,8 @@
 
 ## Priority Queue
 
-1. **[Dev] Recompile `FatalibuildersTrader.mq5` in MetaEditor** — v0.50 changes added (2026-07-14v: aggressive-mode confidence gate, ADX ceiling raised, default mode changed), needs a fresh compile check.
+1. **[Dev] Recompile `FatalibuildersTrader.mq5` in MetaEditor** — v0.60 changes added (2026-07-14v: aggressive-mode confidence gate, ADX ceiling raised, default mode changed; 2026-07-14w: pre-trade margin check), needs a fresh compile check.
+1a. **[Human] Check your account's actual leverage setting** (MT5 account properties) to understand realistic minimum balance for your intended symbols — the new margin check will log a clear reason if the account can't cover a trade, watch the Experts log for this once compiled.
 2. **[Dev] Run the draft through MT5's Strategy Tester on a forex or metals symbol at M1/M5** — now with the v2 Bollinger/RSI/Stochastic scalping signal instead of the retired v1 trend+pullback. Check actual win rate against the documented break-even bars, not just that the plumbing works.
 3. **[Human] Decide whether `InpMaxConcurrentTrades` (2) and/or `InpDailyLossLimitPct` (3%) should also be raised** as part of "more aggressive" — deliberately not changed in 2026-07-14v since those are separate risk-exposure decisions, not opportunity-capture ones.
 3. **[Human] Tune `InpMaxSpreadPoints` per symbol before testing metals** — the 30-point default is sized for forex majors and is almost certainly too tight for XAUUSD/XAGUSD.
@@ -60,6 +61,8 @@
 - **Product renamed:** AITrader → **FatalibuildersTrader**. File is now `FatalibuildersTrader.mq5`; code, logs, and MQL5 listing materials updated. Staging folder name (`projects/staging/AITrader/`) intentionally left as internal codename — see `2026-07-14t` if the whole folder should be renamed too.
 - **v2 scalping signal built:** Bollinger Bands + RSI + Stochastic mean-reversion scalping replaces the v1 trend+pullback entry, per founder request for a genuine short-timeframe (M1-M5) scalper. Restricted to forex and metals only via `IsAllowedInstrument()`. **Fixed a real logic conflict**: the Range Filter and confidence heuristic were built for a trend-following signal (wanted high ADX) — flipped both to suit mean-reversion (wants low/contained ADX). See `2026-07-14u`. **Still unbacktested — this is a hypothesis, not a proven strategy.**
 - **More aggressive default configuration:** Aggressive Mode now gates on >50% confidence (was no filter at all), the Range Filter's ADX ceiling raised from 25 to 30, default trading mode changed to Aggressive. `InpMaxConcurrentTrades` and `InpDailyLossLimitPct` deliberately left unchanged (separate risk-exposure decision, see Priority Queue). See `2026-07-14v`.
+- **Declined "$10→$1,000 in 12 hours" (and revised "$100→$1,000") targets** — mathematically requires ~1,800+ winning trades with zero losses in the window; not achievable without martingale/compounding lot-sizing already ruled out. See `2026-07-14v` chat log context (no separate decision file — declined, not built).
+- **Pre-trade margin check added:** founder's real concern behind the "$100 starting equity" ask was whether $10 has enough margin to trade at all (confirmed, not the profit target). Added `HasSufficientMargin()` using MT5's `OrderCalcMargin()` — checks real margin via the API rather than hardcoding an arbitrary minimum balance. See `2026-07-14w`.
 
 ## Superseded (no longer critical path)
 
