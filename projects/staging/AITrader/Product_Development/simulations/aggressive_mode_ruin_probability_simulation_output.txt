@@ -1,0 +1,53 @@
+===============================================================================================
+PART 1 -- At the HOPED-FOR 80% win rate, across a range of risk-per-trade sizes,
+is ~20% ruin probability realistic?
+===============================================================================================
+  risk/reward= 3% of equity, win_rate=80%, trades= 50  ->  ruin probability =  0.00%
+  risk/reward= 3% of equity, win_rate=80%, trades=100  ->  ruin probability =  0.00%
+  risk/reward= 3% of equity, win_rate=80%, trades=200  ->  ruin probability =  0.00%
+  risk/reward= 5% of equity, win_rate=80%, trades= 50  ->  ruin probability =  0.00%
+  risk/reward= 5% of equity, win_rate=80%, trades=100  ->  ruin probability =  0.00%
+  risk/reward= 5% of equity, win_rate=80%, trades=200  ->  ruin probability =  0.00%
+  risk/reward=10% of equity, win_rate=80%, trades= 50  ->  ruin probability =  0.00%
+  risk/reward=10% of equity, win_rate=80%, trades=100  ->  ruin probability =  0.00%
+  risk/reward=10% of equity, win_rate=80%, trades=200  ->  ruin probability =  0.00%
+  risk/reward=15% of equity, win_rate=80%, trades= 50  ->  ruin probability =  0.00%
+  risk/reward=15% of equity, win_rate=80%, trades=100  ->  ruin probability =  0.00%
+  risk/reward=15% of equity, win_rate=80%, trades=200  ->  ruin probability =  0.00%
+  risk/reward=20% of equity, win_rate=80%, trades= 50  ->  ruin probability =  0.00%
+  risk/reward=20% of equity, win_rate=80%, trades=100  ->  ruin probability =  0.00%
+  risk/reward=20% of equity, win_rate=80%, trades=200  ->  ruin probability =  0.00%
+
+===============================================================================================
+PART 2 -- At more REALISTIC (unproven-strategy) win rates, what risk-per-trade
+produces something close to a 20% ruin probability?
+===============================================================================================
+  win_rate=  50%  risk/reward=10% of equity  trades= 50  ->  ruin probability =  0.24%
+  win_rate=  50%  risk/reward=10% of equity  trades=100  ->  ruin probability =  5.81%
+  win_rate=  50%  risk/reward=15% of equity  trades= 50  ->  ruin probability =  7.97%
+  win_rate=  50%  risk/reward=15% of equity  trades=100  ->  ruin probability = 32.56%
+  win_rate=  50%  risk/reward=20% of equity  trades= 50  ->  ruin probability = 25.86%
+  win_rate=  50%  risk/reward=20% of equity  trades=100  ->  ruin probability = 58.35%
+  win_rate=  55%  risk/reward=10% of equity  trades= 50  ->  ruin probability =  0.03%
+  win_rate=  55%  risk/reward=10% of equity  trades=100  ->  ruin probability =  0.55%
+  win_rate=  55%  risk/reward=15% of equity  trades= 50  ->  ruin probability =  1.88%
+  win_rate=  55%  risk/reward=15% of equity  trades=100  ->  ruin probability =  7.61%
+  win_rate=  55%  risk/reward=20% of equity  trades= 50  ->  ruin probability =  9.70%
+  win_rate=  55%  risk/reward=20% of equity  trades=100  ->  ruin probability = 24.08%
+  win_rate=  60%  risk/reward=10% of equity  trades= 50  ->  ruin probability =  0.00%
+  win_rate=  60%  risk/reward=10% of equity  trades=100  ->  ruin probability =  0.01%
+  win_rate=  60%  risk/reward=15% of equity  trades= 50  ->  ruin probability =  0.29%
+  win_rate=  60%  risk/reward=15% of equity  trades=100  ->  ruin probability =  1.04%
+  win_rate=  60%  risk/reward=20% of equity  trades= 50  ->  ruin probability =  2.48%
+  win_rate=  60%  risk/reward=20% of equity  trades=100  ->  ruin probability =  5.05%
+
+===============================================================================================
+CHOSEN DEFAULT: 15% risk-per-trade, 15% reward-per-trade (1:1), $100 start
+===============================================================================================
+  win_rate=  50%  ->  ruin probability @ 50 trades =  8.19%   @ 100 trades = 32.02%
+  win_rate=  55%  ->  ruin probability @ 50 trades =  1.77%   @ 100 trades =  7.94%
+  win_rate=  60%  ->  ruin probability @ 50 trades =  0.29%   @ 100 trades =  0.88%
+  win_rate=  65%  ->  ruin probability @ 50 trades =  0.03%   @ 100 trades =  0.03%
+  win_rate=  70%  ->  ruin probability @ 50 trades =  0.00%   @ 100 trades =  0.00%
+  win_rate=  75%  ->  ruin probability @ 50 trades =  0.00%   @ 100 trades =  0.00%
+  win_rate=  80%  ->  ruin probability @ 50 trades =  0.00%   @ 100 trades =  0.00%

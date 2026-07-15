@@ -30,3 +30,5 @@
 | Session 20 — v2 scalping signal built | 2026-07-14 | Bollinger Bands, RSI, Stochastic, mean reversion, scalping, forex, metals, instrument restriction, range filter flip |
 | Session 21 — more aggressive configuration | 2026-07-14 | aggressive mode, confidence gate, 50%, ADX ceiling, default mode, risk exposure |
 | Session 22 — margin check added, unrealistic targets declined | 2026-07-14 | margin check, OrderCalcMargin, starting equity, leverage, declined profit target, risk of ruin |
+| Session 23 — plain-English inputs, manual mode | 2026-07-14 | plain English, input rename, input groups, AUTO_TRADE, SIGNALS_ONLY, manual mode, alerts |
+| Session 24 — Scalper 1 renamed, aggressive equity-risk redesign | 2026-07-14 | Scalper 1, product name, Aggressive Mode, equity percentage risk, daily loss ceiling, Monte Carlo, risk of ruin |

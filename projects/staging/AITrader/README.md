@@ -1,6 +1,6 @@
 # AITrader — Staging
 
-**Product name (2026-07-14t):** the actual product is now called **FatalibuildersTrader** — "AITrader" continues as this staging project's internal folder/codename only. See `decisions-learnings/2026-07-14t_product-renamed-fatalibuilderstrader.md`.
+**Product name (2026-07-14y):** the actual product is now called **FatalibuildersTrader Scalper 1** (renamed from FatalibuildersTrader, 2026-07-14t → 2026-07-14y) — "AITrader" continues as this staging project's internal folder/codename only. See `decisions-learnings/2026-07-14y_scalper1-name-and-aggressive-equity-risk.md`.
 
 **Status:** Staging (Ideation & Preparation)
 **Category:** Software — MetaTrader 5 Expert Advisor (licensed trading bot, ~$300 one-time fee; runs on the customer's own funded Exness account)
@@ -14,26 +14,26 @@ Run `agents/open.md`, then say what you want to work on — e.g. "Continue with 
 ## Current State
 
 - Document 1 (Project Context): In progress — vision, target market, and institutional dependencies drafted for the EA-license model.
-- Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, money-management module, and volatility/news-adaptive module (self-contained, economic-calendar-based) drafted. **First MQL5 code draft written** (`Product_Development/MQL5_EA/FatalibuildersTrader.mq5`) — see below.
+- Document 2 (Architecture/Design): In progress — EA/MQL5 architecture, MQL5 Market distribution, dual-mode exit logic, money-management module, and volatility/news-adaptive module (self-contained, economic-calendar-based) drafted. **First MQL5 code draft written** (`Product_Development/MQL5_EA/FatalibuildersTraderScalper1.mq5`) — see below.
 - Document 3 (Release Plan): Drafted — 5 epics, 4 milestones. See `NextSteps.md` for what's blocking finalization.
 
 ## Risk Model (current)
 
-Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trading modes with **distinct** profit-lock targets: **Safe Mode** ($1.50 / $3.00 by tier, 65–75% win-probability filter, **5% daily target**) and **Aggressive Mode** ($0.50 shared target, no filter, **20% daily target**). Daily risk controls: configurable daily profit target, a **3% daily loss limit**, and max 2 concurrent open trades. A Monte Carlo simulation (`Product_Development/simulations/`) confirms the redesigned Safe Mode has positive expectancy across realistic win rates — **this is a math simulation, not a real backtest.**
+**Safe Mode:** tiered fixed-dollar stop-loss ($1 below $50 equity, $3 at/above), own profit-lock targets ($1.50 / $3.00 by tier), 65–75% win-probability filter, **5% daily target**, **3% daily loss limit**. **Aggressive Mode (redesigned 2026-07-14y):** risks/targets a **configurable percentage of current equity per trade** (15%/15% default, 1:1) instead of fixed dollars, >50% confidence filter, **20% daily profit target**, and its own, separate **50% daily loss ceiling** (so it isn't silently capped by Safe Mode's 3% limit). Both modes: max 2 concurrent open trades. A Monte Carlo simulation (`Product_Development/simulations/`) confirms the redesigned Safe Mode has positive expectancy across realistic win rates, and a second simulation grounds Aggressive Mode's risk-of-ruin honestly (near-0% at the hoped-for 80% win rate, roughly 2–32% if the real win rate is closer to 50–55%) — **these are math simulations, not real backtests.**
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.60) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
+`Product_Development/MQL5_EA/FatalibuildersTraderScalper1.mq5` (v0.80) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss (Safe Mode) or equity-percentage risk (Aggressive Mode), mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). All inputs use plain-English names/groups, and a manual `SIGNALS_ONLY` operation mode is available alongside `AUTO_TRADE` (2026-07-14x). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
 
 ## Biggest Open Item
 
-**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.60 has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
+**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (the code has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
 
 ## Other Open Items
 
 1. Compile the draft in MetaEditor and run it through MT5's Strategy Tester on a forex or metals symbol at M1/M5 — now with a real strategy to actually evaluate, not just plumbing to check.
-1a. Decide whether `InpMaxConcurrentTrades` (2) and `InpDailyLossLimitPct` (3%) should also be raised as part of "more aggressive" (2026-07-14v) — deliberately not changed, since those increase total risk exposure rather than just opportunity capture.
-2. Tune `InpMaxSpreadPoints` per symbol — the 30-point default is sized for forex majors, almost certainly too tight for metals.
+1a. Decide whether `MaxTradesOpenAtOnce` (2) should also be raised as part of "more aggressive" (2026-07-14v) — deliberately not changed, since it increases total simultaneous risk exposure rather than just opportunity capture. (Aggressive Mode's daily loss limit *was* deliberately raised separately, to 50%, as part of the 2026-07-14y equity-percentage redesign — see below.)
+2. Tune `MaxAllowedSpread_Points` per symbol — the 30-point default is sized for forex majors, almost certainly too tight for metals.
 3. Verify `IsAllowedInstrument()` against your actual broker's real symbol names — it's a heuristic, not a guaranteed-correct classification.
 4. Consider walk-forward testing to guard against curve-fitting the v2 parameters (Bollinger 20/2.0, RSI 30/70, Stochastic 14,1,3/20/80) before trusting results.
 5. Validate `GetSignalConfidence()`'s RSI-extremity+low-ADX heuristic against real win-rate outcomes — explainable now, but still not a calibrated probability.
@@ -45,6 +45,8 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 11. Check your account's actual leverage setting to understand realistic minimum balance for your intended symbols — the new margin check (2026-07-14w) will log a clear reason if the account can't cover a trade.
 
 **Confirmed guardrail:** "$50 → $1,000 in a day," "$10 → $100 in a day," and later "$10/$100 → $1,000 in 12 hours" are all internal Aggressive Mode narrative framing at best, and were explicitly declined as build targets (2026-07-14v/w) — none are a build spec or realistic (professional day traders consider 1-2% a very good day; if an internal aggressive-mode number is ever needed, 5-20%/day is the research-backed ceiling). Explicitly barred from marketing copy — flagged to the Legal epic with a concrete pre-launch checklist. A "$10 vs $100 starting equity" follow-up turned out to be a legitimate margin-sufficiency question, not a revival of the profit-multiplier target — addressed with a real `OrderCalcMargin()`-based check (2026-07-14w) rather than a hardcoded balance.
+
+**Aggressive Mode's "very very aggressive" equity-percentage risk (2026-07-14y)** is a genuine, deliberately high-risk setting (15% of equity per trade by default) — grounded in a Monte Carlo simulation rather than an engineered number. It should never be marketed with the founder's original "20% chance of blowing $100 at 80% win rate" framing, since the simulation shows that's not actually how the numbers relate (see `2026-07-14y` for the corrected figures) — same guardrail category as the multiplier claims above.
 
 ## MQL5 Market Launch Readiness
 

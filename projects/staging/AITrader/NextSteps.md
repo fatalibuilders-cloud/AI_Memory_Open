@@ -6,7 +6,8 @@
 
 ## Priority Queue
 
-1. **[Dev] Recompile `FatalibuildersTrader.mq5` in MetaEditor** — v0.60 changes added (2026-07-14v: aggressive-mode confidence gate, ADX ceiling raised, default mode changed; 2026-07-14w: pre-trade margin check), needs a fresh compile check.
+1. **[Dev] Recompile `FatalibuildersTraderScalper1.mq5` in MetaEditor** — renamed from `FatalibuildersTrader.mq5`; v0.80 changes added (2026-07-14x: plain-English input rename/groups + AUTO_TRADE/SIGNALS_ONLY manual mode; 2026-07-14y: "Scalper 1" name + Aggressive Mode's equity-percentage risk/reward and its own daily loss ceiling), needs a fresh compile check.
+1b. **[Human] Decide if Aggressive Mode's 15%/15% equity-percentage risk/reward default is acceptable to ship**, given the Monte Carlo findings in `2026-07-14y` (near-0% ruin at the hoped-for 80% win rate, but roughly 2-32% ruin probability if the real win rate turns out closer to 50-55%) — this is a real risk-exposure decision, not a formality.
 1a. **[Human] Check your account's actual leverage setting** (MT5 account properties) to understand realistic minimum balance for your intended symbols — the new margin check will log a clear reason if the account can't cover a trade, watch the Experts log for this once compiled.
 2. **[Dev] Run the draft through MT5's Strategy Tester on a forex or metals symbol at M1/M5** — now with the v2 Bollinger/RSI/Stochastic scalping signal instead of the retired v1 trend+pullback. Check actual win rate against the documented break-even bars, not just that the plumbing works.
 3. **[Human] Decide whether `InpMaxConcurrentTrades` (2) and/or `InpDailyLossLimitPct` (3%) should also be raised** as part of "more aggressive" — deliberately not changed in 2026-07-14v since those are separate risk-exposure decisions, not opportunity-capture ones.
@@ -63,6 +64,8 @@
 - **More aggressive default configuration:** Aggressive Mode now gates on >50% confidence (was no filter at all), the Range Filter's ADX ceiling raised from 25 to 30, default trading mode changed to Aggressive. `InpMaxConcurrentTrades` and `InpDailyLossLimitPct` deliberately left unchanged (separate risk-exposure decision, see Priority Queue). See `2026-07-14v`.
 - **Declined "$10→$1,000 in 12 hours" (and revised "$100→$1,000") targets** — mathematically requires ~1,800+ winning trades with zero losses in the window; not achievable without martingale/compounding lot-sizing already ruled out. See `2026-07-14v` chat log context (no separate decision file — declined, not built).
 - **Pre-trade margin check added:** founder's real concern behind the "$100 starting equity" ask was whether $10 has enough margin to trade at all (confirmed, not the profit target). Added `HasSufficientMargin()` using MT5's `OrderCalcMargin()` — checks real margin via the API rather than hardcoding an arbitrary minimum balance. See `2026-07-14w`.
+- **Every input renamed to plain English + grouped**, and a manual `SIGNALS_ONLY` operation mode added alongside `AUTO_TRADE` (alerts the user with a suggested trade instead of placing it automatically). See `2026-07-14x`.
+- **Product renamed to FatalibuildersTrader Scalper 1**, and Aggressive Mode redesigned to risk/target a percentage of current equity per trade (15%/15% default, 1:1) instead of small fixed dollars, with its own 50% daily loss ceiling. A Monte Carlo simulation grounds the founder's "20% chance of blowing $100 at an 80% win rate" framing honestly: ~0% ruin at 80% win rate, roughly 2-32% ruin if the real win rate is closer to 50-55%. Safe Mode untouched. See `2026-07-14y`.
 
 ## Superseded (no longer critical path)
 

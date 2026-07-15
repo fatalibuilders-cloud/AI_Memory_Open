@@ -1,6 +1,16 @@
-# FatalibuildersTrader.mq5 — Draft Expert Advisor (v0.60)
+# FatalibuildersTraderScalper1.mq5 — Draft Expert Advisor (v0.80)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, and (v0.60) margin-check decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, and very-aggressive-equity-risk decisions from `Master-Context.md`, not a finished product.
+
+### v0.80 — "Scalper 1" name + Aggressive Mode redesigned around equity-percentage risk (2026-07-14y)
+
+Founder asked to add "Scalper 1" to the product name (file renamed `FatalibuildersTrader.mq5` → `FatalibuildersTraderScalper1.mq5`) and to make Aggressive Mode "very very aggressive," framed as accepting "20% of blowing a $100 [account] with an 80% equity winning rate." Aggressive Mode now risks/targets a **percentage of current equity per trade** (`AggressiveMode_RiskPerTrade_PercentOfEquity` / `AggressiveMode_RewardPerTrade_PercentOfEquity`, both default 15%, 1:1) instead of the old fixed dollar amounts, with its own much higher daily loss ceiling (`StopForDay_AggressiveMode_IfLossReaches_Percent`, default 50%) so the shared 3% Safe Mode daily limit doesn't silently cap every Aggressive trade back down. **Safe Mode is completely untouched.**
+
+A Monte Carlo simulation (`../simulations/aggressive_mode_ruin_probability_simulation.py`) checked the founder's framing honestly rather than building to match it: at the hoped-for 80% win rate, simulated ruin probability (equity falling to $10 or below) is ~0% at any risk level tested — a genuine 80% edge is safe no matter how aggressively it's sized. The real risk shows up only if the actual win rate turns out closer to 50-55% (plausible for an unbacktested strategy): at the chosen 15%/15% setting, ruin probability ranges from about 2% (55% win rate, 50 trades) to about 32% (50% win rate, 100 trades). See `decisions-learnings/2026-07-14y_scalper1-name-and-aggressive-equity-risk.md` for the full numbers, including a correction of an earlier, less rigorous inline estimate made during the same session.
+
+### v0.70 — plain-English inputs + manual (signals-only) mode (2026-07-14x)
+
+Founder asked for input names/descriptions anyone can understand (not just traders), plus a choice between full automation and a manual mode where the bot suggests trades instead of placing them. Every input was renamed from technical `Inp*` names to plain-English names (e.g. `InpStopLossDollarsLowTier` → `MaxLossPerTrade_SmallAccount_Dollars`) and grouped into 9 numbered, plain-language `input group` sections. Added `AutoTrade_Or_SignalsOnly` (`AUTO_TRADE` default, or `SIGNALS_ONLY`): in signals-only mode the bot runs its full pipeline and computes the same trade it would have placed, but instead of calling `trade.Buy()/trade.Sell()` it alerts the user (on-chart popup, on-chart note, and phone push if configured) with the suggested direction, lot size, stop-loss, and take-profit, and lets the user place it manually. See `decisions-learnings/2026-07-14x_plain-english-inputs-and-manual-mode.md`.
 
 ### v0.60 — pre-trade margin check (2026-07-14w)
 
@@ -22,11 +32,11 @@ Founder asked for a genuine short-timeframe scalper restricted to forex and meta
 
 ## What's implemented (matches staging decisions)
 
-- Tiered fixed-dollar stop-loss ($1 < $50 equity, $3 ≥ $50 equity) — 2026-07-14f
-- Mode-specific profit-lock targets — Safe Mode $1.50/$3.00 by tier, Aggressive Mode $0.50 — 2026-07-14m, 2026-07-14h
+- Safe Mode: tiered fixed-dollar stop-loss ($1 < $50 equity, $3 ≥ $50 equity) and profit-lock targets ($1.50/$3.00 by tier) — 2026-07-14f, 2026-07-14m
+- Aggressive Mode: equity-percentage risk/reward per trade (15%/15% by default, 1:1), not fixed dollars — 2026-07-14y
 - Dynamic risk-based lot sizing (dollar risk ÷ stop distance, not a fixed table) — 2026-07-14e
 - Dual exit modes: outright close, or move to breakeven and let the position run — 2026-07-14
-- Daily profit target (5% Safe / 20% Aggressive) and 3% daily loss limit, with automatic halt — 2026-07-14h/i/k/l
+- Daily profit target (5% Safe / 20% Aggressive) and mode-specific daily loss limit (3% Safe / 50% Aggressive), with automatic halt — 2026-07-14h/i/k/l/y
 - Max 2 concurrent open trades — 2026-07-14h
 - **Tier-boundary fix** (`RemainingDailyLossBudget()`): a single trade's risk is capped at whatever remains of the day's loss budget, resolving the interaction flagged 2026-07-14i where a $3 stop-loss could exceed a $1.50 daily budget in one trade
 - A first-pass news-awareness check using MT5's native economic calendar (skips new entries within a configurable window of high-impact events for the traded symbol's currencies)
@@ -51,7 +61,7 @@ Founder shared a screenshot of a third-party commercial EA's settings panel ("Fo
 1. **`GetEntrySignal()` — real methodology, unvalidated parameters.** Bollinger Bands (20, 2.0) + RSI (14, 30/70) + Stochastic (14,1,3, 20/80) is a real, documented approach, but this specific parameter combination has never been backtested on real data for these instruments. Treat it as a serious hypothesis to test, not a finished strategy.
 2. **`GetSignalConfidence()` — Safe Mode's 65-75% win-probability filter.** A rule-based heuristic (RSI extremity + low ADX), not a hardcoded number, but still not a calibrated probability — needs validation against real win-rate outcomes.
 3. **`IsAllowedInstrument()` — heuristic symbol classification.** Checks forex calc-mode + XAU/XAG/XPT/XPD in the name; verify against your actual broker's symbol names, don't assume it's perfect across every broker.
-4. **`InpMaxSpreadPoints` (default 30)** is tuned for major forex pairs and is almost certainly too tight for metals — raise it manually for XAUUSD/XAGUSD, there's no auto-detection.
+4. **`MaxAllowedSpread_Points` (default 30)** is tuned for major forex pairs and is almost certainly too tight for metals — raise it manually for XAUUSD/XAGUSD, there's no auto-detection.
 5. **Chart timeframe is not enforced.** M1-M5 is recommended for this scalping signal, but the code will run on whatever timeframe you attach it to.
 6. **`GetStopDistancePoints()` — stop distance in price terms.** Uses a basic ATR multiple as a placeholder. The full volatility/news-adaptive parameter system described in Document 2 (widening stops, adjusting lot size, etc. around news/volatility) is not implemented — this file only has a simple "skip new entries near high-impact news" reaction, not the full adaptive design.
 7. **Equity-based lot-size scaling on winning streaks** is not implemented — only the downside protections (tiered stop-loss, daily loss limit) are here. Gating rules for scaling up were flagged as open in `NextSteps.md`.
@@ -66,6 +76,6 @@ Founder shared a screenshot of a third-party commercial EA's settings panel ("Fo
 1. Open in MetaEditor, compile, fix any syntax errors.
 2. On a forex or metals symbol, at M1 or M5, run it in MT5's Strategy Tester on historical data — with a real strategy hypothesis behind it now — to see actual win rate, drawdown, and profitability, not just plumbing.
 3. Compare actual win rate against the break-even bars already documented (Safe Mode: 40%/50%; Aggressive Mode: 66.7%/85.7%) and against the Monte Carlo simulation's assumptions.
-4. Tune `InpMaxSpreadPoints` per symbol, especially for metals.
+4. Tune `MaxAllowedSpread_Points` per symbol, especially for metals.
 5. Consider walk-forward testing (validate on a period the parameters weren't tuned on) to guard against curve-fitting before trusting results.
 6. If results are weak, iterate on this rule-based hypothesis (different band/RSI/Stochastic settings, different instruments) before considering ML-based signal generation — the agreed plan treats ML as a later path, not an immediate fallback.

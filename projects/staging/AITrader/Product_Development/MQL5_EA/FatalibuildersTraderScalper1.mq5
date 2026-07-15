@@ -1,24 +1,27 @@
 //+------------------------------------------------------------------+
-//| FatalibuildersTrader.mq5                                          |
-//| Draft v0.60 (Market tag 1.30) -- implements the risk-management,   |
+//| FatalibuildersTraderScalper1.mq5                                    |
+//| Draft v0.80 (Market tag 1.50) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
 //| signal (Bollinger Bands + RSI + Stochastic mean-reversion)          |
 //| restricted to forex/metals (2026-07-14u), a more aggressive default |
-//| configuration (2026-07-14v), and (2026-07-14w) a pre-trade margin   |
-//| sufficiency check -- small accounts may not have enough free margin |
-//| for even the minimum lot size on some symbols (especially metals),  |
-//| so this checks before sending an order and logs why, instead of     |
-//| letting the broker silently reject it.                              |
+//| configuration (2026-07-14v), (2026-07-14w) a pre-trade margin       |
+//| sufficiency check, (2026-07-14x) plain-English input names/groups   |
+//| plus a manual SIGNALS_ONLY operation mode alongside AUTO_TRADE, and |
+//| (2026-07-14y) the "Scalper 1" name plus a much more aggressive,      |
+//| equity-percentage-based risk/reward specifically for Aggressive      |
+//| Mode -- Safe Mode's fixed-dollar tiered risk is untouched. See the   |
+//| big comment above AggressiveMode_RiskPerTrade_PercentOfEquity below  |
+//| for the honest math behind that change before using Aggressive Mode. |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
 //| any part of this for real trading. Compiles (per founder), still  |
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
-#property copyright "FatalibuildersTrader"
-#property version   "1.30"
+#property copyright "FatalibuildersTrader Scalper 1"
+#property version   "1.50"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -88,7 +91,7 @@ CTrade trade;
 //|    calc-mode flag plus XAU/XAG/XPT/XPD in the symbol name. Some     |
 //|    brokers may name/classify symbols unusually; verify it behaves   |
 //|    correctly on your broker's actual symbol names before relying   |
-//|    on it. InpMaxSpreadPoints (default 30) is tuned for major forex  |
+//|    on it. MaxAllowedSpread_Points (default 30) is tuned for major forex  |
 //|    pairs and is almost certainly too tight for metals -- raise it   |
 //|    manually when trading XAUUSD/XAGUSD, the code does not auto-      |
 //|    detect a sane per-symbol default. The chart timeframe (M1-M5     |
@@ -97,118 +100,214 @@ CTrade trade;
 //|    simply follows the chart.                                       |
 //+------------------------------------------------------------------+
 
-//=== Trading mode / exit mode ========================================
-enum ENUM_TRADING_MODE  { MODE_SAFE, MODE_AGGRESSIVE };
-enum ENUM_EXIT_MODE     { EXIT_OUTRIGHT_CLOSE, EXIT_BREAKEVEN_AND_RUN };
+//=== Trading mode / exit mode / operation mode ========================
+enum ENUM_TRADING_MODE   { MODE_SAFE, MODE_AGGRESSIVE };
+enum ENUM_EXIT_MODE      { EXIT_OUTRIGHT_CLOSE, EXIT_BREAKEVEN_AND_RUN };
+// (2026-07-14x) NEW: lets someone keep full control instead of handing
+// the bot the trade button. AUTO_TRADE = the bot finds a setup and
+// places the trade itself, no action needed from you. SIGNALS_ONLY =
+// the bot never places a trade -- it just tells you (on-screen arrow +
+// popup + optional phone notification) "this looks like a BUY" or
+// "this looks like a SELL," and you decide whether to actually trade
+// it yourself, by hand, in MT5.
+enum ENUM_OPERATION_MODE { AUTO_TRADE, SIGNALS_ONLY };
 
-//=== Inputs -- values below match Master-Context.md decisions =======
-// Default mode changed to MODE_AGGRESSIVE (2026-07-14v) per founder
-// request to make the EA more aggressive out of the box. Still
-// user-configurable in the input panel.
-input ENUM_TRADING_MODE InpTradingMode              = MODE_AGGRESSIVE;
-input ENUM_EXIT_MODE    InpExitMode                 = EXIT_OUTRIGHT_CLOSE;
+//+------------------------------------------------------------------+
+//| PLAIN-ENGLISH GUIDE TO THE SETTINGS BELOW (2026-07-14x)            |
+//| You do not need to understand trading jargon to use this. Every    |
+//| setting below is named to say what it does. If you're not sure     |
+//| what something does, leave it on the default value it ships with   |
+//| -- the defaults are reasonable starting points, not requirements.  |
+//| The settings are grouped into sections in MT5's input panel so you |
+//| can find what you're looking for.                                  |
+//+------------------------------------------------------------------+
 
-input double InpEquityTierBreakpoint                = 50.0;   // 2026-07-14f
-input double InpStopLossDollarsLowTier              = 1.0;    // 2026-07-14f
-input double InpStopLossDollarsHighTier             = 3.0;    // 2026-07-14f
+input group "=== 1. HOW SHOULD THE BOT OPERATE? ==="
+// This is the most important choice. Read the two options above under
+// ENUM_OPERATION_MODE before picking.
+input ENUM_OPERATION_MODE AutoTrade_Or_SignalsOnly = AUTO_TRADE;
+// SAFE = the bot is picky, takes fewer trades, aims to be more careful.
+// AGGRESSIVE = the bot takes more trades, accepts more risk per trade.
+input ENUM_TRADING_MODE TradingStyle_SafeOrAggressive = MODE_AGGRESSIVE;
+// What happens once a trade is in profit: OUTRIGHT_CLOSE banks the
+// profit immediately and closes the trade. BREAKEVEN_AND_RUN moves the
+// stop-loss to your entry price (so the trade can no longer lose money)
+// and lets it keep running in case there's more profit to be had.
+input ENUM_EXIT_MODE    HowProfitsAreLocked = EXIT_OUTRIGHT_CLOSE;
 
-input double InpSafeModeTargetDollarsLowTier        = 1.50;   // 2026-07-14m
-input double InpSafeModeTargetDollarsHighTier       = 3.00;   // 2026-07-14m
-input double InpSafeModeMinWinProbabilityPct        = 65.0;   // 2026-07-14m (65-75% range; floor used here)
-input double InpAggressiveModeTargetDollars         = 0.50;   // 2026-07-14h
-// (2026-07-14v) Aggressive Mode previously had NO confidence filter at
-// all -- took every raw signal regardless of estimated quality. Founder
-// asked for it to take any opportunity the confidence heuristic rates
-// above 50% (barely better than a coin flip), not literally everything.
-input double InpAggressiveModeMinWinProbabilityPct  = 50.0;   // 2026-07-14v
+input group "=== 2. HOW MUCH CAN BE LOST ON ONE TRADE? ==="
+// Accounts smaller than this dollar amount use the "small account" risk
+// limit below; accounts at or above it use the "larger account" limit.
+// (SAFE mode only -- Aggressive Mode uses its own percentage-based
+// setting further down, not this dollar tier.)
+input double AccountSizeThreshold_Dollars           = 50.0;   // 2026-07-14f
+// SAFE mode: the most this bot will risk on a single trade if your
+// account balance is BELOW the threshold above.
+input double MaxLossPerTrade_SmallAccount_Dollars   = 1.0;    // 2026-07-14f
+// SAFE mode: the most this bot will risk on a single trade if your
+// account balance is AT OR ABOVE the threshold above.
+input double MaxLossPerTrade_LargerAccount_Dollars  = 3.0;    // 2026-07-14f
+//
+// (2026-07-14y) VERY AGGRESSIVE SETTING -- READ THIS BEFORE CHANGING IT.
+// AGGRESSIVE mode does NOT use the small/large dollar tiers above at
+// all. Instead it risks a PERCENTAGE OF YOUR CURRENT ACCOUNT BALANCE on
+// every single trade. This was requested explicitly as "very very
+// aggressive," accepting real risk of losing most of the account in
+// exchange for the chance to grow it much faster.
+// HONEST MATH (computed via Monte Carlo simulation, not a guarantee --
+// see Product_Development/simulations/aggressive_mode_ruin_probability_
+// simulation.py and decisions-learnings/2026-07-14y): "ruin" here means
+// $100 falling to $10 or below.
+//   - At the HOPED-FOR 80% win rate, ruin probability is close to 0% at
+//     this risk level (and every other risk level tested) -- a genuine
+//     80% edge with a 1:1 payout is very safe no matter how hard it's
+//     pushed. The danger below is NOT about this setting in isolation.
+//   - If the strategy's REAL win rate turns out to be 50-55% (plausible
+//     for a strategy that has never been backtested, i.e. the 80% is a
+//     hope, not a measured result), simulated ruin probability at this
+//     15%/15% setting ranges from roughly 2% (55% win rate, 50 trades)
+//     up to roughly 32% (50% win rate, 100 trades) -- a wide and
+//     genuinely risky band, not a precise number. It gets worse the more
+//     trades are taken at a mediocre win rate, and much worse if the
+//     real win rate is closer to a coin flip than to 80%.
+// The risk is the GAP between "hoped for" and "actual, unproven" win
+// rate -- not this number by itself. Lower this to reduce that risk; 0
+// disables Aggressive Mode's percentage risk (falls back to the Safe
+// Mode dollar tiers above).
+input double AggressiveMode_RiskPerTrade_PercentOfEquity = 15.0; // 2026-07-14y
 
-input double InpDailyLossLimitPct                   = 3.0;    // 2026-07-14i
-input double InpDailyProfitTargetSafePct            = 5.0;    // 2026-07-14l
-input double InpDailyProfitTargetAggressivePct      = 20.0;   // 2026-07-14k
+input group "=== 3. HOW MUCH PROFIT DOES EACH TRADE AIM FOR? ==="
+input double SafeMode_ProfitTarget_SmallAccount_Dollars   = 1.50;  // 2026-07-14m
+input double SafeMode_ProfitTarget_LargerAccount_Dollars  = 3.00;  // 2026-07-14m
+// SAFE mode only takes a trade if the bot's own confidence score for
+// that setup is at or above this percentage (0-100). Higher = pickier.
+input double SafeMode_MinimumConfidence_Percent     = 65.0;   // 2026-07-14m (65-75% range; floor used here)
+// (2026-07-14y) AGGRESSIVE mode's profit target, as a percentage of
+// current account balance, matching AggressiveMode_RiskPerTrade above
+// (1:1 risk:reward -- this exact 1:1 pairing is what the honest-math
+// note above was simulated with). Replaces the old fixed $0.50 target,
+// which was too small to matter once risk is a large percentage of
+// equity instead of a few dollars.
+input double AggressiveMode_RewardPerTrade_PercentOfEquity = 15.0; // 2026-07-14y
+// AGGRESSIVE mode's confidence bar -- lower than Safe Mode's, on
+// purpose, so it takes more trades. 50 means "just barely better than a
+// coin flip." (2026-07-14v: previously Aggressive Mode had no
+// confidence check at all and took every signal regardless of quality.)
+input double AggressiveMode_MinimumConfidence_Percent = 50.0; // 2026-07-14v
 
-input int    InpMaxConcurrentTrades                 = 2;      // 2026-07-14h
-input double InpStartingLot                         = 0.01;   // 2026-07-14e
-input int    InpAtrPeriod                           = 14;     // placeholder stop-distance basis
-input double InpAtrStopMultiple                     = 1.0;    // placeholder
-input int    InpNewsLookaheadMinutes                = 30;     // placeholder news window
-input int    InpMagicNumber                         = 20260714;
+input group "=== 4. DAILY LIMITS (WHEN THE BOT STOPS FOR THE DAY) ==="
+// SAFE mode: if the account loses this percentage in a single day, the
+// bot stops trading until the next day. This protects you from one bad
+// day turning into a very bad day.
+input double StopForDay_IfLossReaches_Percent                  = 3.0;    // 2026-07-14i
+// If the account gains this percentage in a day while in Safe Mode, the
+// bot stops trading for the rest of the day and locks in the gain.
+input double StopForDay_SafeMode_IfProfitReaches_Percent       = 5.0;    // 2026-07-14l
+// Same idea, but the target used when in Aggressive Mode.
+input double StopForDay_AggressiveMode_IfProfitReaches_Percent = 20.0;   // 2026-07-14k
+// (2026-07-14y) AGGRESSIVE mode's OWN daily loss limit -- deliberately
+// much higher than the 3% Safe Mode limit above. A single Aggressive
+// Mode trade already risks 15% of the account by design (see the note
+// above); if this stayed capped at 3%, the daily-loss-budget logic
+// would silently shrink every Aggressive trade down to near nothing
+// after the first loss, quietly undoing the "very aggressive" setting.
+// This is the real lever controlling how many losing Aggressive trades
+// can happen in one day before the bot stops -- at 15% risk/trade and a
+// 50% ceiling, that's roughly 3 full losses before the day halts.
+input double StopForDay_AggressiveMode_IfLossReaches_Percent   = 50.0;   // 2026-07-14y
 
-//=== Signal v2 -- Bollinger Bands + RSI + Stochastic scalping =========
-// (2026-07-14u) Replaces the v1 multi-timeframe trend+pullback swing
-// entry. Founder asked for a genuine short-timeframe (M1-M5) scalper
-// restricted to forex and metals -- this is a widely-documented,
-// widely-taught 1-minute scalping methodology: mean-reversion off
-// Bollinger Band extremes, confirmed by RSI oversold/overbought, with a
-// Stochastic turn-confirmation trigger (not just a static extreme
-// reading) to avoid catching a falling knife mid-move. See
-// decisions-learnings/2026-07-14u_scalping_signal_v2.md for sourcing.
-// Still a HYPOTHESIS -- never backtested on real data.
-input int    InpBollingerPeriod      = 20;    // Bollinger Bands period
-input double InpBollingerDeviation   = 2.0;   // Bollinger Bands std-dev multiple
-input int    InpRsiPeriod            = 14;    // RSI period
-input double InpRsiOversold          = 30.0;  // RSI oversold threshold (buy side)
-input double InpRsiOverbought        = 70.0;  // RSI overbought threshold (sell side)
-input int    InpStochKPeriod         = 14;    // Stochastic %K period (research: 14,1,3)
-input int    InpStochDPeriod         = 1;
-input int    InpStochSlowing         = 3;
-input double InpStochOversold        = 20.0;  // Stochastic oversold threshold
-input double InpStochOverbought      = 80.0;  // Stochastic overbought threshold
+input group "=== 5. BASIC TRADE SETTINGS ==="
+// The bot will never have more than this many trades open at the same
+// time, regardless of how many good setups it sees.
+input int    MaxTradesOpenAtOnce           = 2;      // 2026-07-14h
+// The smallest trade size the bot will use (in "lots," MT5's unit for
+// position size). 0.01 is the smallest size most brokers allow.
+input double StartingTradeSize_Lots        = 0.01;   // 2026-07-14e
+// Advanced: how many recent price bars the bot uses to judge current
+// market volatility. Leave on default unless you know what this means.
+input int    VolatilityMeasure_Period               = 14;     // advanced -- stop-distance basis
+input double StopLossDistance_VolatilityMultiplier  = 1.0;    // advanced
+// The bot avoids opening new trades in the minutes just before a
+// major scheduled news release for the currency being traded.
+input int    AvoidTradingBeforeNews_Minutes = 30;
+// A unique ID number MT5 uses to tell this bot's trades apart from any
+// other bot or your own manual trades on the same account. You don't
+// need to change this unless you're running more than one copy.
+input int    BotID_Number                  = 20260714;
 
-//=== Entry-condition filters (v0.20, adjusted v2 -- see notes) ========
-// Reference concept: "Volume Filter" -- avoid illiquid periods with poor
-// execution / wide spreads (research: confirms activity before entry).
-input bool   InpUseVolumeFilter      = true;
-input int    InpVolumeAvgPeriod      = 20;
+input group "=== 6. STRATEGY SETTINGS (ADVANCED -- SAFE TO LEAVE ALONE) ==="
+// (2026-07-14u) The bot looks for the price bouncing off a statistical
+// extreme (a "Bollinger Band"), confirmed by two other indicators
+// (RSI and Stochastic) agreeing the bounce is real. This is a
+// widely-used, widely-taught short-term trading approach -- see
+// decisions-learnings/2026-07-14u_scalping_signal_v2.md for the
+// research behind it. Still unproven for THIS exact setup until
+// backtested -- see the OPEN ITEMS notes at the top of this file.
+input int    PriceRangeBands_Period       = 20;    // how many bars the price-extreme measurement looks back over
+input double PriceRangeBands_Width        = 2.0;   // how far price has to stretch to count as "extreme"
+input int    MomentumIndicator_Period     = 14;    // RSI lookback period
+input double MomentumIndicator_BuyLevel   = 30.0;  // RSI level that signals "oversold" (potential buy)
+input double MomentumIndicator_SellLevel  = 70.0;  // RSI level that signals "overbought" (potential sell)
+input int    TurnConfirmation_Period      = 14;    // Stochastic indicator settings (research: 14,1,3)
+input int    TurnConfirmation_Signal      = 1;
+input int    TurnConfirmation_Smoothing   = 3;
+input double TurnConfirmation_BuyLevel    = 20.0;  // Stochastic level confirming a buy turn
+input double TurnConfirmation_SellLevel   = 80.0;  // Stochastic level confirming a sell turn
 
-// Reference concept: "Volatility Filter" -- reject dead markets (poor
-// R:R) and abnormal volatility spikes (often news/gap -- dangerous for
-// mean reversion, since a spike can blow straight through the bands).
-input bool   InpUseVolatilityFilter  = true;
-input double InpVolatilityRatioMin   = 0.5;
-input double InpVolatilityRatioMax   = 2.5;
+input group "=== 7. WHEN SHOULD THE BOT AVOID TRADING? ==="
+// Skips trading when there isn't enough recent buying/selling activity
+// -- quiet markets tend to have worse trade execution.
+input bool   AvoidQuietMarkets_Enabled         = true;
+input int    AvoidQuietMarkets_LookbackPeriod  = 20;
 
-// Reference concept: "Range Filter" -- FLIPPED for v2 (2026-07-14u).
-// The v1 signal was trend-following, so it wanted HIGH ADX (strong
-// trend). This v2 signal is MEAN-REVERSION, which wants the OPPOSITE:
-// strong trends are dangerous here because price can "walk the band"
-// straight through a Bollinger extreme without reverting. This filter
-// now REJECTS entries when ADX is too high (too trendy), and favors
-// ranging/choppy conditions instead.
-// (2026-07-14v) Ceiling raised from 25 to 30 per founder's request for
-// more trade frequency/opportunities -- lets moderately-trending
-// conditions through, not just calm ranges. This is a direct
-// frequency-vs-risk tradeoff: more setups qualify, but more of them
-// will be entered while a real trend is starting to build.
-input bool   InpUseRangeFilter            = true;
-input int    InpAdxPeriod                 = 14;
-input double InpAdxMaxForMeanReversion    = 30.0;  // reject entries when ADX exceeds this
+// Skips trading when the market is unusually calm (poor profit
+// potential) OR unusually wild (often a news spike, risky to trade).
+input bool   AvoidBadVolatility_Enabled  = true;
+input double AvoidBadVolatility_MinLevel = 0.5;
+input double AvoidBadVolatility_MaxLevel = 2.5;
 
-// Reference concept: "Information Feed Filter" -- interpreted here as a
-// data-sanity check: reject trading on stale quotes or abnormal spread.
-// NOTE: the 30-point default is reasonable for major forex pairs but is
-// almost certainly too tight for metals (XAUUSD spreads commonly run
-// well above 30 points depending on broker's point convention) -- raise
-// this input when trading gold/silver, don't rely on the default.
-input bool   InpUseDataFeedFilter    = true;
-input double InpMaxSpreadPoints      = 30.0;
-input int    InpMaxQuoteStaleSeconds = 60;
+// This bot's strategy works best when price is bouncing around in a
+// range, not when it's strongly trending in one direction (a strong
+// trend can blow straight through the "extreme" level the bot is
+// watching for, without bouncing back). This setting skips trading when
+// the market is trending too strongly.
+// (2026-07-14v) Raised from 25 to 30 to let more setups qualify --
+// trades more often, but more of those trades happen while a real
+// trend is starting to build, which is a real tradeoff, not free.
+input bool   AvoidStrongTrends_Enabled          = true;
+input int    TrendStrength_Period               = 14;
+input double AvoidStrongTrends_MaxTrendStrength = 30.0;  // higher = allows stronger trends through
 
-// Reference concept: "Weekend Protection" / Friday-close / Monday-start
-// -- avoids holding new risk into a weekend gap. Not present in prior
-// drafts; added here as a straightforward, well-justified risk control.
-input bool   InpUseWeekendProtection = true;
-input int    InpFridayCloseAllHour   = 20;  // server time
-input int    InpFridayEntryBlockHour = 16;  // server time
-input int    InpMondayStartHour      = 2;   // server time
+// Refuses to trade if the buy/sell price gap (the "spread") is
+// unusually wide, or if the price feed looks stale/frozen -- both are
+// signs of a bad moment to trade, not a real opportunity.
+// NOTE: metals (like gold) commonly have a much wider normal spread
+// than forex pairs. If you're trading gold/silver and the bot seems to
+// never trade, this setting is the first thing to check and raise.
+input bool   AvoidBadPriceData_Enabled    = true;
+input double MaxAllowedSpread_Points      = 30.0;
+input int    MaxAllowedPriceDelay_Seconds = 60;
 
-// Diagnostics (2026-07-14s) -- prints the specific reason no trade was
-// taken, once per new bar, to the Experts/Journal log. Turn off once the
-// EA is confirmed working to reduce log noise.
-input bool   InpVerboseLogging       = true;
+input group "=== 8. WEEKEND SAFETY ==="
+// Markets close for the weekend and can "gap" (jump) to a very
+// different price when they reopen Monday. This closes open trades
+// before that happens and pauses new trades around the close/reopen.
+input bool   WeekendProtection_Enabled           = true;
+input int    CloseAllTradesBeforeWeekend_Hour    = 20;  // server time, Friday
+input int    StopNewTradesBeforeWeekend_Hour     = 16;  // server time, Friday
+input int    WaitBeforeTradingMonday_UntilHour   = 2;   // server time, Monday
+
+input group "=== 9. LOGGING ==="
+// When on, the bot writes a note in MT5's "Experts" log tab explaining
+// why it did or didn't trade on each new price bar -- useful for
+// understanding what it's doing. Turn off once you're confident it's
+// working correctly, to keep the log less cluttered.
+input bool   ShowDetailedLog_Enabled = true;
 
 //=== Global state ======================================================
 double   g_dayStartEquity = 0;
 datetime g_lastLogBarTime = 0;
+datetime g_lastSignalAlertBarTime = 0;   // 2026-07-14x -- throttles SIGNALS_ONLY alerts to once per new bar
 MqlDateTime g_dayKey;
 int      g_handleBands, g_handleStoch, g_handleRsi, g_handleAtr, g_handleAdx;
 bool     g_dailyHalted = false;
@@ -241,25 +340,25 @@ int OnInit()
 {
    if(!IsAllowedInstrument())
    {
-      PrintFormat("FatalibuildersTrader: %s is not a recognized forex or metals instrument. This EA is restricted to forex and metals only (2026-07-14u) -- refusing to initialize.", _Symbol);
+      PrintFormat("FatalibuildersTrader Scalper 1: %s is not a recognized forex or metals instrument. This EA is restricted to forex and metals only (2026-07-14u) -- refusing to initialize.", _Symbol);
       return(INIT_FAILED);
    }
 
-   g_handleBands   = iBands(_Symbol, PERIOD_CURRENT, InpBollingerPeriod, 0, InpBollingerDeviation, PRICE_CLOSE);
-   g_handleStoch   = iStochastic(_Symbol, PERIOD_CURRENT, InpStochKPeriod, InpStochDPeriod, InpStochSlowing, MODE_SMA, STO_LOWHIGH);
-   g_handleRsi     = iRSI(_Symbol, PERIOD_CURRENT, InpRsiPeriod, PRICE_CLOSE);
-   g_handleAtr     = iATR(_Symbol, PERIOD_CURRENT, InpAtrPeriod);
-   g_handleAdx     = iADX(_Symbol, PERIOD_CURRENT, InpAdxPeriod);
+   g_handleBands   = iBands(_Symbol, PERIOD_CURRENT, PriceRangeBands_Period, 0, PriceRangeBands_Width, PRICE_CLOSE);
+   g_handleStoch   = iStochastic(_Symbol, PERIOD_CURRENT, TurnConfirmation_Period, TurnConfirmation_Signal, TurnConfirmation_Smoothing, MODE_SMA, STO_LOWHIGH);
+   g_handleRsi     = iRSI(_Symbol, PERIOD_CURRENT, MomentumIndicator_Period, PRICE_CLOSE);
+   g_handleAtr     = iATR(_Symbol, PERIOD_CURRENT, VolatilityMeasure_Period);
+   g_handleAdx     = iADX(_Symbol, PERIOD_CURRENT, TrendStrength_Period);
 
    if(g_handleBands == INVALID_HANDLE || g_handleStoch == INVALID_HANDLE ||
       g_handleRsi == INVALID_HANDLE || g_handleAtr == INVALID_HANDLE ||
       g_handleAdx == INVALID_HANDLE)
    {
-      Print("FatalibuildersTrader: failed to create indicator handles");
+      Print("FatalibuildersTrader Scalper 1: failed to create indicator handles");
       return(INIT_FAILED);
    }
 
-   trade.SetExpertMagicNumber(InpMagicNumber);
+   trade.SetExpertMagicNumber(BotID_Number);
    ResetDailyTracking();
    return(INIT_SUCCEEDED);
 }
@@ -290,6 +389,17 @@ bool IsNewDay()
    return (now.day != g_dayKey.day || now.mon != g_dayKey.mon || now.year != g_dayKey.year);
 }
 
+// (2026-07-14y) Aggressive Mode has its own, much higher daily loss
+// ceiling than Safe Mode -- see the note above
+// StopForDay_AggressiveMode_IfLossReaches_Percent for why the two must
+// not share one limit.
+double GetDailyLossLimitPercent()
+{
+   return (TradingStyle_SafeOrAggressive == MODE_SAFE)
+           ? StopForDay_IfLossReaches_Percent                    // 3%, 2026-07-14i
+           : StopForDay_AggressiveMode_IfLossReaches_Percent;    // 50%, 2026-07-14y
+}
+
 // Returns true if trading should be halted for the rest of the day.
 bool CheckDailyLimits()
 {
@@ -299,15 +409,15 @@ bool CheckDailyLimits()
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double changePct = (equity - g_dayStartEquity) / g_dayStartEquity * 100.0;
 
-   double lossLimitPct = InpDailyLossLimitPct;                      // 3%, 2026-07-14i
-   double profitTargetPct = (InpTradingMode == MODE_SAFE)
-                              ? InpDailyProfitTargetSafePct          // 5%, 2026-07-14l
-                              : InpDailyProfitTargetAggressivePct;   // 20%, 2026-07-14k
+   double lossLimitPct = GetDailyLossLimitPercent();
+   double profitTargetPct = (TradingStyle_SafeOrAggressive == MODE_SAFE)
+                              ? StopForDay_SafeMode_IfProfitReaches_Percent          // 5%, 2026-07-14l
+                              : StopForDay_AggressiveMode_IfProfitReaches_Percent;   // 20%, 2026-07-14k
 
    if(changePct <= -lossLimitPct || changePct >= profitTargetPct)
    {
       if(!g_dailyHalted)
-         PrintFormat("FatalibuildersTrader: daily limit reached (%.2f%%), halting until next day", changePct);
+         PrintFormat("FatalibuildersTrader Scalper 1: daily limit reached (%.2f%%), halting until next day", changePct);
       g_dailyHalted = true;
    }
    return g_dailyHalted;
@@ -316,21 +426,31 @@ bool CheckDailyLimits()
 // Remaining daily loss budget in dollars, given today's equity so far.
 // Resolves the tier-boundary interaction flagged 2026-07-14i: a single
 // trade's risk must never exceed what's left of the day's loss budget.
+// (2026-07-14y) Uses the mode-specific daily loss limit, not always
+// Safe Mode's 3% -- see GetDailyLossLimitPercent().
 double RemainingDailyLossBudget()
 {
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double lossSoFar = MathMax(0.0, g_dayStartEquity - equity);
-   double totalBudget = g_dayStartEquity * (InpDailyLossLimitPct / 100.0);
+   double totalBudget = g_dayStartEquity * (GetDailyLossLimitPercent() / 100.0);
    return MathMax(0.0, totalBudget - lossSoFar);
 }
 
 //+------------------------------------------------------------------+
-//| Risk parameters by equity tier + mode (2026-07-14f, 2026-07-14m)  |
+//| Risk parameters by equity tier + mode (2026-07-14f, 2026-07-14m). |
+//| (2026-07-14y) Aggressive Mode now risks/targets a PERCENTAGE OF   |
+//| CURRENT EQUITY per trade instead of the small fixed-dollar amounts |
+//| below -- Safe Mode's fixed-dollar tiered logic is unchanged.       |
 //+------------------------------------------------------------------+
 double GetStopLossDollars()
 {
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   double tierRisk = (equity < InpEquityTierBreakpoint) ? InpStopLossDollarsLowTier : InpStopLossDollarsHighTier;
+   double tierRisk;
+
+   if(TradingStyle_SafeOrAggressive == MODE_AGGRESSIVE && AggressiveMode_RiskPerTrade_PercentOfEquity > 0)
+      tierRisk = equity * (AggressiveMode_RiskPerTrade_PercentOfEquity / 100.0);   // 2026-07-14y, default 15%
+   else
+      tierRisk = (equity < AccountSizeThreshold_Dollars) ? MaxLossPerTrade_SmallAccount_Dollars : MaxLossPerTrade_LargerAccount_Dollars;
 
    // Tier-boundary fix: never risk more on one trade than remains of the daily loss budget.
    double remaining = RemainingDailyLossBudget();
@@ -339,13 +459,14 @@ double GetStopLossDollars()
 
 double GetProfitTargetDollars()
 {
-   if(InpTradingMode == MODE_AGGRESSIVE)
-      return InpAggressiveModeTargetDollars;                        // $0.50, both tiers, 2026-07-14h
-
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   return (equity < InpEquityTierBreakpoint)
-           ? InpSafeModeTargetDollarsLowTier                        // $1.50, 2026-07-14m
-           : InpSafeModeTargetDollarsHighTier;                      // $3.00, 2026-07-14m
+
+   if(TradingStyle_SafeOrAggressive == MODE_AGGRESSIVE)
+      return equity * (AggressiveMode_RewardPerTrade_PercentOfEquity / 100.0); // 2026-07-14y, default 15% (1:1 with risk)
+
+   return (equity < AccountSizeThreshold_Dollars)
+           ? SafeMode_ProfitTarget_SmallAccount_Dollars                        // $1.50, 2026-07-14m
+           : SafeMode_ProfitTarget_LargerAccount_Dollars;                      // $3.00, 2026-07-14m
 }
 
 //+------------------------------------------------------------------+
@@ -360,7 +481,7 @@ double CalculateLotSize(double stopDistancePoints, double riskDollars)
    double point     = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
    if(tickSize <= 0 || stopDistancePoints <= 0)
-      return InpStartingLot;
+      return StartingTradeSize_Lots;
 
    double moneyPerPointPerLot = (tickValue / tickSize) * point;
    double rawLots = riskDollars / (stopDistancePoints * moneyPerPointPerLot);
@@ -387,7 +508,7 @@ double GetStopDistancePoints()
       return 100 * SymbolInfoDouble(_Symbol, SYMBOL_POINT); // fallback
 
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   return (atr[0] * InpAtrStopMultiple) / point;
+   return (atr[0] * StopLossDistance_VolatilityMultiplier) / point;
 }
 
 //+------------------------------------------------------------------+
@@ -401,7 +522,7 @@ bool IsHighImpactNewsWindow()
 {
    MqlCalendarValue values[];
    datetime from = TimeCurrent();
-   datetime to   = TimeCurrent() + InpNewsLookaheadMinutes * 60;
+   datetime to   = TimeCurrent() + AvoidTradingBeforeNews_Minutes * 60;
 
    string baseCurrency  = SymbolInfoString(_Symbol, SYMBOL_CURRENCY_BASE);
    string quoteCurrency = SymbolInfoString(_Symbol, SYMBOL_CURRENCY_PROFIT);
@@ -443,17 +564,17 @@ bool IsHighImpactNewsWindow()
 // (index 1) against the average of the completed bars before it.
 bool PassesVolumeFilter()
 {
-   if(!InpUseVolumeFilter) return true;
+   if(!AvoidQuietMarkets_Enabled) return true;
 
    long vol[];
    ArraySetAsSeries(vol, true);
-   if(CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, InpVolumeAvgPeriod + 2, vol) <= 0)
+   if(CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, AvoidQuietMarkets_LookbackPeriod + 2, vol) <= 0)
       return true; // fail open -- don't block trading on a data hiccup
 
    long sum = 0;
-   for(int i = 2; i <= InpVolumeAvgPeriod + 1; i++)
+   for(int i = 2; i <= AvoidQuietMarkets_LookbackPeriod + 1; i++)
       sum += vol[i];
-   double avgVol = (double)sum / InpVolumeAvgPeriod;
+   double avgVol = (double)sum / AvoidQuietMarkets_LookbackPeriod;
 
    return (double)vol[1] >= avgVol;
 }
@@ -464,7 +585,7 @@ bool PassesVolumeFilter()
 // trend the placeholder signal is designed for).
 bool PassesVolatilityFilter()
 {
-   if(!InpUseVolatilityFilter) return true;
+   if(!AvoidBadVolatility_Enabled) return true;
 
    double atr[];
    ArraySetAsSeries(atr, true);
@@ -478,7 +599,7 @@ bool PassesVolatilityFilter()
    if(avg <= 0) return true;
 
    double ratio = atr[0] / avg;
-   return (ratio >= InpVolatilityRatioMin && ratio <= InpVolatilityRatioMax);
+   return (ratio >= AvoidBadVolatility_MinLevel && ratio <= AvoidBadVolatility_MaxLevel);
 }
 
 // "Range Filter" -- FLIPPED for v2 (2026-07-14u). The v1 signal was
@@ -488,14 +609,14 @@ bool PassesVolatilityFilter()
 // without reverting), so this now REJECTS entries when ADX is too high.
 bool PassesRangeFilter()
 {
-   if(!InpUseRangeFilter) return true;
+   if(!AvoidStrongTrends_Enabled) return true;
 
    double adx[];
    ArraySetAsSeries(adx, true);
    if(CopyBuffer(g_handleAdx, MAIN_LINE, 0, 1, adx) <= 0)
       return true;
 
-   return adx[0] <= InpAdxMaxForMeanReversion;
+   return adx[0] <= AvoidStrongTrends_MaxTrendStrength;
 }
 
 // "Information Feed Filter": interpreted as a data-sanity check --
@@ -503,15 +624,15 @@ bool PassesRangeFilter()
 // signs of a bad/thin data feed moment rather than a real setup.
 bool PassesDataFeedSanityCheck()
 {
-   if(!InpUseDataFeedFilter) return true;
+   if(!AvoidBadPriceData_Enabled) return true;
 
    double spread = (SymbolInfoDouble(_Symbol, SYMBOL_ASK) - SymbolInfoDouble(_Symbol, SYMBOL_BID))
                      / SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   if(spread > InpMaxSpreadPoints)
+   if(spread > MaxAllowedSpread_Points)
       return false;
 
    datetime lastTick = (datetime)SymbolInfoInteger(_Symbol, SYMBOL_TIME);
-   if(TimeCurrent() - lastTick > InpMaxQuoteStaleSeconds)
+   if(TimeCurrent() - lastTick > MaxAllowedPriceDelay_Seconds)
       return false;
 
    return true;
@@ -539,30 +660,30 @@ bool HasSufficientMargin(ENUM_ORDER_TYPE orderType, double lots, double price)
 // block new entries approaching Friday close / just after Monday open.
 bool IsWeekendEntryBlocked()
 {
-   if(!InpUseWeekendProtection) return false;
+   if(!WeekendProtection_Enabled) return false;
 
    MqlDateTime t;
    TimeToStruct(TimeCurrent(), t);
 
-   if(t.day_of_week == DOW_FRIDAY && t.hour >= InpFridayEntryBlockHour) return true;
-   if(t.day_of_week == DOW_MONDAY && t.hour < InpMondayStartHour)       return true;
+   if(t.day_of_week == DOW_FRIDAY && t.hour >= StopNewTradesBeforeWeekend_Hour) return true;
+   if(t.day_of_week == DOW_MONDAY && t.hour < WaitBeforeTradingMonday_UntilHour)       return true;
    return false;
 }
 
-// Force-close all FatalibuildersTrader positions ahead of the weekend close.
+// Force-close all FatalibuildersTrader Scalper 1 positions ahead of the weekend close.
 void ApplyWeekendCloseAll()
 {
-   if(!InpUseWeekendProtection) return;
+   if(!WeekendProtection_Enabled) return;
 
    MqlDateTime t;
    TimeToStruct(TimeCurrent(), t);
-   if(t.day_of_week != DOW_FRIDAY || t.hour < InpFridayCloseAllHour)
+   if(t.day_of_week != DOW_FRIDAY || t.hour < CloseAllTradesBeforeWeekend_Hour)
       return;
 
    for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
       ulong ticket = PositionGetTicket(i);
-      if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == InpMagicNumber)
+      if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == BotID_Number)
          trade.PositionClose(ticket);
    }
 }
@@ -618,13 +739,13 @@ ENUM_SIGNAL GetEntrySignal()
    bool touchedUpper = (close[1] >= upper[1]);
 
    // 2. RSI confirms oversold/overbought at that same bar
-   bool rsiOversold   = (rsi[1] <= InpRsiOversold);
-   bool rsiOverbought = (rsi[1] >= InpRsiOverbought);
+   bool rsiOversold   = (rsi[1] <= MomentumIndicator_BuyLevel);
+   bool rsiOverbought = (rsi[1] >= MomentumIndicator_SellLevel);
 
    // 3. Stochastic turn-confirmation: was in extreme territory, now
    //    turning back -- the actual entry trigger, not a static state
-   bool stochTurningUp   = (stochMain[1] <= InpStochOversold   && stochMain[0] > stochMain[1]);
-   bool stochTurningDown = (stochMain[1] >= InpStochOverbought && stochMain[0] < stochMain[1]);
+   bool stochTurningUp   = (stochMain[1] <= TurnConfirmation_BuyLevel   && stochMain[0] > stochMain[1]);
+   bool stochTurningDown = (stochMain[1] >= TurnConfirmation_SellLevel && stochMain[0] < stochMain[1]);
 
    if(touchedLower && rsiOversold   && stochTurningUp)   return SIGNAL_BUY;
    if(touchedUpper && rsiOverbought && stochTurningDown) return SIGNAL_SELL;
@@ -652,7 +773,7 @@ double GetSignalConfidence(ENUM_SIGNAL signal)
    double rsiScore = 50.0;
    if(CopyBuffer(g_handleRsi, 0, 0, 1, rsi) > 0)
    {
-      double extremity = (signal == SIGNAL_BUY) ? (InpRsiOversold - rsi[0]) : (rsi[0] - InpRsiOverbought);
+      double extremity = (signal == SIGNAL_BUY) ? (MomentumIndicator_BuyLevel - rsi[0]) : (rsi[0] - MomentumIndicator_SellLevel);
       rsiScore = MathMax(0.0, MathMin(100.0, 50.0 + extremity * 2.0));
    }
 
@@ -674,7 +795,7 @@ int CountOpenPositions()
    for(int i = 0; i < PositionsTotal(); i++)
    {
       ulong ticket = PositionGetTicket(i);
-      if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == InpMagicNumber)
+      if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == BotID_Number)
          count++;
    }
    return count;
@@ -685,13 +806,13 @@ int CountOpenPositions()
 // position run without a hard TP (2026-07-14, dual-mode exit decision).
 void ManageOpenPositions()
 {
-   if(InpExitMode != EXIT_BREAKEVEN_AND_RUN)
+   if(HowProfitsAreLocked != EXIT_BREAKEVEN_AND_RUN)
       return;
 
    for(int i = 0; i < PositionsTotal(); i++)
    {
       ulong ticket = PositionGetTicket(i);
-      if(!PositionSelectByTicket(ticket) || PositionGetInteger(POSITION_MAGIC) != InpMagicNumber)
+      if(!PositionSelectByTicket(ticket) || PositionGetInteger(POSITION_MAGIC) != BotID_Number)
          continue;
 
       double profit = PositionGetDouble(POSITION_PROFIT);
@@ -703,7 +824,7 @@ void ManageOpenPositions()
       if(profit >= target && !alreadyBreakeven)
       {
          trade.PositionModify(ticket, openPrice, PositionGetDouble(POSITION_TP));
-         PrintFormat("FatalibuildersTrader: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
+         PrintFormat("FatalibuildersTrader Scalper 1: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
       }
    }
 }
@@ -714,13 +835,40 @@ void ManageOpenPositions()
 //+------------------------------------------------------------------+
 void LogBlockReason(string reason)
 {
-   if(!InpVerboseLogging) return;
+   if(!ShowDetailedLog_Enabled) return;
 
    datetime barTime = iTime(_Symbol, PERIOD_CURRENT, 0);
    if(barTime == g_lastLogBarTime) return; // already logged this bar
 
    g_lastLogBarTime = barTime;
-   PrintFormat("FatalibuildersTrader [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
+   PrintFormat("FatalibuildersTrader Scalper 1 [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
+}
+
+//+------------------------------------------------------------------+
+//| Manual mode (2026-07-14x) -- SIGNALS_ONLY never calls trade.Buy()/ |
+//| trade.Sell(). This is the only place a suggestion reaches the      |
+//| user: an on-chart popup (Alert), an on-chart text note (Comment),   |
+//| and a phone push notification (SendNotification, if the user has   |
+//| set up a MetaQuotes ID under MT5 Options -> Notifications -- if     |
+//| not configured, SendNotification simply does nothing, it does not   |
+//| error). Throttled to once per new bar so it doesn't repeat every    |
+//| tick while conditions remain true.                                  |
+//+------------------------------------------------------------------+
+void SendSignalAlert(ENUM_SIGNAL signal, double suggestedLots, double suggestedSl, double suggestedTp)
+{
+   datetime barTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+   if(barTime == g_lastSignalAlertBarTime) return;
+   g_lastSignalAlertBarTime = barTime;
+
+   string action = (signal == SIGNAL_BUY) ? "BUY" : "SELL";
+   string msg = StringFormat(
+      "FatalibuildersTrader Scalper 1 SIGNAL: %s %s -- suggested size %.2f lots, stop-loss %.5f, take-profit %.5f. Manual mode: no trade was placed. Decide and place it yourself in MT5 if you want it.",
+      action, _Symbol, suggestedLots, suggestedSl, suggestedTp);
+
+   Alert(msg);
+   Comment(msg);
+   SendNotification(msg);
+   PrintFormat("FatalibuildersTrader Scalper 1: %s", msg);
 }
 
 //+------------------------------------------------------------------+
@@ -735,9 +883,9 @@ void OnTick()
       return;
    }
 
-   if(CountOpenPositions() >= InpMaxConcurrentTrades)
+   if(CountOpenPositions() >= MaxTradesOpenAtOnce)
    {
-      LogBlockReason(StringFormat("max concurrent trades reached (%d)", InpMaxConcurrentTrades));
+      LogBlockReason(StringFormat("max concurrent trades reached (%d)", MaxTradesOpenAtOnce));
       return; // 2026-07-14h: max 2 concurrent trades
    }
 
@@ -752,7 +900,7 @@ void OnTick()
       double spreadNow = (SymbolInfoDouble(_Symbol, SYMBOL_ASK) - SymbolInfoDouble(_Symbol, SYMBOL_BID))
                           / SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       LogBlockReason(StringFormat("data feed check failed (spread=%.1f pts, max=%.1f, or stale quote)",
-                     spreadNow, InpMaxSpreadPoints));
+                     spreadNow, MaxAllowedSpread_Points));
       return;
    }
 
@@ -774,7 +922,7 @@ void OnTick()
    }
    if(!PassesRangeFilter())
    {
-      LogBlockReason(StringFormat("range filter -- ADX too high for mean reversion (max=%.1f)", InpAdxMaxForMeanReversion));
+      LogBlockReason(StringFormat("range filter -- ADX too high for mean reversion (max=%.1f)", AvoidStrongTrends_MaxTrendStrength));
       return;
    }
 
@@ -792,13 +940,13 @@ void OnTick()
    // so it's "as aggressive as possible" while still applying a floor.
    {
       double confidence = GetSignalConfidence(signal);
-      double requiredConfidence = (InpTradingMode == MODE_SAFE)
-                                    ? InpSafeModeMinWinProbabilityPct        // 65-75%, 2026-07-14m
-                                    : InpAggressiveModeMinWinProbabilityPct; // 50%, 2026-07-14v
+      double requiredConfidence = (TradingStyle_SafeOrAggressive == MODE_SAFE)
+                                    ? SafeMode_MinimumConfidence_Percent        // 65-75%, 2026-07-14m
+                                    : AggressiveMode_MinimumConfidence_Percent; // 50%, 2026-07-14v
       if(confidence < requiredConfidence)
       {
          LogBlockReason(StringFormat("confidence too low for %s (%.1f < %.1f required)",
-                        (InpTradingMode == MODE_SAFE ? "Safe Mode" : "Aggressive Mode"),
+                        (TradingStyle_SafeOrAggressive == MODE_SAFE ? "Safe Mode" : "Aggressive Mode"),
                         confidence, requiredConfidence));
          return;
       }
@@ -824,7 +972,7 @@ void OnTick()
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   bool useHardTp = (InpExitMode == EXIT_OUTRIGHT_CLOSE);
+   bool useHardTp = (HowProfitsAreLocked == EXIT_OUTRIGHT_CLOSE);
    ENUM_ORDER_TYPE orderType = (signal == SIGNAL_BUY) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    double checkPrice = (signal == SIGNAL_BUY) ? ask : bid;
 
@@ -835,22 +983,36 @@ void OnTick()
       return;
    }
 
+   // (2026-07-14x) MANUAL MODE: SIGNALS_ONLY never places a trade -- it
+   // computes the exact same suggested lot size/stop-loss/take-profit as
+   // AUTO_TRADE would have used, but only alerts the user instead of
+   // calling trade.Buy()/trade.Sell().
+   if(AutoTrade_Or_SignalsOnly == SIGNALS_ONLY)
+   {
+      double sl = (signal == SIGNAL_BUY) ? ask - stopDistancePoints * point : bid + stopDistancePoints * point;
+      double tp = 0;
+      if(useHardTp)
+         tp = (signal == SIGNAL_BUY) ? ask + targetDistancePoints * point : bid - targetDistancePoints * point;
+      SendSignalAlert(signal, lots, sl, tp);
+      return;
+   }
+
    if(signal == SIGNAL_BUY)
    {
       double sl = ask - stopDistancePoints * point;
       double tp = useHardTp ? ask + targetDistancePoints * point : 0;
-      if(trade.Buy(lots, _Symbol, ask, sl, tp, "FatalibuildersTrader"))
-         PrintFormat("FatalibuildersTrader: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      if(trade.Buy(lots, _Symbol, ask, sl, tp, "FatalibuildersTrader Scalper 1"))
+         PrintFormat("FatalibuildersTrader Scalper 1: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
       else
-         PrintFormat("FatalibuildersTrader: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
+         PrintFormat("FatalibuildersTrader Scalper 1: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
    else if(signal == SIGNAL_SELL)
    {
       double sl = bid + stopDistancePoints * point;
       double tp = useHardTp ? bid - targetDistancePoints * point : 0;
-      if(trade.Sell(lots, _Symbol, bid, sl, tp, "FatalibuildersTrader"))
-         PrintFormat("FatalibuildersTrader: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      if(trade.Sell(lots, _Symbol, bid, sl, tp, "FatalibuildersTrader Scalper 1"))
+         PrintFormat("FatalibuildersTrader Scalper 1: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
       else
-         PrintFormat("FatalibuildersTrader: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
+         PrintFormat("FatalibuildersTrader Scalper 1: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
 }
