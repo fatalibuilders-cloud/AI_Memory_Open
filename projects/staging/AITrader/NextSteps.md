@@ -53,6 +53,7 @@
 - **Real v1 entry signal designed:** multi-timeframe trend + pullback momentum entry replaces the naive EMA-crossover placeholder — grounded in published methodology, agreed with founder to start rule-based rather than ML-first. `GetSignalConfidence()` upgraded to a rule-based (ADX+RSI) heuristic. See `2026-07-14q`. **Still unbacktested — this is a hypothesis, not a proven strategy.**
 - **Step-by-step compile guide written:** `Product_Development/MQL5_EA/compile_guide.md` — exact MetaEditor menu paths, folder locations, and what to do with compile errors. Flags that the founder's earlier reference screenshot was from MT4, not MT5 — `.mq5` files require MT5 specifically.
 - **First real compile attempt made (milestone):** founder opened the file in actual MetaEditor. First error was a Market version-format rule (`#property version` needed `X.XX` format, not `0.30`) — fixed to `1.00`. Not a logic bug, a submission-format rule.
+- **EA attached to a live chart but placed no trades — real bug found and fixed:** `PassesVolumeFilter()` was comparing the still-forming bar's volume to a completed-bar average, which almost always evaluated false. Fixed to compare the last completed bar. Also added verbose diagnostic logging (`InpVerboseLogging`, on by default) so the Experts log now shows exactly which gate blocks each bar's entry. See `2026-07-14s`.
 
 ## Superseded (no longer critical path)
 

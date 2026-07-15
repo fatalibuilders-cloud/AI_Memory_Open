@@ -1,12 +1,14 @@
 //+------------------------------------------------------------------+
 //| AITrader.mq5                                                      |
-//| Draft v0.30 -- implements the risk-management, dual-mode, daily-  |
-//| control, entry-filter, and (v0.30) signal-design decisions from   |
-//| Master-Context.md as of 2026-07-14.                                |
+//| Draft v0.30 (Market tag 1.00) -- implements the risk-management,   |
+//| dual-mode, daily-control, entry-filter, and signal-design          |
+//| decisions from Master-Context.md as of 2026-07-14, plus (2026-07-  |
+//| 14s) a volume-filter bug fix and diagnostic logging.                |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
-//| any part of this for real trading. Not yet compiled or backtested.|
+//| any part of this for real trading. Compiles (per founder), still  |
+//| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "AITrader"
 #property version   "1.00"
@@ -149,8 +151,14 @@ input int    InpFridayCloseAllHour   = 20;  // server time
 input int    InpFridayEntryBlockHour = 16;  // server time
 input int    InpMondayStartHour      = 2;   // server time
 
+// Diagnostics (2026-07-14s) -- prints the specific reason no trade was
+// taken, once per new bar, to the Experts/Journal log. Turn off once the
+// EA is confirmed working to reduce log noise.
+input bool   InpVerboseLogging       = true;
+
 //=== Global state ======================================================
 double   g_dayStartEquity = 0;
+datetime g_lastLogBarTime = 0;
 MqlDateTime g_dayKey;
 int      g_handleHigherTrendMa, g_handlePullbackMa, g_handleRsi, g_handleAtr, g_handleAdx;
 bool     g_dailyHalted = false;
@@ -345,24 +353,30 @@ bool IsHighImpactNewsWindow()
 //| any specific third-party product's internal logic.                 |
 //+------------------------------------------------------------------+
 
-// "Volume Filter": only trade when current bar's tick volume is at or
-// above its recent average -- avoids illiquid periods (poor execution,
-// wider spreads).
+// "Volume Filter": only trade when the last COMPLETED bar's tick volume
+// is at or above its recent average -- avoids illiquid periods (poor
+// execution, wider spreads).
+// BUG FIX (2026-07-14s): originally compared the still-forming bar's
+// volume (index 0) to the average of completed bars -- a forming bar
+// has accumulated only a few ticks for most of its life, so this almost
+// always evaluated false except right before the bar closed, silently
+// blocking nearly every trade. Now compares the last completed bar
+// (index 1) against the average of the completed bars before it.
 bool PassesVolumeFilter()
 {
    if(!InpUseVolumeFilter) return true;
 
    long vol[];
    ArraySetAsSeries(vol, true);
-   if(CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, InpVolumeAvgPeriod + 1, vol) <= 0)
+   if(CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, InpVolumeAvgPeriod + 2, vol) <= 0)
       return true; // fail open -- don't block trading on a data hiccup
 
    long sum = 0;
-   for(int i = 1; i <= InpVolumeAvgPeriod; i++)
+   for(int i = 2; i <= InpVolumeAvgPeriod + 1; i++)
       sum += vol[i];
    double avgVol = (double)sum / InpVolumeAvgPeriod;
 
-   return (double)vol[0] >= avgVol;
+   return (double)vol[1] >= avgVol;
 }
 
 // "Volatility Filter": reject both dead markets (ATR far below its own
@@ -596,38 +610,91 @@ void ManageOpenPositions()
 }
 
 //+------------------------------------------------------------------+
+//| Diagnostic logging (2026-07-14s) -- prints once per new bar, not   |
+//| every tick, so the log stays readable instead of flooding.         |
+//+------------------------------------------------------------------+
+void LogBlockReason(string reason)
+{
+   if(!InpVerboseLogging) return;
+
+   datetime barTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+   if(barTime == g_lastLogBarTime) return; // already logged this bar
+
+   g_lastLogBarTime = barTime;
+   PrintFormat("AITrader [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
+}
+
+//+------------------------------------------------------------------+
 void OnTick()
 {
    ManageOpenPositions();
    ApplyWeekendCloseAll();
 
    if(CheckDailyLimits())
-      return; // daily profit target or loss limit reached -- no new trades today
+   {
+      LogBlockReason("daily profit target or loss limit already reached today");
+      return;
+   }
 
    if(CountOpenPositions() >= InpMaxConcurrentTrades)
+   {
+      LogBlockReason(StringFormat("max concurrent trades reached (%d)", InpMaxConcurrentTrades));
       return; // 2026-07-14h: max 2 concurrent trades
+   }
 
    if(IsWeekendEntryBlocked())
-      return; // v0.20: weekend protection -- no new risk into a weekend gap
+   {
+      LogBlockReason("weekend protection window (near Friday close / Monday open)");
+      return;
+   }
 
    if(!PassesDataFeedSanityCheck())
-      return; // v0.20: stale quotes / abnormal spread
+   {
+      double spreadNow = (SymbolInfoDouble(_Symbol, SYMBOL_ASK) - SymbolInfoDouble(_Symbol, SYMBOL_BID))
+                          / SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+      LogBlockReason(StringFormat("data feed check failed (spread=%.1f pts, max=%.1f, or stale quote)",
+                     spreadNow, InpMaxSpreadPoints));
+      return;
+   }
 
    if(IsHighImpactNewsWindow())
-      return; // first-pass reaction: skip new entries near high-impact news
+   {
+      LogBlockReason("high-impact news window active");
+      return;
+   }
 
-   if(!PassesVolumeFilter() || !PassesVolatilityFilter() || !PassesRangeFilter())
-      return; // v0.20: entry-condition filters -- see header note
+   if(!PassesVolumeFilter())
+   {
+      LogBlockReason("volume filter -- last completed bar's volume below its recent average");
+      return;
+   }
+   if(!PassesVolatilityFilter())
+   {
+      LogBlockReason("volatility filter -- ATR ratio outside acceptable band (too dead or too spiky)");
+      return;
+   }
+   if(!PassesRangeFilter())
+   {
+      LogBlockReason(StringFormat("range filter -- ADX below trend-strength threshold (%.1f)", InpAdxTrendThreshold));
+      return;
+   }
 
    ENUM_SIGNAL signal = GetEntrySignal();
    if(signal == SIGNAL_NONE)
+   {
+      LogBlockReason("no entry signal -- trend/pullback/momentum conditions not aligned this bar");
       return;
+   }
 
    if(InpTradingMode == MODE_SAFE)
    {
       double confidence = GetSignalConfidence(signal);
       if(confidence < InpSafeModeMinWinProbabilityPct)
+      {
+         LogBlockReason(StringFormat("Safe Mode confidence too low (%.1f < %.1f required)",
+                        confidence, InpSafeModeMinWinProbabilityPct));
          return; // 2026-07-14m: Safe Mode only takes 65-75%+ confidence setups
+      }
    }
 
    double stopDistancePoints = GetStopDistancePoints();
@@ -635,7 +702,10 @@ void OnTick()
    double targetDollars = GetProfitTargetDollars();
 
    if(riskDollars <= 0)
+   {
+      LogBlockReason("daily loss budget fully consumed -- cannot size a new trade");
       return; // daily loss budget fully consumed
+   }
 
    double lots = CalculateLotSize(stopDistancePoints, riskDollars);
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
@@ -653,12 +723,18 @@ void OnTick()
    {
       double sl = ask - stopDistancePoints * point;
       double tp = useHardTp ? ask + targetDistancePoints * point : 0;
-      trade.Buy(lots, _Symbol, ask, sl, tp, "AITrader");
+      if(trade.Buy(lots, _Symbol, ask, sl, tp, "AITrader"))
+         PrintFormat("AITrader: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      else
+         PrintFormat("AITrader: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
    else if(signal == SIGNAL_SELL)
    {
       double sl = bid + stopDistancePoints * point;
       double tp = useHardTp ? bid - targetDistancePoints * point : 0;
-      trade.Sell(lots, _Symbol, bid, sl, tp, "AITrader");
+      if(trade.Sell(lots, _Symbol, bid, sl, tp, "AITrader"))
+         PrintFormat("AITrader: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      else
+         PrintFormat("AITrader: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
 }
