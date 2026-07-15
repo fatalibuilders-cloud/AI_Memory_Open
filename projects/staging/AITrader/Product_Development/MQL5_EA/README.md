@@ -1,6 +1,10 @@
-# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.00)
+# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.10)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, and high-concurrency decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, high-concurrency, and trailing-stop/time-limit decisions from `Master-Context.md`, not a finished product.
+
+### v1.10 — trailing stop + max trade duration added (2026-07-15)
+
+Founder asked again to combine the uploaded third-party `.ex5` files ("everything caught my eye ... come up with a super bot") — declined again, same reasoning as `2026-07-14zzz` (compiled bytecode, and reverse-engineering commercial competitors' code into ours isn't done here regardless of phrasing). Treated the underlying goal as legitimate and pursued it with two independent, well-documented scalping-EA techniques not derived from any uploaded file: a **true trailing stop** (`ManageOpenPositions()` now keeps trailing the stop-loss behind price after breakeven is first locked, instead of sitting flat there forever — `TrailingStop_Enabled`, `TrailingStop_Distance_Dollars` default $0.20, `TrailingStop_StepDollars` default $0.05), and a **maximum trade duration** safeguard (new `ApplyMaxTradeDuration()`, force-closes any position open longer than `MaxTradeDuration_Minutes` — default 15 — without hitting target or stop, regardless of exit mode). See `decisions-learnings/2026-07-15_trailing-stop-and-max-duration-added.md`.
 
 ### v1.00 — renamed "Super Scalpers," 20 concurrent trades, signal-stacking formalized (2026-07-14zzz)
 
@@ -47,7 +51,8 @@ Founder asked for a genuine short-timeframe scalper restricted to forex and meta
 - Safe Mode: tiered fixed-dollar stop-loss ($1 < $50 equity, $3 ≥ $50 equity) — 2026-07-14f; flat $0.30 profit-lock target on both tiers (lowered from $1.50/$3.00) — 2026-07-14zz
 - Aggressive Mode: equity-percentage risk/reward per trade (15%/15% by default, 1:1), not fixed dollars — 2026-07-14y
 - Dynamic risk-based lot sizing (dollar risk ÷ stop distance, not a fixed table) — 2026-07-14e
-- Dual exit modes: outright close, or move to breakeven and let the position run — 2026-07-14
+- Dual exit modes: outright close, or move to breakeven and let the position run — 2026-07-14; breakeven-and-run mode now trails the stop further as profit grows, instead of sitting flat at breakeven — 2026-07-15
+- Maximum trade duration force-close (default 15 min) — 2026-07-15
 - Daily profit target (5% Safe / 20% Aggressive) and mode-specific daily loss limit (3% Safe / 50% Aggressive), with automatic halt — 2026-07-14h/i/k/l/y
 - Max 20 concurrent open trades (raised from 2) — 2026-07-14h, 2026-07-14zzz; plus a formal per-candle signal-stacking cap (`AllowMultipleTradesPerSignal_Enabled` / `MaxTradesPerSignal_PerBar`) — 2026-07-14zzz
 - **Tier-boundary fix** (`RemainingDailyLossBudget()`): a single trade's risk is capped at whatever remains of the day's loss budget, resolving the interaction flagged 2026-07-14i where a $3 stop-loss could exceed a $1.50 daily budget in one trade

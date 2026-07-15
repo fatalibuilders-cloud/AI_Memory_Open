@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTraderSuperScalpers.mq5                                |
-//| Draft v1.00 (Market tag 1.70) -- implements the risk-management,   |
+//| Draft v1.10 (Market tag 1.80) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -25,9 +25,15 @@
 //| previously-undocumented ability to open more than one trade off the    |
 //| SAME candle's signal is now a formal, tunable feature                  |
 //| (AllowMultipleTradesPerSignal_Enabled / MaxTradesPerSignal_PerBar) --   |
-//| see the comments above MaxTradesOpenAtOnce below. See the big comment  |
-//| above AggressiveMode_RiskPerTrade_PercentOfEquity below for the        |
-//| honest math behind Aggressive Mode's risk before using it.             |
+//| see the comments above MaxTradesOpenAtOnce below. (2026-07-15) added    |
+//| a true trailing stop (BREAKEVEN_AND_RUN mode keeps trailing the SL      |
+//| behind price after breakeven, instead of sitting flat) and a           |
+//| standard scalping safeguard, MaxTradeDuration_Minutes, that force-     |
+//| closes any trade still open past a time limit -- both independently    |
+//| implemented, well-documented techniques, not derived from any          |
+//| third-party bot. See the big comment above                             |
+//| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest       |
+//| math behind Aggressive Mode's risk before using it.                    |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
@@ -35,7 +41,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader Super Scalpers"
-#property version   "1.70"
+#property version   "1.80"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -280,6 +286,36 @@ input int    AvoidTradingBeforeNews_Minutes = 30;
 // other bot or your own manual trades on the same account. You don't
 // need to change this unless you're running more than one copy.
 input int    BotID_Number                  = 20260714;
+
+input group "=== 5B. TRAILING STOP & TIME LIMIT (2026-07-15) ==="
+// (2026-07-15) Two well-established, independently-implemented scalping
+// techniques -- not taken from any third-party bot, just standard,
+// widely-documented practice. Only apply when HowProfitsAreLocked is set
+// to BREAKEVEN_AND_RUN above -- OUTRIGHT_CLOSE already has a fixed
+// take-profit set at trade open, so there's nothing left to trail.
+//
+// TRAILING STOP: once a BREAKEVEN_AND_RUN trade first reaches its
+// profit target, its stop-loss moves to breakeven (as before) -- and
+// then KEEPS moving to follow price as profit grows further, instead of
+// sitting flat at breakeven forever. This locks in more profit as a
+// winning move continues, without capping the upside with a hard target.
+input bool   TrailingStop_Enabled           = true;   // 2026-07-15
+// How far behind the current price the stop trails, expressed in
+// dollars of profit given back if price reverses and hits it.
+input double TrailingStop_Distance_Dollars  = 0.20;   // 2026-07-15
+// The stop only moves once price has improved by at least this much
+// since the last time it moved -- avoids constantly nudging the stop by
+// tiny amounts on every tick.
+input double TrailingStop_StepDollars       = 0.05;   // 2026-07-15
+//
+// MAXIMUM TRADE DURATION: force-closes a trade at the current market
+// price if it's been open this many minutes without hitting its target
+// or stop-loss -- a standard scalping safeguard against a "quick trade"
+// quietly turning into a long-held one sitting through unrelated price
+// action. Applies to every open position regardless of exit mode. Set
+// to 0 to disable (trades can then stay open indefinitely until they
+// hit their target or stop).
+input int    MaxTradeDuration_Minutes       = 15;     // 2026-07-15
 
 input group "=== 6. STRATEGY SETTINGS (ADVANCED -- SAFE TO LEAVE ALONE) ==="
 // (2026-07-14u) The bot looks for the price bouncing off a statistical
@@ -924,10 +960,15 @@ int CountOpenPositions()
 // EXIT_BREAKEVEN_AND_RUN: once floating profit reaches the target, move
 // SL to entry (lock breakeven) instead of closing outright, and let the
 // position run without a hard TP (2026-07-14, dual-mode exit decision).
+// (2026-07-15) Extended with a true trailing stop -- after breakeven is
+// locked, keeps moving the stop to follow price as profit grows further
+// instead of sitting flat at breakeven indefinitely.
 void ManageOpenPositions()
 {
    if(HowProfitsAreLocked != EXIT_BREAKEVEN_AND_RUN)
       return;
+
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
    for(int i = 0; i < PositionsTotal(); i++)
    {
@@ -939,12 +980,82 @@ void ManageOpenPositions()
       double target = GetProfitTargetDollars();
       double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
       double currentSl = PositionGetDouble(POSITION_SL);
+      double currentTp = PositionGetDouble(POSITION_TP);
 
-      bool alreadyBreakeven = (MathAbs(currentSl - openPrice) < SymbolInfoDouble(_Symbol, SYMBOL_POINT));
+      bool alreadyBreakeven = (MathAbs(currentSl - openPrice) < point);
       if(profit >= target && !alreadyBreakeven)
       {
-         trade.PositionModify(ticket, openPrice, PositionGetDouble(POSITION_TP));
+         trade.PositionModify(ticket, openPrice, currentTp);
          PrintFormat("FatalibuildersTrader Super Scalpers: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
+         currentSl = openPrice;
+      }
+
+      // (2026-07-15) Trailing stop -- only once breakeven is locked,
+      // i.e. the position has already reached its original target once.
+      if(TrailingStop_Enabled && profit >= target)
+      {
+         double lots = PositionGetDouble(POSITION_VOLUME);
+         double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+         double tickSize  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+         double moneyPerPointPerLot = (tickSize > 0) ? (tickValue / tickSize) * point : 0;
+
+         if(moneyPerPointPerLot > 0 && lots > 0)
+         {
+            double trailDistancePoints = TrailingStop_Distance_Dollars / (lots * moneyPerPointPerLot);
+            double stepPoints          = TrailingStop_StepDollars     / (lots * moneyPerPointPerLot);
+            long   posType = PositionGetInteger(POSITION_TYPE);
+
+            if(posType == POSITION_TYPE_BUY)
+            {
+               double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+               double newSl = bid - trailDistancePoints * point;
+               if(newSl > currentSl + stepPoints * point)
+               {
+                  trade.PositionModify(ticket, newSl, currentTp);
+                  PrintFormat("FatalibuildersTrader Super Scalpers: trailed SL on #%I64u to %.5f", ticket, newSl);
+               }
+            }
+            else if(posType == POSITION_TYPE_SELL)
+            {
+               double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+               double newSl = ask + trailDistancePoints * point;
+               if(newSl < currentSl - stepPoints * point)
+               {
+                  trade.PositionModify(ticket, newSl, currentTp);
+                  PrintFormat("FatalibuildersTrader Super Scalpers: trailed SL on #%I64u to %.5f", ticket, newSl);
+               }
+            }
+         }
+      }
+   }
+}
+
+// (2026-07-15) Standard scalping safeguard: force-close any of this
+// bot's positions that have been open longer than MaxTradeDuration_Minutes
+// without hitting their target or stop-loss. Applies regardless of exit
+// mode. A "quick scalp" that's still open 15+ minutes later is no longer
+// behaving like the strategy it was opened as.
+void ApplyMaxTradeDuration()
+{
+   if(MaxTradeDuration_Minutes <= 0) return;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(!PositionSelectByTicket(ticket) || PositionGetInteger(POSITION_MAGIC) != BotID_Number)
+         continue;
+
+      datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+      int minutesOpen = (int)((TimeCurrent() - openTime) / 60);
+      if(minutesOpen >= MaxTradeDuration_Minutes)
+      {
+         double profit = PositionGetDouble(POSITION_PROFIT);
+         if(trade.PositionClose(ticket))
+            PrintFormat("FatalibuildersTrader Super Scalpers: force-closed position #%I64u after %d minute(s) (limit %d), profit was $%.2f",
+                        ticket, minutesOpen, MaxTradeDuration_Minutes, profit);
+         else
+            PrintFormat("FatalibuildersTrader Super Scalpers: force-close FAILED on position #%I64u after %d minute(s), retcode=%d (%s)",
+                        ticket, minutesOpen, trade.ResultRetcode(), trade.ResultRetcodeDescription());
       }
    }
 }
@@ -995,6 +1106,7 @@ void SendSignalAlert(ENUM_SIGNAL signal, double suggestedLots, double suggestedS
 void OnTick()
 {
    ManageOpenPositions();
+   ApplyMaxTradeDuration();
    ApplyWeekendCloseAll();
 
    if(CheckDailyLimits())
