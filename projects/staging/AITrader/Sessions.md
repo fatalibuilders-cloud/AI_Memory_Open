@@ -27,3 +27,4 @@
 | Session 17 — real v1 entry signal designed | 2026-07-14 | multi-timeframe trend, pullback, momentum, moving average, RSI, ADX, confidence score, rule-based, not ML |
 | Session 18 — no-trades bug diagnosed and fixed | 2026-07-14 | volume filter bug, forming bar, diagnostic logging, verbose logging, Experts log |
 | Session 19 — product renamed | 2026-07-14 | FatalibuildersTrader, rename, branding, product name |
+| Session 20 — v2 scalping signal built | 2026-07-14 | Bollinger Bands, RSI, Stochastic, mean reversion, scalping, forex, metals, instrument restriction, range filter flip |

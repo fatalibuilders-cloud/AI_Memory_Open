@@ -8,13 +8,13 @@
 
 ## Short Description (for listing summary / search results)
 
-FatalibuildersTrader is a MetaTrader 5 Expert Advisor with two trading modes — a selective Safe Mode and an opportunistic Aggressive Mode — built around tiered risk management, daily loss and profit limits, and configurable entry filters.
+FatalibuildersTrader is a short-timeframe scalping Expert Advisor for MetaTrader 5, trading forex and metals only, with two trading modes — a selective Safe Mode and an opportunistic Aggressive Mode — built around tiered risk management, daily loss and profit limits, and configurable entry filters.
 
 ## Full Description
 
 ### Overview
 
-FatalibuildersTrader is an Expert Advisor for MetaTrader 5 designed around risk management first. It offers two operating modes so you can choose the risk profile that fits your account:
+FatalibuildersTrader is a scalping Expert Advisor for MetaTrader 5, designed for short timeframes (M1-M5) on forex and metals instruments only — it will not run on indices, crypto, or stock CFDs. It looks for short-term mean-reversion setups (price extending to a statistical extreme and turning back) and offers two operating modes so you can choose the risk profile that fits your account:
 
 - **Safe Mode** — trades only setups that clear an internal confidence filter, prioritizing selectivity over frequency.
 - **Aggressive Mode** — trades more opportunistically, with no selectivity filter, accepting more trades and more risk in exchange for higher potential activity.
@@ -31,14 +31,14 @@ FatalibuildersTrader is an Expert Advisor for MetaTrader 5 designed around risk 
 
 ### Entry Filters
 
-FatalibuildersTrader evaluates multiple conditions before entering a trade, including recent trading volume, current volatility relative to its recent average, and trend strength — designed to avoid illiquid periods, abnormal volatility spikes, and choppy, range-bound conditions that don't suit the underlying strategy.
+FatalibuildersTrader evaluates multiple conditions before entering a trade, including recent trading volume, current volatility relative to its recent average, and current trend strength — designed to avoid illiquid periods, abnormal volatility spikes, and strongly trending conditions that don't suit a mean-reversion approach.
 
 ### Recommended Setup
 
-- **Symbol(s):** [fill in once backtested — e.g. specific forex pairs/instruments the strategy was validated on]
-- **Timeframe:** [fill in]
-- **Minimum recommended balance:** [fill in]
-- **Recommended broker:** compatible with any MT5 broker; developed and tested with Exness
+- **Symbol(s):** Forex pairs and metals (gold, silver) only — the EA will not initialize on other instrument types
+- **Timeframe:** M1 or M5 (short-timeframe scalping)
+- **Minimum recommended balance:** [fill in once backtested]
+- **Recommended broker:** compatible with any MT5 broker; developed and tested with Exness. Spread settings should be reviewed per symbol — metals typically require a wider allowed-spread setting than forex majors.
 
 ### Important Risk Disclosure
 
@@ -48,7 +48,7 @@ Trading forex and CFDs carries a substantial risk of loss and is not suitable fo
 
 ## Fields Still Needing Real Data Before This Can Be Published
 
-- [ ] Recommended symbol(s)/timeframe — depends on what the real (non-placeholder) signal is actually validated on
+- [ ] Confirm final symbol list once backtested (which specific forex pairs and metals performed acceptably)
 - [ ] Minimum recommended balance
 - [ ] Any performance figures — **only add these once backed by a real, verifiable backtest/forward-test.** Do not add illustrative or hoped-for numbers (see the marketing red-flag checklist in `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md`).
 - [ ] Confirm [N] for max concurrent trades matches the shipped build (currently 2 in the code)

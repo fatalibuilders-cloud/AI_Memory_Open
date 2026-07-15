@@ -43,8 +43,8 @@ You can get to MetaEditor two ways:
 
 1. Back in MT5, open the **Navigator** panel (Ctrl+N if it's hidden).
 2. Expand **Expert Advisors** — you should see `FatalibuildersTrader` listed.
-3. Drag it onto any chart.
-4. A settings dialog opens showing all the inputs (trading mode, stop-loss values, etc.) — for now just click **OK** to accept the defaults.
+3. Open a chart for a **forex pair or metal (e.g. XAUUSD)**, set to **M1 or M5**, then drag the EA onto it. It's restricted to forex/metals — dragging it onto anything else (indices, crypto, stocks) will fail to initialize by design.
+4. A settings dialog opens showing all the inputs (trading mode, stop-loss values, etc.) — for now just click **OK** to accept the defaults. If you're on a metals symbol, consider raising `InpMaxSpreadPoints` from the 30-point default first, since metals commonly run wider spreads than that.
 5. Make sure **AutoTrading** is enabled (toolbar button, should be green) if you want it to actually place trades — but for a first check, it's fine to leave AutoTrading off and just confirm the EA attaches without errors (a smiley face icon appears in the top-right of the chart if it loaded successfully).
 
 **Important:** don't run this on a live funded account yet. Use a demo account until it's been through real backtesting (Strategy Tester) — nothing in this EA has been validated against real market data yet, per everything documented in `Product_Development/MQL5_EA/README.md`.

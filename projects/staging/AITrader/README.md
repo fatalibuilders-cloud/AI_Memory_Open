@@ -23,22 +23,24 @@ Stop-loss is tiered fixed-dollar: **$1 below $50 equity, $3 at/above.** Two trad
 
 ## MQL5 Code Draft
 
-`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.30) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus, as of v0.30, a **real v1 entry signal**: multi-timeframe trend + pullback momentum entry, replacing the earlier throwaway EMA-crossover placeholder. Grounded in published/widely-taught methodology (see `decisions-learnings/2026-07-14q_signal_design_v1.md`), chosen as a rule-based v1 with ML treated as a v2 aspiration, not a blocker. **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
+`Product_Development/MQL5_EA/FatalibuildersTrader.mq5` (v0.40) implements every risk-management/mode/daily-control decision in this document — tiered stop-loss, mode-specific profit-lock targets, dynamic lot sizing, dual exit modes, daily controls with the tier-boundary fix, max concurrent trades, first-pass news awareness, entry-condition filters (volume, volatility, range/ADX, data-feed sanity, weekend protection) — plus a **v2 scalping entry signal**: Bollinger Bands + RSI + Stochastic mean-reversion, restricted to forex and metals only (`IsAllowedInstrument()`), replacing the earlier v1 trend+pullback swing entry per founder request for a genuine short-timeframe (M1-M5) scalper. Grounded in published/widely-taught 1-minute scalping methodology (see `decisions-learnings/2026-07-14u_scalping_signal_v2.md`). **Not compiled, not backtested** (no MT5 environment available during staging) — this is a hypothesis to validate, not a proven edge.
 
 ## Biggest Open Item
 
-**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.30 has a real, research-grounded strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on AITrader's target instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
+**Nothing has been backtested against real market data.** The entry-signal design gap is resolved (v0.40 has a real, research-grounded scalping strategy instead of a placeholder), but that strategy's actual win rate, drawdown, and profitability on real forex/metals instruments are completely unknown until it's compiled and run through MT5's Strategy Tester.
 
 ## Other Open Items
 
-1. Compile the draft in MetaEditor and run it through MT5's Strategy Tester — now with a real strategy to actually evaluate, not just plumbing to check.
-2. Consider walk-forward testing to guard against curve-fitting the v1 parameters (200/20 MA periods, RSI 40/60) before trusting results.
-3. Validate `GetSignalConfidence()`'s ADX+RSI heuristic against real win-rate outcomes — explainable now, but still not a calibrated probability.
-4. Whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions or a baseline the volatility/news-adaptive module can widen — the draft only skips new entries near high-impact news, it doesn't adapt parameters yet.
-5. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms, and now also exceeds the 3% daily loss limit in one trade).
-6. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap) — not implemented in the draft.
-7. **Volatility/news-adaptive rules** — the draft implements only a simple skip-entries reaction, not the full parameter-adaptation system described in Document 2.
-8. Confirm MT5's built-in calendar (used in the draft) as the final economic calendar data source.
+1. Compile the draft in MetaEditor and run it through MT5's Strategy Tester on a forex or metals symbol at M1/M5 — now with a real strategy to actually evaluate, not just plumbing to check.
+2. Tune `InpMaxSpreadPoints` per symbol — the 30-point default is sized for forex majors, almost certainly too tight for metals.
+3. Verify `IsAllowedInstrument()` against your actual broker's real symbol names — it's a heuristic, not a guaranteed-correct classification.
+4. Consider walk-forward testing to guard against curve-fitting the v2 parameters (Bollinger 20/2.0, RSI 30/70, Stochastic 14,1,3/20/80) before trusting results.
+5. Validate `GetSignalConfidence()`'s RSI-extremity+low-ADX heuristic against real win-rate outcomes — explainable now, but still not a calibrated probability.
+6. Whether the $1/$3 stop-loss and profit-lock targets are fixed in all conditions or a baseline the volatility/news-adaptive module can widen — the draft only skips new entries near high-impact news, it doesn't adapt parameters yet.
+7. Reconsidering the $50 stop-loss breakpoint (research shows $3 at exactly $50 equity is 6% risk, above professional norms, and now also exceeds the 3% daily loss limit in one trade).
+8. **Risk-management gating rules** for lot-size changes (losing-streak cooldown, drawdown scale-down, max lot cap) — not implemented in the draft.
+9. **Volatility/news-adaptive rules** — the draft implements only a simple skip-entries reaction, not the full parameter-adaptation system described in Document 2.
+10. Confirm MT5's built-in calendar (used in the draft) as the final economic calendar data source.
 
 **Confirmed guardrail:** "$50 → $1,000 in a day" and "$10 → $100 in a day" are both internal Aggressive Mode narrative framing only — neither is a build spec or realistic (professional day traders consider 1-2% a very good day; if an internal aggressive-mode number is ever needed, 5-20%/day is the research-backed ceiling). Explicitly barred from marketing copy — flagged to the Legal epic with a concrete pre-launch checklist.
 

@@ -27,10 +27,13 @@
 | entry signal, trend following, pullback, multi-timeframe, signal design, ADX, RSI, confidence score | Real v1 entry signal designed: multi-timeframe trend + pullback momentum entry, replacing the naive EMA-crossover placeholder; GetSignalConfidence upgraded to a rule-based ADX+RSI heuristic; still unbacktested | `decisions-learnings/2026-07-14q_signal_design_v1.md` | 2026-07-14 |
 | volume filter bug, no trades, diagnostic logging, verbose logging | Diagnosed and fixed a real bug (volume filter compared a forming bar to a completed-bar average, blocking nearly all trades); added diagnostic logging so blocking reasons are visible in MT5's Experts log | `decisions-learnings/2026-07-14s_no-trades-diagnosis-and-bugfix.md` | 2026-07-14 |
 | product rename, FatalibuildersTrader, branding | Product renamed from AITrader to FatalibuildersTrader across code, logs, and MQL5 listing materials; staging folder name kept as internal codename | `decisions-learnings/2026-07-14t_product-renamed-fatalibuilderstrader.md` | 2026-07-14 |
+| scalping, Bollinger Bands, Stochastic, RSI, mean reversion, forex, metals, instrument restriction, range filter flip | Replaced v1 trend+pullback signal with a v2 Bollinger+RSI+Stochastic mean-reversion scalping signal restricted to forex/metals; flipped the Range Filter and confidence heuristic, which were built for trend-following and would have silently worked against mean reversion | `decisions-learnings/2026-07-14u_scalping_signal_v2.md` | 2026-07-14 |
 
 ---
 
 ## Latest Decisions Summary
+
+**2026-07-14 (session 20):** Founder asked to build a genuine short-timeframe scalping bot restricted to forex and metals only. Replaced the v1 multi-timeframe trend+pullback signal entirely with a v2 Bollinger Bands + RSI + Stochastic mean-reversion scalping signal (price at a band extreme, RSI confirms oversold/overbought, Stochastic turn-confirmation triggers entry) — a widely-documented 1-minute scalping methodology, not invented for this project. Added `IsAllowedInstrument()` to restrict the EA to forex and metals (checks forex calc-mode plus XAU/XAG/XPT/XPD in the symbol name), refusing to initialize on anything else. **Caught and fixed a real logic conflict this created:** the existing Range Filter and confidence heuristic were built for the trend-following v1 signal and wanted strong trends (high ADX) — left unchanged, they would have silently worked against the new mean-reversion signal (which specifically fears strong trends, since price can "walk the band" through them). Both flipped to favor low/contained ADX instead.
 
 **2026-07-14 (session 19):** Renamed the product from AITrader to **FatalibuildersTrader** across the code, logs, and MQL5 Market listing materials (file, README, listing description, submission checklist, compile guide). The internal staging folder name (`projects/staging/AITrader/`) is unchanged, treated as an internal codename distinct from the public product name — flagged in case the founder wants the whole folder renamed too.
 
@@ -101,3 +104,4 @@
 | `2026-07-14q_signal_design_v1.md` | 2026-07-14 | Session 17 — real v1 entry signal designed (multi-timeframe trend + pullback); confidence score upgraded |
 | `2026-07-14s_no-trades-diagnosis-and-bugfix.md` | 2026-07-14 | Session 18 — volume-filter bug fixed; diagnostic logging added |
 | `2026-07-14t_product-renamed-fatalibuilderstrader.md` | 2026-07-14 | Session 19 — product renamed to FatalibuildersTrader |
+| `2026-07-14u_scalping_signal_v2.md` | 2026-07-14 | Session 20 — v2 scalping signal (Bollinger+RSI+Stochastic), forex/metals restricted, range filter flip |

@@ -1,9 +1,12 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTrader.mq5                                          |
-//| Draft v0.30 (Market tag 1.00) -- implements the risk-management,   |
-//| dual-mode, daily-control, entry-filter, and signal-design          |
-//| decisions from Master-Context.md as of 2026-07-14, plus (2026-07-  |
-//| 14s) a volume-filter bug fix and diagnostic logging.                |
+//| Draft v0.40 (Market tag 1.10) -- implements the risk-management,   |
+//| dual-mode, daily-control, and entry-filter decisions from          |
+//| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
+//| diagnostic logging (2026-07-14s), and (2026-07-14u) a v2 short-     |
+//| timeframe scalping signal (Bollinger Bands + RSI + Stochastic       |
+//| mean-reversion) restricted to forex and metals instruments only,   |
+//| replacing the earlier v1 trend+pullback swing entry.               |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
@@ -11,7 +14,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader"
-#property version   "1.00"
+#property version   "1.10"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -26,23 +29,26 @@ CTrade trade;
 //+------------------------------------------------------------------+
 //| OPEN ITEMS / PLACEHOLDERS -- read before using this file          |
 //|                                                                    |
-//| 1. ENTRY SIGNAL LOGIC (GetEntrySignal, below) is now a REAL v1    |
-//|    HYPOTHESIS, not a throwaway placeholder: a multi-timeframe      |
-//|    trend + pullback momentum entry, grounded in published/widely-  |
-//|    taught methodology (see decisions-learnings/2026-07-14q). This  |
-//|    replaces the earlier naive single-timeframe EMA crossover.      |
-//|    IMPORTANT: "grounded in published methodology" is NOT the same  |
-//|    as "proven to work" -- this specific parameter set has never    |
-//|    been backtested. Treat it as a serious starting point           |
-//|    to validate, not a finished strategy.                           |
+//| 1. ENTRY SIGNAL LOGIC (GetEntrySignal, below) is now a REAL v2    |
+//|    HYPOTHESIS, not a throwaway placeholder: a short-timeframe       |
+//|    (M1-M5) scalping entry -- Bollinger Band mean-reversion,         |
+//|    confirmed by RSI oversold/overbought and a Stochastic turn       |
+//|    trigger. Grounded in published/widely-taught 1-minute scalping   |
+//|    methodology (see decisions-learnings/2026-07-14u). Replaces the  |
+//|    v1 multi-timeframe trend+pullback swing entry (2026-07-14q).     |
+//|    IMPORTANT: "grounded in published methodology" is NOT the same   |
+//|    as "proven to work" -- this specific parameter set has never     |
+//|    been backtested. Treat it as a serious starting point            |
+//|    to validate, not a finished strategy. Restricted to forex and    |
+//|    metals only -- see IsAllowedInstrument().                        |
 //|                                                                    |
 //| 2. GetSignalConfidence() (Safe Mode's 65-75% win-probability       |
-//|    filter) is now a rule-based heuristic (ADX trend strength +     |
-//|    RSI momentum conviction), upgraded from a flat placeholder      |
-//|    value. It is EXPLICITLY NOT a calibrated probability -- it has  |
-//|    never been checked against real win-rate outcomes. Needs real   |
-//|    backtest validation before Safe Mode's filter threshold means   |
-//|    anything statistically.                                        |
+//|    filter) is a rule-based heuristic re-derived for v2 (RSI         |
+//|    extremity + low ADX/ranging conditions, the opposite of v1's     |
+//|    trend-strength version). It is EXPLICITLY NOT a calibrated       |
+//|    probability -- it has never been checked against real win-rate   |
+//|    outcomes. Needs real backtest validation before Safe Mode's       |
+//|    filter threshold means anything statistically.                  |
 //|                                                                    |
 //| 3. Stop-loss DISTANCE (in points, not dollars) uses a basic ATR    |
 //|    multiple as a reasonable default. The volatility/news-adaptive  |
@@ -72,6 +78,19 @@ CTrade trade;
 //|    That reference account's result (+533% equity in ~2 days on a   |
 //|    3.1 fixed lot size) is NOT something this file targets or       |
 //|    should be benchmarked against -- see README for why.            |
+//|                                                                    |
+//| 6. IsAllowedInstrument() (2026-07-14u) is a HEURISTIC, not a        |
+//|    guaranteed-correct classification -- it checks MT5's forex      |
+//|    calc-mode flag plus XAU/XAG/XPT/XPD in the symbol name. Some     |
+//|    brokers may name/classify symbols unusually; verify it behaves   |
+//|    correctly on your broker's actual symbol names before relying   |
+//|    on it. InpMaxSpreadPoints (default 30) is tuned for major forex  |
+//|    pairs and is almost certainly too tight for metals -- raise it   |
+//|    manually when trading XAUUSD/XAGUSD, the code does not auto-      |
+//|    detect a sane per-symbol default. The chart timeframe (M1-M5     |
+//|    recommended for scalping) is NOT enforced by the code -- it will |
+//|    run on any timeframe you attach it to, since PERIOD_CURRENT      |
+//|    simply follows the chart.                                       |
 //+------------------------------------------------------------------+
 
 //=== Trading mode / exit mode ========================================
@@ -102,43 +121,57 @@ input double InpAtrStopMultiple                     = 1.0;    // placeholder
 input int    InpNewsLookaheadMinutes                = 30;     // placeholder news window
 input int    InpMagicNumber                         = 20260714;
 
-//=== Signal v1 -- multi-timeframe trend + pullback momentum entry ====
-// (2026-07-14q) Replaces the earlier naive single-timeframe EMA
-// crossover. Grounded in a widely-documented, widely-taught retail/
-// research methodology: trade only with the higher-timeframe trend,
-// enter on a confirmed pullback + momentum-resumption trigger on the
-// trading timeframe. This is a v1 HYPOTHESIS, not a proven edge --
-// still requires real backtesting before being trusted. See
-// decisions-learnings/2026-07-14q_signal_design_v1.md for the sourcing
-// and reasoning.
-input ENUM_TIMEFRAMES InpHigherTimeframe   = PERIOD_H1;  // trend-direction timeframe
-input int    InpHigherTrendMaPeriod        = 200;        // higher-TF trend MA period
-input int    InpPullbackMaPeriod           = 20;         // trading-TF pullback MA period
-input int    InpRsiPeriod                  = 14;         // momentum-resumption trigger
-input double InpMomentumRsiUpLevel         = 40.0;       // RSI crossing up through this = uptrend resumption
-input double InpMomentumRsiDownLevel       = 60.0;       // RSI crossing down through this = downtrend resumption
+//=== Signal v2 -- Bollinger Bands + RSI + Stochastic scalping =========
+// (2026-07-14u) Replaces the v1 multi-timeframe trend+pullback swing
+// entry. Founder asked for a genuine short-timeframe (M1-M5) scalper
+// restricted to forex and metals -- this is a widely-documented,
+// widely-taught 1-minute scalping methodology: mean-reversion off
+// Bollinger Band extremes, confirmed by RSI oversold/overbought, with a
+// Stochastic turn-confirmation trigger (not just a static extreme
+// reading) to avoid catching a falling knife mid-move. See
+// decisions-learnings/2026-07-14u_scalping_signal_v2.md for sourcing.
+// Still a HYPOTHESIS -- never backtested on real data.
+input int    InpBollingerPeriod      = 20;    // Bollinger Bands period
+input double InpBollingerDeviation   = 2.0;   // Bollinger Bands std-dev multiple
+input int    InpRsiPeriod            = 14;    // RSI period
+input double InpRsiOversold          = 30.0;  // RSI oversold threshold (buy side)
+input double InpRsiOverbought        = 70.0;  // RSI overbought threshold (sell side)
+input int    InpStochKPeriod         = 14;    // Stochastic %K period (research: 14,1,3)
+input int    InpStochDPeriod         = 1;
+input int    InpStochSlowing         = 3;
+input double InpStochOversold        = 20.0;  // Stochastic oversold threshold
+input double InpStochOverbought      = 80.0;  // Stochastic overbought threshold
 
-//=== Entry-condition filters (v0.20) -- see header note above ========
+//=== Entry-condition filters (v0.20, adjusted v2 -- see notes) ========
 // Reference concept: "Volume Filter" -- avoid illiquid periods with poor
 // execution / wide spreads (research: confirms activity before entry).
 input bool   InpUseVolumeFilter      = true;
 input int    InpVolumeAvgPeriod      = 20;
 
 // Reference concept: "Volatility Filter" -- reject dead markets (poor
-// R:R) and abnormal volatility spikes (often news/gap, not clean trend).
+// R:R) and abnormal volatility spikes (often news/gap -- dangerous for
+// mean reversion, since a spike can blow straight through the bands).
 input bool   InpUseVolatilityFilter  = true;
 input double InpVolatilityRatioMin   = 0.5;
 input double InpVolatilityRatioMax   = 2.5;
 
-// Reference concept: "Range Filter" -- our EMA-crossover signal is
-// trend-following, so the useful pairing is a trend-strength gate
-// (ADX) that skips choppy/ranging conditions where crossovers whipsaw.
-input bool   InpUseRangeFilter       = true;
-input int    InpAdxPeriod            = 14;
-input double InpAdxTrendThreshold    = 20.0;
+// Reference concept: "Range Filter" -- FLIPPED for v2 (2026-07-14u).
+// The v1 signal was trend-following, so it wanted HIGH ADX (strong
+// trend). This v2 signal is MEAN-REVERSION, which wants the OPPOSITE:
+// strong trends are dangerous here because price can "walk the band"
+// straight through a Bollinger extreme without reverting. This filter
+// now REJECTS entries when ADX is too high (too trendy), and favors
+// ranging/choppy conditions instead.
+input bool   InpUseRangeFilter            = true;
+input int    InpAdxPeriod                 = 14;
+input double InpAdxMaxForMeanReversion    = 25.0;  // reject entries when ADX exceeds this
 
 // Reference concept: "Information Feed Filter" -- interpreted here as a
 // data-sanity check: reject trading on stale quotes or abnormal spread.
+// NOTE: the 30-point default is reasonable for major forex pairs but is
+// almost certainly too tight for metals (XAUUSD spreads commonly run
+// well above 30 points depending on broker's point convention) -- raise
+// this input when trading gold/silver, don't rely on the default.
 input bool   InpUseDataFeedFilter    = true;
 input double InpMaxSpreadPoints      = 30.0;
 input int    InpMaxQuoteStaleSeconds = 60;
@@ -160,19 +193,48 @@ input bool   InpVerboseLogging       = true;
 double   g_dayStartEquity = 0;
 datetime g_lastLogBarTime = 0;
 MqlDateTime g_dayKey;
-int      g_handleHigherTrendMa, g_handlePullbackMa, g_handleRsi, g_handleAtr, g_handleAdx;
+int      g_handleBands, g_handleStoch, g_handleRsi, g_handleAtr, g_handleAdx;
 bool     g_dailyHalted = false;
+
+//+------------------------------------------------------------------+
+//| Instrument restriction (2026-07-14u) -- founder asked for forex    |
+//| and metals only. SYMBOL_TRADE_CALC_MODE reliably flags true forex  |
+//| pairs; metals are commonly offered as CFD-calc-mode instruments on  |
+//| most brokers, so calc mode alone isn't enough -- also check the     |
+//| symbol name for XAU/XAG/XPT/XPD. This is a heuristic, not a         |
+//| perfect classification (broker symbol-naming conventions vary) --   |
+//| it fails CLOSED (refuses to run) on anything not clearly recognized |
+//| rather than guessing.                                               |
+//+------------------------------------------------------------------+
+bool IsAllowedInstrument()
+{
+   ENUM_SYMBOL_CALC_MODE calcMode = (ENUM_SYMBOL_CALC_MODE)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_CALC_MODE);
+   bool isForexCalc = (calcMode == SYMBOL_CALC_MODE_FOREX || calcMode == SYMBOL_CALC_MODE_FOREX_NO_LEVERAGE);
+
+   string name = _Symbol;
+   StringToUpper(name);
+   bool isMetal = (StringFind(name, "XAU") >= 0 || StringFind(name, "XAG") >= 0 ||
+                   StringFind(name, "XPT") >= 0 || StringFind(name, "XPD") >= 0);
+
+   return (isForexCalc || isMetal);
+}
 
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   g_handleHigherTrendMa = iMA(_Symbol, InpHigherTimeframe, InpHigherTrendMaPeriod, 0, MODE_SMA, PRICE_CLOSE);
-   g_handlePullbackMa    = iMA(_Symbol, PERIOD_CURRENT, InpPullbackMaPeriod, 0, MODE_EMA, PRICE_CLOSE);
+   if(!IsAllowedInstrument())
+   {
+      PrintFormat("FatalibuildersTrader: %s is not a recognized forex or metals instrument. This EA is restricted to forex and metals only (2026-07-14u) -- refusing to initialize.", _Symbol);
+      return(INIT_FAILED);
+   }
+
+   g_handleBands   = iBands(_Symbol, PERIOD_CURRENT, InpBollingerPeriod, 0, InpBollingerDeviation, PRICE_CLOSE);
+   g_handleStoch   = iStochastic(_Symbol, PERIOD_CURRENT, InpStochKPeriod, InpStochDPeriod, InpStochSlowing, MODE_SMA, STO_LOWHIGH);
    g_handleRsi     = iRSI(_Symbol, PERIOD_CURRENT, InpRsiPeriod, PRICE_CLOSE);
    g_handleAtr     = iATR(_Symbol, PERIOD_CURRENT, InpAtrPeriod);
    g_handleAdx     = iADX(_Symbol, PERIOD_CURRENT, InpAdxPeriod);
 
-   if(g_handleHigherTrendMa == INVALID_HANDLE || g_handlePullbackMa == INVALID_HANDLE ||
+   if(g_handleBands == INVALID_HANDLE || g_handleStoch == INVALID_HANDLE ||
       g_handleRsi == INVALID_HANDLE || g_handleAtr == INVALID_HANDLE ||
       g_handleAdx == INVALID_HANDLE)
    {
@@ -187,8 +249,8 @@ int OnInit()
 
 void OnDeinit(const int reason)
 {
-   IndicatorRelease(g_handleHigherTrendMa);
-   IndicatorRelease(g_handlePullbackMa);
+   IndicatorRelease(g_handleBands);
+   IndicatorRelease(g_handleStoch);
    IndicatorRelease(g_handleAdx);
    IndicatorRelease(g_handleRsi);
    IndicatorRelease(g_handleAtr);
@@ -402,9 +464,11 @@ bool PassesVolatilityFilter()
    return (ratio >= InpVolatilityRatioMin && ratio <= InpVolatilityRatioMax);
 }
 
-// "Range Filter": the placeholder signal (EMA crossover) is trend-
-// following, so the useful pairing is an ADX trend-strength gate --
-// skip choppy/ranging conditions where crossovers tend to whipsaw.
+// "Range Filter" -- FLIPPED for v2 (2026-07-14u). The v1 signal was
+// trend-following and wanted HIGH ADX; this v2 signal is MEAN-REVERSION
+// and wants the OPPOSITE -- strong trends are dangerous for mean
+// reversion (price can "walk the band" through a Bollinger extreme
+// without reverting), so this now REJECTS entries when ADX is too high.
 bool PassesRangeFilter()
 {
    if(!InpUseRangeFilter) return true;
@@ -414,7 +478,7 @@ bool PassesRangeFilter()
    if(CopyBuffer(g_handleAdx, MAIN_LINE, 0, 1, adx) <= 0)
       return true;
 
-   return adx[0] >= InpAdxTrendThreshold;
+   return adx[0] <= InpAdxMaxForMeanReversion;
 }
 
 // "Information Feed Filter": interpreted as a data-sanity check --
@@ -469,101 +533,101 @@ void ApplyWeekendCloseAll()
 }
 
 //+------------------------------------------------------------------+
-//| SIGNAL v1 -- multi-timeframe trend + pullback momentum entry.     |
-//| (2026-07-14q, replaces the earlier naive EMA-crossover placeholder|
-//| from v0.10.) This is a well-documented, widely-taught approach,   |
-//| not something invented for this project -- see                   |
-//| decisions-learnings/2026-07-14q_signal_design_v1.md for sourcing. |
-//| It is still a v1 HYPOTHESIS: real behind it is published research |
-//| on the general approach, not a backtest of THIS specific parameter|
-//| set on real FatalibuildersTrader data. Treat as a starting point to validate, |
-//| not a proven edge.                                                |
+//| SIGNAL v2 -- Bollinger Bands + RSI + Stochastic scalping.          |
+//| (2026-07-14u, replaces the v1 multi-timeframe trend+pullback swing |
+//| entry.) This is a widely-documented, widely-taught 1-minute        |
+//| scalping methodology, not something invented for this project --   |
+//| see decisions-learnings/2026-07-14u_scalping_signal_v2.md for       |
+//| sourcing. Still a HYPOTHESIS: real research backs the general       |
+//| approach, not a backtest of THIS specific parameter set on real     |
+//| data. Designed for short timeframes (M1-M5) on forex/metals only.  |
 //|                                                                    |
 //| Logic:                                                             |
-//|  1. Determine trend direction on a HIGHER timeframe (default H1)  |
-//|     using price vs. a slow MA (default 200 SMA).                  |
-//|  2. On the TRADING timeframe, require price to have pulled back    |
-//|     to/through a shorter MA (default 20 EMA) -- i.e. a genuine dip |
-//|     against the higher-timeframe trend, not a trade chasing a move |
-//|     that's already extended.                                      |
-//|  3. Require a momentum-resumption trigger: RSI crossing back       |
-//|     through a level (default 40 up / 60 down) confirms the pullback|
-//|     is over and the higher-timeframe trend is reasserting.         |
-//| Paired with the existing ADX/volume/volatility filters (v0.20),    |
-//| which were already designed to suit a trend-following signal.     |
+//|  1. Price touched/pierced a Bollinger Band on the last completed   |
+//|     bar (default 20-period, 2.0 std-dev) -- a potential mean-      |
+//|     reversion extreme.                                             |
+//|  2. RSI confirms oversold (<=30) / overbought (>=70) on that same   |
+//|     bar -- momentum agrees the move is extended.                    |
+//|  3. Stochastic TURN-confirmation trigger: was oversold/overbought   |
+//|     and is now turning back -- not just a static extreme reading,   |
+//|     which avoids entering while price is still falling/rising      |
+//|     ("catching a falling knife").                                  |
+//| Paired with the flipped Range Filter (v2 wants LOW ADX / ranging    |
+//| conditions, the opposite of v1's trend-following pairing) and the   |
+//| existing volume/volatility/news/weekend filters.                    |
 //+------------------------------------------------------------------+
 enum ENUM_SIGNAL { SIGNAL_NONE, SIGNAL_BUY, SIGNAL_SELL };
 
 ENUM_SIGNAL GetEntrySignal()
 {
-   // 1. Higher-timeframe trend direction: price vs. slow MA
-   double higherTrendMa[];
-   ArraySetAsSeries(higherTrendMa, true);
-   if(CopyBuffer(g_handleHigherTrendMa, 0, 0, 1, higherTrendMa) <= 0) return SIGNAL_NONE;
-
-   double higherClose[];
-   ArraySetAsSeries(higherClose, true);
-   if(CopyClose(_Symbol, InpHigherTimeframe, 0, 1, higherClose) <= 0) return SIGNAL_NONE;
-
-   bool higherTrendUp   = higherClose[0] > higherTrendMa[0];
-   bool higherTrendDown = higherClose[0] < higherTrendMa[0];
-
-   // 2. Trading-timeframe pullback: was price at/through the short MA
-   //    on the prior bar (i.e. dipped against the higher-TF trend)?
-   double pullbackMa[];
-   ArraySetAsSeries(pullbackMa, true);
-   if(CopyBuffer(g_handlePullbackMa, 0, 0, 2, pullbackMa) <= 0) return SIGNAL_NONE;
+   double upper[], lower[];
+   ArraySetAsSeries(upper, true);
+   ArraySetAsSeries(lower, true);
+   if(CopyBuffer(g_handleBands, UPPER_BAND, 0, 2, upper) <= 0) return SIGNAL_NONE;
+   if(CopyBuffer(g_handleBands, LOWER_BAND, 0, 2, lower) <= 0) return SIGNAL_NONE;
 
    double close[];
    ArraySetAsSeries(close, true);
    if(CopyClose(_Symbol, PERIOD_CURRENT, 0, 2, close) <= 0) return SIGNAL_NONE;
 
-   bool pulledBackAgainstUptrend   = (close[1] <= pullbackMa[1]);
-   bool pulledBackAgainstDowntrend = (close[1] >= pullbackMa[1]);
-
-   // 3. Momentum-resumption trigger: RSI crossing back through its level
    double rsi[];
    ArraySetAsSeries(rsi, true);
    if(CopyBuffer(g_handleRsi, 0, 0, 2, rsi) <= 0) return SIGNAL_NONE;
 
-   bool momentumResumeUp   = (rsi[1] <= InpMomentumRsiUpLevel   && rsi[0] > InpMomentumRsiUpLevel);
-   bool momentumResumeDown = (rsi[1] >= InpMomentumRsiDownLevel && rsi[0] < InpMomentumRsiDownLevel);
+   double stochMain[];
+   ArraySetAsSeries(stochMain, true);
+   if(CopyBuffer(g_handleStoch, MAIN_LINE, 0, 2, stochMain) <= 0) return SIGNAL_NONE;
 
-   if(higherTrendUp   && pulledBackAgainstUptrend   && momentumResumeUp)   return SIGNAL_BUY;
-   if(higherTrendDown && pulledBackAgainstDowntrend && momentumResumeDown) return SIGNAL_SELL;
+   // 1. Price touched/pierced the band on the last completed bar
+   bool touchedLower = (close[1] <= lower[1]);
+   bool touchedUpper = (close[1] >= upper[1]);
+
+   // 2. RSI confirms oversold/overbought at that same bar
+   bool rsiOversold   = (rsi[1] <= InpRsiOversold);
+   bool rsiOverbought = (rsi[1] >= InpRsiOverbought);
+
+   // 3. Stochastic turn-confirmation: was in extreme territory, now
+   //    turning back -- the actual entry trigger, not a static state
+   bool stochTurningUp   = (stochMain[1] <= InpStochOversold   && stochMain[0] > stochMain[1]);
+   bool stochTurningDown = (stochMain[1] >= InpStochOverbought && stochMain[0] < stochMain[1]);
+
+   if(touchedLower && rsiOversold   && stochTurningUp)   return SIGNAL_BUY;
+   if(touchedUpper && rsiOverbought && stochTurningDown) return SIGNAL_SELL;
    return SIGNAL_NONE;
 }
 
 //+------------------------------------------------------------------+
 //| Confidence score -- Safe Mode's 65-75% win-probability filter      |
-//| (2026-07-14m). Upgraded (2026-07-14q) from a flat placeholder to a |
-//| rule-based heuristic combining trend strength (ADX) and momentum   |
-//| conviction (RSI distance from neutral). This is EXPLICITLY NOT a   |
-//| calibrated probability -- it has not been checked against real     |
-//| win-rate outcomes. It's an honest, explainable scoring rule, not   |
-//| the reference EA's "AI Filter" -- deliberately not labeled "AI"     |
-//| since no model has been trained or validated (see header note).    |
-//| Must be validated against real backtest win rates before Safe      |
-//| Mode's filter threshold means anything statistically.              |
+//| (2026-07-14m). Re-derived (2026-07-14u) for the mean-reversion v2   |
+//| signal: rewards a DEEPER RSI extreme (stronger reversion pressure)  |
+//| and a LOWER ADX (more contained/ranging, safer for mean reversion   |
+//| -- the opposite of the v1 trend-following version, which rewarded   |
+//| high ADX). This is EXPLICITLY NOT a calibrated probability -- it    |
+//| has not been checked against real win-rate outcomes. It's an        |
+//| honest, explainable scoring rule, not the reference EA's "AI        |
+//| Filter" -- deliberately not labeled "AI" since no model has been    |
+//| trained or validated (see header note). Must be validated against   |
+//| real backtest win rates before Safe Mode's filter threshold means   |
+//| anything statistically.                                            |
 //+------------------------------------------------------------------+
 double GetSignalConfidence(ENUM_SIGNAL signal)
 {
-   double adx[];
-   ArraySetAsSeries(adx, true);
-   double adxScore = 50.0; // neutral default if data unavailable
-   if(CopyBuffer(g_handleAdx, MAIN_LINE, 0, 1, adx) > 0)
-      adxScore = MathMin(100.0, adx[0] * 2.0); // ADX typically ~0-50 -> scaled to 0-100
-
    double rsi[];
    ArraySetAsSeries(rsi, true);
    double rsiScore = 50.0;
    if(CopyBuffer(g_handleRsi, 0, 0, 1, rsi) > 0)
    {
-      double distanceFromMid = MathAbs(rsi[0] - 50.0); // 0-50
-      rsiScore = MathMin(100.0, distanceFromMid * 2.0);
+      double extremity = (signal == SIGNAL_BUY) ? (InpRsiOversold - rsi[0]) : (rsi[0] - InpRsiOverbought);
+      rsiScore = MathMax(0.0, MathMin(100.0, 50.0 + extremity * 2.0));
    }
 
-   return (adxScore + rsiScore) / 2.0;
+   double adx[];
+   ArraySetAsSeries(adx, true);
+   double adxScore = 50.0; // neutral default if data unavailable
+   if(CopyBuffer(g_handleAdx, MAIN_LINE, 0, 1, adx) > 0)
+      adxScore = MathMax(0.0, 100.0 - adx[0] * 2.0); // LOW ADX -> higher score for mean reversion
+
+   return (rsiScore + adxScore) / 2.0;
 }
 
 //+------------------------------------------------------------------+
@@ -675,14 +739,14 @@ void OnTick()
    }
    if(!PassesRangeFilter())
    {
-      LogBlockReason(StringFormat("range filter -- ADX below trend-strength threshold (%.1f)", InpAdxTrendThreshold));
+      LogBlockReason(StringFormat("range filter -- ADX too high for mean reversion (max=%.1f)", InpAdxMaxForMeanReversion));
       return;
    }
 
    ENUM_SIGNAL signal = GetEntrySignal();
    if(signal == SIGNAL_NONE)
    {
-      LogBlockReason("no entry signal -- trend/pullback/momentum conditions not aligned this bar");
+      LogBlockReason("no entry signal -- Bollinger/RSI/Stochastic conditions not aligned this bar");
       return;
    }
 
