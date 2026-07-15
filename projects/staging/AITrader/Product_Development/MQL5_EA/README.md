@@ -1,6 +1,10 @@
-# FatalibuildersTraderScalper1.mq5 — Draft Expert Advisor (v0.95)
+# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.00)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, and micro-scalp-target decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, and high-concurrency decisions from `Master-Context.md`, not a finished product.
+
+### v1.00 — renamed "Super Scalpers," 20 concurrent trades, signal-stacking formalized (2026-07-14zzz)
+
+Founder uploaded ten compiled `.ex5` files from other trading bots and asked to combine them into a "super aggressive bot" — declined (compiled bytecode isn't readable/decompilable here, and reverse-engineering other vendors' commercial EAs into ours isn't something this project does, same stance as the earlier reference-EA screenshot). Pursued the actual goal using only our own source instead, confirmed via two direct questions: renamed to **FatalibuildersTrader Super Scalpers** (file renamed accordingly); raised `MaxTradesOpenAtOnce` from 2 to **20** (multiplies simultaneous risk exposure directly — the founder's own number, not a guess); and formalized a real gap found while answering "what's the max trades in 5 minutes" — `OnTick()` re-checks its signal every tick, not once per bar, and could already open a 2nd+ trade off the same candle's signal with no guard. Added `AllowMultipleTradesPerSignal_Enabled` and `MaxTradesPerSignal_PerBar` (both new, default on/20) to make that explicit and tunable. See `decisions-learnings/2026-07-14zzz_super-scalpers-rename-and-max-concurrency-raised.md` for the full reasoning, including why this materially raises the cost-per-trade concern already flagged for the $0.30 target.
 
 ### v0.95 — Safe Mode profit target lowered to $0.30 (2026-07-14zz)
 
@@ -45,7 +49,7 @@ Founder asked for a genuine short-timeframe scalper restricted to forex and meta
 - Dynamic risk-based lot sizing (dollar risk ÷ stop distance, not a fixed table) — 2026-07-14e
 - Dual exit modes: outright close, or move to breakeven and let the position run — 2026-07-14
 - Daily profit target (5% Safe / 20% Aggressive) and mode-specific daily loss limit (3% Safe / 50% Aggressive), with automatic halt — 2026-07-14h/i/k/l/y
-- Max 2 concurrent open trades — 2026-07-14h
+- Max 20 concurrent open trades (raised from 2) — 2026-07-14h, 2026-07-14zzz; plus a formal per-candle signal-stacking cap (`AllowMultipleTradesPerSignal_Enabled` / `MaxTradesPerSignal_PerBar`) — 2026-07-14zzz
 - **Tier-boundary fix** (`RemainingDailyLossBudget()`): a single trade's risk is capped at whatever remains of the day's loss budget, resolving the interaction flagged 2026-07-14i where a $3 stop-loss could exceed a $1.50 daily budget in one trade
 - A first-pass news-awareness check using MT5's native economic calendar (skips new entries within a configurable window of high-impact events for the traded symbol's currencies)
 - Restricted to XAUUSD and GBPUSD only, M1 chart enforced, and a session-open delay filter (waits a configurable number of minutes after each of the Asia/London/New York session opens before trading) — 2026-07-14z

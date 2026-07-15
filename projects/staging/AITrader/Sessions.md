@@ -34,3 +34,4 @@
 | Session 24 — Scalper 1 renamed, aggressive equity-risk redesign | 2026-07-14 | Scalper 1, product name, Aggressive Mode, equity percentage risk, daily loss ceiling, Monte Carlo, risk of ruin |
 | Session 25 — XAUUSD/GBPUSD only, M1 enforced, session-open filter | 2026-07-14 | XAUUSD, GBPUSD, symbol restriction, M1, session open, London, New York, Asia, session timing, $0.30 profit target |
 | Session 26 — Safe Mode profit target lowered to $0.30 | 2026-07-14 | $0.30 profit target, Safe Mode, break-even win rate, risk:reward |
+| Session 27 — Super Scalpers rename, 20 concurrent trades, signal stacking | 2026-07-14 | decompile declined, ex5, IP, Super Scalpers, MaxTradesOpenAtOnce, concurrent trades, signal stacking, max trades in 5 minutes |

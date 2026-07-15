@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
-//| FatalibuildersTraderScalper1.mq5                                    |
-//| Draft v0.95 (Market tag 1.65) -- implements the risk-management,   |
+//| FatalibuildersTraderSuperScalpers.mq5                                |
+//| Draft v1.00 (Market tag 1.70) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -19,17 +19,23 @@
 //| a new trade, and (2026-07-14zz) Safe Mode's profit target lowered     |
 //| to $0.30 (both tiers) per explicit founder instruction -- see the      |
 //| comment above SafeMode_ProfitTarget_SmallAccount_Dollars for the       |
-//| resulting break-even win-rate math. See the big comment above          |
-//| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest      |
-//| math behind Aggressive Mode's risk before using it.                   |
+//| resulting break-even win-rate math. (2026-07-14zzz) Renamed to        |
+//| "FatalibuildersTrader Super Scalpers," MaxTradesOpenAtOnce raised      |
+//| from 2 to 20 per direct founder instruction, and the entry logic's     |
+//| previously-undocumented ability to open more than one trade off the    |
+//| SAME candle's signal is now a formal, tunable feature                  |
+//| (AllowMultipleTradesPerSignal_Enabled / MaxTradesPerSignal_PerBar) --   |
+//| see the comments above MaxTradesOpenAtOnce below. See the big comment  |
+//| above AggressiveMode_RiskPerTrade_PercentOfEquity below for the        |
+//| honest math behind Aggressive Mode's risk before using it.             |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
 //| any part of this for real trading. Compiles (per founder), still  |
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
-#property copyright "FatalibuildersTrader Scalper 1"
-#property version   "1.65"
+#property copyright "FatalibuildersTrader Super Scalpers"
+#property version   "1.70"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -237,7 +243,29 @@ input double StopForDay_AggressiveMode_IfLossReaches_Percent   = 50.0;   // 2026
 input group "=== 5. BASIC TRADE SETTINGS ==="
 // The bot will never have more than this many trades open at the same
 // time, regardless of how many good setups it sees.
-input int    MaxTradesOpenAtOnce           = 2;      // 2026-07-14h
+// (2026-07-14zzz) RAISED from 2 to 20 per explicit founder instruction --
+// this directly multiplies simultaneous risk exposure (up to 10x more
+// positions open at once than before, each still sized per the risk
+// rules in section 2 above). This was deliberately left unchanged
+// through several earlier "more aggressive" rounds specifically because
+// it's a bigger, different kind of risk decision than opportunity
+// capture -- raised now only because it was asked for directly, with
+// the tradeoff understood, not as an automatic side effect of "more
+// aggressive."
+input int    MaxTradesOpenAtOnce           = 20;     // 2026-07-14zzz (was 2, 2026-07-14h)
+// (2026-07-14zzz) Formalizes behavior that already existed accidentally:
+// the bot re-checks its entry signal on every price tick, not just once
+// per new candle, so it could already open a 2nd (3rd, 4th...) trade off
+// the SAME 1-minute candle's signal within moments of the first, as long
+// as a slot was free. This makes that intentional and tunable instead of
+// an undocumented side effect. Turn off to allow only ONE trade per
+// candle's signal, no matter how many slots are free.
+input bool   AllowMultipleTradesPerSignal_Enabled = true;  // 2026-07-14zzz
+// If multiple trades per signal are allowed above, this caps how many
+// of them can come from ONE candle's signal (separate from
+// MaxTradesOpenAtOnce, which caps total open positions from ANY
+// signals combined).
+input int    MaxTradesPerSignal_PerBar            = 20;    // 2026-07-14zzz
 // The smallest trade size the bot will use (in "lots," MT5's unit for
 // position size). 0.01 is the smallest size most brokers allow.
 input double StartingTradeSize_Lots        = 0.01;   // 2026-07-14e
@@ -351,6 +379,8 @@ input bool   ShowDetailedLog_Enabled = true;
 double   g_dayStartEquity = 0;
 datetime g_lastLogBarTime = 0;
 datetime g_lastSignalAlertBarTime = 0;   // 2026-07-14x -- throttles SIGNALS_ONLY alerts to once per new bar
+datetime g_signalStackBarTime = 0;       // 2026-07-14zzz -- tracks which bar g_tradesThisBarSignal counts against
+int      g_tradesThisBarSignal = 0;      // 2026-07-14zzz -- how many trades/alerts acted on the CURRENT bar's signal
 MqlDateTime g_dayKey;
 int      g_handleBands, g_handleStoch, g_handleRsi, g_handleAtr, g_handleAdx;
 bool     g_dailyHalted = false;
@@ -380,7 +410,7 @@ int OnInit()
 {
    if(!IsAllowedInstrument())
    {
-      PrintFormat("FatalibuildersTrader Scalper 1: %s is not XAUUSD or GBPUSD. This EA is restricted to those two symbols only (2026-07-14z) -- refusing to initialize.", _Symbol);
+      PrintFormat("FatalibuildersTrader Super Scalpers: %s is not XAUUSD or GBPUSD. This EA is restricted to those two symbols only (2026-07-14z) -- refusing to initialize.", _Symbol);
       return(INIT_FAILED);
    }
 
@@ -391,7 +421,7 @@ int OnInit()
    // designed and reasoned about.
    if(_Period != PERIOD_M1)
    {
-      PrintFormat("FatalibuildersTrader Scalper 1: attached to a %s chart, but this build requires the M1 (1-minute) chart -- refusing to initialize. Change the chart timeframe to M1 and re-attach.", EnumToString(_Period));
+      PrintFormat("FatalibuildersTrader Super Scalpers: attached to a %s chart, but this build requires the M1 (1-minute) chart -- refusing to initialize. Change the chart timeframe to M1 and re-attach.", EnumToString(_Period));
       return(INIT_FAILED);
    }
 
@@ -405,7 +435,7 @@ int OnInit()
       g_handleRsi == INVALID_HANDLE || g_handleAtr == INVALID_HANDLE ||
       g_handleAdx == INVALID_HANDLE)
    {
-      Print("FatalibuildersTrader Scalper 1: failed to create indicator handles");
+      Print("FatalibuildersTrader Super Scalpers: failed to create indicator handles");
       return(INIT_FAILED);
    }
 
@@ -468,7 +498,7 @@ bool CheckDailyLimits()
    if(changePct <= -lossLimitPct || changePct >= profitTargetPct)
    {
       if(!g_dailyHalted)
-         PrintFormat("FatalibuildersTrader Scalper 1: daily limit reached (%.2f%%), halting until next day", changePct);
+         PrintFormat("FatalibuildersTrader Super Scalpers: daily limit reached (%.2f%%), halting until next day", changePct);
       g_dailyHalted = true;
    }
    return g_dailyHalted;
@@ -760,7 +790,7 @@ bool IsWeekendEntryBlocked()
    return false;
 }
 
-// Force-close all FatalibuildersTrader Scalper 1 positions ahead of the weekend close.
+// Force-close all FatalibuildersTrader Super Scalpers positions ahead of the weekend close.
 void ApplyWeekendCloseAll()
 {
    if(!WeekendProtection_Enabled) return;
@@ -914,7 +944,7 @@ void ManageOpenPositions()
       if(profit >= target && !alreadyBreakeven)
       {
          trade.PositionModify(ticket, openPrice, PositionGetDouble(POSITION_TP));
-         PrintFormat("FatalibuildersTrader Scalper 1: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
+         PrintFormat("FatalibuildersTrader Super Scalpers: moved position #%I64u to breakeven at $%.2f profit", ticket, profit);
       }
    }
 }
@@ -931,7 +961,7 @@ void LogBlockReason(string reason)
    if(barTime == g_lastLogBarTime) return; // already logged this bar
 
    g_lastLogBarTime = barTime;
-   PrintFormat("FatalibuildersTrader Scalper 1 [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
+   PrintFormat("FatalibuildersTrader Super Scalpers [%s]: no trade -- %s", TimeToString(TimeCurrent(), TIME_SECONDS), reason);
 }
 
 //+------------------------------------------------------------------+
@@ -952,13 +982,13 @@ void SendSignalAlert(ENUM_SIGNAL signal, double suggestedLots, double suggestedS
 
    string action = (signal == SIGNAL_BUY) ? "BUY" : "SELL";
    string msg = StringFormat(
-      "FatalibuildersTrader Scalper 1 SIGNAL: %s %s -- suggested size %.2f lots, stop-loss %.5f, take-profit %.5f. Manual mode: no trade was placed. Decide and place it yourself in MT5 if you want it.",
+      "FatalibuildersTrader Super Scalpers SIGNAL: %s %s -- suggested size %.2f lots, stop-loss %.5f, take-profit %.5f. Manual mode: no trade was placed. Decide and place it yourself in MT5 if you want it.",
       action, _Symbol, suggestedLots, suggestedSl, suggestedTp);
 
    Alert(msg);
    Comment(msg);
    SendNotification(msg);
-   PrintFormat("FatalibuildersTrader Scalper 1: %s", msg);
+   PrintFormat("FatalibuildersTrader Super Scalpers: %s", msg);
 }
 
 //+------------------------------------------------------------------+
@@ -1048,6 +1078,28 @@ void OnTick()
       }
    }
 
+   // (2026-07-14zzz) Signal-stacking gate -- formalizes behavior that was
+   // previously an undocumented side effect of re-checking the signal on
+   // every tick instead of once per bar. Resets the per-bar counter when
+   // a new candle starts, then either allows only one trade per candle's
+   // signal (AllowMultipleTradesPerSignal_Enabled = false) or up to
+   // MaxTradesPerSignal_PerBar of them.
+   {
+      datetime barTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+      if(barTime != g_signalStackBarTime)
+      {
+         g_signalStackBarTime = barTime;
+         g_tradesThisBarSignal = 0;
+      }
+
+      int allowedThisBar = AllowMultipleTradesPerSignal_Enabled ? MaxTradesPerSignal_PerBar : 1;
+      if(g_tradesThisBarSignal >= allowedThisBar)
+      {
+         LogBlockReason(StringFormat("already acted on this candle's signal %d time(s) (limit %d)", g_tradesThisBarSignal, allowedThisBar));
+         return;
+      }
+   }
+
    double stopDistancePoints = GetStopDistancePoints();
    double riskDollars = GetStopLossDollars();
    double targetDollars = GetProfitTargetDollars();
@@ -1090,6 +1142,7 @@ void OnTick()
       if(useHardTp)
          tp = (signal == SIGNAL_BUY) ? ask + targetDistancePoints * point : bid - targetDistancePoints * point;
       SendSignalAlert(signal, lots, sl, tp);
+      g_tradesThisBarSignal++; // 2026-07-14zzz
       return;
    }
 
@@ -1097,18 +1150,24 @@ void OnTick()
    {
       double sl = ask - stopDistancePoints * point;
       double tp = useHardTp ? ask + targetDistancePoints * point : 0;
-      if(trade.Buy(lots, _Symbol, ask, sl, tp, "FatalibuildersTrader Scalper 1"))
-         PrintFormat("FatalibuildersTrader Scalper 1: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      if(trade.Buy(lots, _Symbol, ask, sl, tp, "FatalibuildersTrader Super Scalpers"))
+      {
+         PrintFormat("FatalibuildersTrader Super Scalpers: BUY placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+         g_tradesThisBarSignal++; // 2026-07-14zzz -- only count actual fills, not failed attempts
+      }
       else
-         PrintFormat("FatalibuildersTrader Scalper 1: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
+         PrintFormat("FatalibuildersTrader Super Scalpers: BUY failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
    else if(signal == SIGNAL_SELL)
    {
       double sl = bid + stopDistancePoints * point;
       double tp = useHardTp ? bid - targetDistancePoints * point : 0;
-      if(trade.Sell(lots, _Symbol, bid, sl, tp, "FatalibuildersTrader Scalper 1"))
-         PrintFormat("FatalibuildersTrader Scalper 1: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+      if(trade.Sell(lots, _Symbol, bid, sl, tp, "FatalibuildersTrader Super Scalpers"))
+      {
+         PrintFormat("FatalibuildersTrader Super Scalpers: SELL placed, lots=%.2f sl=%.5f tp=%.5f", lots, sl, tp);
+         g_tradesThisBarSignal++; // 2026-07-14zzz -- only count actual fills, not failed attempts
+      }
       else
-         PrintFormat("FatalibuildersTrader Scalper 1: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
+         PrintFormat("FatalibuildersTrader Super Scalpers: SELL failed, retcode=%d (%s)", trade.ResultRetcode(), trade.ResultRetcodeDescription());
    }
 }

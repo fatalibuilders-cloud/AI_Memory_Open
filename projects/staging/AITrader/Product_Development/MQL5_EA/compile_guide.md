@@ -1,6 +1,6 @@
-# How to Compile FatalibuildersTraderScalper1.mq5 in MetaEditor — Step by Step
+# How to Compile FatalibuildersTraderSuperScalpers.mq5 in MetaEditor — Step by Step
 
-**Before you start:** `FatalibuildersTraderScalper1.mq5` requires **MetaTrader 5**, not MT4. They use different languages (MQL5 vs MQL4) and MT4 cannot open or run this file. If you only have MT4 installed (e.g., "FxPro MT4"), download MT5 separately — Exness offers both MT4 and MT5 installers on their site; make sure you get the MT5 one.
+**Before you start:** `FatalibuildersTraderSuperScalpers.mq5` requires **MetaTrader 5**, not MT4. They use different languages (MQL5 vs MQL4) and MT4 cannot open or run this file. If you only have MT4 installed (e.g., "FxPro MT4"), download MT5 separately — Exness offers both MT4 and MT5 installers on their site; make sure you get the MT5 one.
 
 ---
 
@@ -15,7 +15,7 @@
 1. Open MetaTrader 5.
 2. Go to **File → Open Data Folder**. This opens a Windows Explorer window.
 3. Navigate to **MQL5 → Experts**.
-4. Copy `FatalibuildersTraderScalper1.mq5` into this `Experts` folder. (You can drop it directly in the folder, or in a subfolder like `Experts\FatalibuildersTraderScalper1\` if you want to keep it organized — either works.)
+4. Copy `FatalibuildersTraderSuperScalpers.mq5` into this `Experts` folder. (You can drop it directly in the folder, or in a subfolder like `Experts\FatalibuildersTraderSuperScalpers\` if you want to keep it organized — either works.)
 
 ## Step 3: Open MetaEditor
 
@@ -26,7 +26,7 @@ You can get to MetaEditor two ways:
 ## Step 4: Open the file
 
 1. In MetaEditor, go to **File → Open**.
-2. Navigate to the `Experts` folder from Step 2 and select `FatalibuildersTraderScalper1.mq5`.
+2. Navigate to the `Experts` folder from Step 2 and select `FatalibuildersTraderSuperScalpers.mq5`.
 3. It should open in the code editor with syntax highlighting.
 
 ## Step 5: Compile
@@ -36,13 +36,13 @@ You can get to MetaEditor two ways:
 
 ## Step 6: Read the results
 
-- **If you see "0 error(s), 0 warning(s)"** (or just 0 errors, warnings are usually fine) — you're done. A new file `FatalibuildersTraderScalper1.ex5` now sits in the same `Experts` folder. That's the compiled version MT5 actually runs, and what eventually goes to MQL5 Market.
+- **If you see "0 error(s), 0 warning(s)"** (or just 0 errors, warnings are usually fine) — you're done. A new file `FatalibuildersTraderSuperScalpers.ex5` now sits in the same `Experts` folder. That's the compiled version MT5 actually runs, and what eventually goes to MQL5 Market.
 - **If you see errors** — each one lists a line number and a message. **Copy the full error text and send it to me** — paste it directly in chat. I'll fix the corresponding lines in the code and send you an updated `.mq5` to try again.
 
 ## Step 7: Load it onto a chart (optional, to confirm it actually runs)
 
 1. Back in MT5, open the **Navigator** panel (Ctrl+N if it's hidden).
-2. Expand **Expert Advisors** — you should see `FatalibuildersTraderScalper1` listed.
+2. Expand **Expert Advisors** — you should see `FatalibuildersTraderSuperScalpers` listed.
 3. Open a chart for **XAUUSD (gold) or GBPUSD only** — nothing else is accepted anymore — and set the chart's timeframe to **M1 (1-minute)**, exactly, then drag the EA onto it. Both the symbol restriction and the M1-only requirement are enforced in code: dragging it onto anything else (any other symbol, or the same symbol on M5/H1/etc.) will fail to initialize by design.
 4. A settings dialog opens showing all the inputs in plain-English groups (how the bot operates, how much can be lost per trade, etc.) — for now just click **OK** to accept the defaults. On XAUUSD, consider raising `MaxAllowedSpread_Points` from the 30-point default first, since gold commonly runs a wider spread than GBPUSD. The first setting in the list, `AutoTrade_Or_SignalsOnly`, decides whether the bot places trades itself (`AUTO_TRADE`) or just alerts you with a suggestion (`SIGNALS_ONLY`) — pick `SIGNALS_ONLY` for a first test if you want to see what it would do without risking real trades. Also check the "session-open" settings (server-time hours for Asia/London/New York) match your broker's actual server clock, shown at the bottom-right of any MT5 chart.
 5. Make sure **AutoTrading** is enabled (toolbar button, should be green) if you want it to actually place trades — but for a first check, it's fine to leave AutoTrading off (or use `SIGNALS_ONLY` mode) and just confirm the EA attaches without errors (a smiley face icon appears in the top-right of the chart if it loaded successfully).

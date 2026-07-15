@@ -1,4 +1,4 @@
-# MQL5 Market Submission Checklist — FatalibuildersTrader Scalper 1
+# MQL5 Market Submission Checklist — FatalibuildersTrader Super Scalpers
 
 **Purpose:** Everything MQL5 Market requires for submission, what's done, what's missing, and what I can vs. can't produce in this environment.
 
