@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTraderScalper1.mq5                                    |
-//| Draft v0.80 (Market tag 1.50) -- implements the risk-management,   |
+//| Draft v0.90 (Market tag 1.60) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -8,12 +8,17 @@
 //| restricted to forex/metals (2026-07-14u), a more aggressive default |
 //| configuration (2026-07-14v), (2026-07-14w) a pre-trade margin       |
 //| sufficiency check, (2026-07-14x) plain-English input names/groups   |
-//| plus a manual SIGNALS_ONLY operation mode alongside AUTO_TRADE, and |
+//| plus a manual SIGNALS_ONLY operation mode alongside AUTO_TRADE,      |
 //| (2026-07-14y) the "Scalper 1" name plus a much more aggressive,      |
 //| equity-percentage-based risk/reward specifically for Aggressive      |
-//| Mode -- Safe Mode's fixed-dollar tiered risk is untouched. See the   |
-//| big comment above AggressiveMode_RiskPerTrade_PercentOfEquity below  |
-//| for the honest math behind that change before using Aggressive Mode. |
+//| Mode -- Safe Mode's fixed-dollar tiered risk is untouched -- and      |
+//| (2026-07-14z) NARROWED to trade XAUUSD and GBPUSD only, ENFORCED to   |
+//| the M1 (1-minute) chart, and a new session-open delay filter that     |
+//| waits a configurable number of minutes after each of the 3 major      |
+//| session opens (Asia/London/New York, server time) before allowing     |
+//| a new trade. See the big comment above                                |
+//| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest      |
+//| math behind Aggressive Mode's risk before using it.                   |
 //|                                                                    |
 //| NOT PRODUCTION READY. See the "OPEN ITEMS / PLACEHOLDERS" block   |
 //| below and Product_Development/MQL5_EA/README.md before trusting   |
@@ -21,7 +26,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader Scalper 1"
-#property version   "1.50"
+#property version   "1.60"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -86,18 +91,17 @@ CTrade trade;
 //|    3.1 fixed lot size) is NOT something this file targets or       |
 //|    should be benchmarked against -- see README for why.            |
 //|                                                                    |
-//| 6. IsAllowedInstrument() (2026-07-14u) is a HEURISTIC, not a        |
-//|    guaranteed-correct classification -- it checks MT5's forex      |
-//|    calc-mode flag plus XAU/XAG/XPT/XPD in the symbol name. Some     |
-//|    brokers may name/classify symbols unusually; verify it behaves   |
-//|    correctly on your broker's actual symbol names before relying   |
-//|    on it. MaxAllowedSpread_Points (default 30) is tuned for major forex  |
-//|    pairs and is almost certainly too tight for metals -- raise it   |
-//|    manually when trading XAUUSD/XAGUSD, the code does not auto-      |
-//|    detect a sane per-symbol default. The chart timeframe (M1-M5     |
-//|    recommended for scalping) is NOT enforced by the code -- it will |
-//|    run on any timeframe you attach it to, since PERIOD_CURRENT      |
-//|    simply follows the chart.                                       |
+//| 6. IsAllowedInstrument() (2026-07-14z) is a HEURISTIC, not a         |
+//|    guaranteed-correct classification -- it checks the symbol name    |
+//|    for an XAUUSD or GBPUSD prefix. Some brokers may name symbols      |
+//|    unusually (unexpected prefixes rather than suffixes); verify it   |
+//|    matches your broker's actual symbol names before relying on it.   |
+//|    MaxAllowedSpread_Points (default 30) is tuned for major forex     |
+//|    pairs and is almost certainly too tight for XAUUSD -- raise it    |
+//|    manually, the code does not auto-detect a sane per-symbol         |
+//|    default. The chart timeframe is now ENFORCED as M1 (2026-07-14z,  |
+//|    OnInit refuses to run on anything else) -- this used to be only   |
+//|    a recommendation.                                                 |
 //+------------------------------------------------------------------+
 
 //=== Trading mode / exit mode / operation mode ========================
@@ -288,6 +292,31 @@ input bool   AvoidBadPriceData_Enabled    = true;
 input double MaxAllowedSpread_Points      = 30.0;
 input int    MaxAllowedPriceDelay_Seconds = 60;
 
+// (2026-07-14z) Many traders avoid the first stretch of a trading
+// session right after it opens, because spreads often widen and price
+// can whip around sharply before settling into a real trend/range. This
+// makes the bot wait a set number of minutes after EACH of the 3 major
+// session opens (Asia/Tokyo, London, New York) before it's allowed to
+// open a NEW trade -- it keeps watching every 1-minute candle the whole
+// time, it just won't act on a signal until the delay has passed.
+input bool   AvoidSessionOpens_Enabled          = true;
+// How many minutes to wait after a session opens before new trades are
+// allowed again.
+input int    AvoidSessionOpens_DelayMinutes     = 60;
+// IMPORTANT: these 3 hours are in SERVER time -- the clock shown on
+// your MT5 charts, which is set by your broker and is usually NOT the
+// same as your local time or UTC. The defaults below assume server time
+// is close to UTC (Asia/Tokyo opens ~00:00 UTC, London ~08:00 UTC, New
+// York ~13:00 UTC), which is a common approximation but NOT universal --
+// many brokers (Exness included, depending on time of year) run their
+// server clock 2-3 hours ahead of UTC. CHECK YOUR BROKER'S ACTUAL
+// SERVER TIME (visible on any MT5 chart) and adjust these 3 values to
+// match, or the "wait after session open" window will fire at the wrong
+// time.
+input int    AsiaSession_OpenHour_ServerTime    = 0;
+input int    LondonSession_OpenHour_ServerTime  = 8;
+input int    NewYorkSession_OpenHour_ServerTime = 13;
+
 input group "=== 8. WEEKEND SAFETY ==="
 // Markets close for the weekend and can "gap" (jump) to a very
 // different price when they reopen Monday. This closes open trades
@@ -313,26 +342,23 @@ int      g_handleBands, g_handleStoch, g_handleRsi, g_handleAtr, g_handleAdx;
 bool     g_dailyHalted = false;
 
 //+------------------------------------------------------------------+
-//| Instrument restriction (2026-07-14u) -- founder asked for forex    |
-//| and metals only. SYMBOL_TRADE_CALC_MODE reliably flags true forex  |
-//| pairs; metals are commonly offered as CFD-calc-mode instruments on  |
-//| most brokers, so calc mode alone isn't enough -- also check the     |
-//| symbol name for XAU/XAG/XPT/XPD. This is a heuristic, not a         |
-//| perfect classification (broker symbol-naming conventions vary) --   |
-//| it fails CLOSED (refuses to run) on anything not clearly recognized |
-//| rather than guessing.                                               |
+//| Instrument restriction (2026-07-14z) -- NARROWED from "any forex   |
+//| or metals symbol" (2026-07-14u) to EXACTLY GOLD (XAUUSD) and       |
+//| GBPUSD, per explicit founder request. Uses a PREFIX match (not     |
+//| exact-equals) so broker suffixes like "XAUUSDm" or "GBPUSD.a" still |
+//| qualify, but nothing else does -- e.g. EURUSD, XAGUSD, GBPJPY all   |
+//| correctly fail this check. This is a heuristic, not a perfect       |
+//| classification across every broker's symbol-naming convention --    |
+//| verify it matches your actual broker's symbol names.                |
 //+------------------------------------------------------------------+
 bool IsAllowedInstrument()
 {
-   ENUM_SYMBOL_CALC_MODE calcMode = (ENUM_SYMBOL_CALC_MODE)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_CALC_MODE);
-   bool isForexCalc = (calcMode == SYMBOL_CALC_MODE_FOREX || calcMode == SYMBOL_CALC_MODE_FOREX_NO_LEVERAGE);
-
    string name = _Symbol;
    StringToUpper(name);
-   bool isMetal = (StringFind(name, "XAU") >= 0 || StringFind(name, "XAG") >= 0 ||
-                   StringFind(name, "XPT") >= 0 || StringFind(name, "XPD") >= 0);
+   bool isGold   = (StringFind(name, "XAUUSD") == 0);
+   bool isGbpUsd = (StringFind(name, "GBPUSD") == 0);
 
-   return (isForexCalc || isMetal);
+   return (isGold || isGbpUsd);
 }
 
 //+------------------------------------------------------------------+
@@ -340,7 +366,18 @@ int OnInit()
 {
    if(!IsAllowedInstrument())
    {
-      PrintFormat("FatalibuildersTrader Scalper 1: %s is not a recognized forex or metals instrument. This EA is restricted to forex and metals only (2026-07-14u) -- refusing to initialize.", _Symbol);
+      PrintFormat("FatalibuildersTrader Scalper 1: %s is not XAUUSD or GBPUSD. This EA is restricted to those two symbols only (2026-07-14z) -- refusing to initialize.", _Symbol);
+      return(INIT_FAILED);
+   }
+
+   // (2026-07-14z) Founder asked for 1-minute-candle analysis
+   // specifically, not just "a short timeframe" -- enforced here rather
+   // than left as a recommendation, since the strategy's entry logic
+   // (GetEntrySignal, below) is only meaningful on the timeframe it was
+   // designed and reasoned about.
+   if(_Period != PERIOD_M1)
+   {
+      PrintFormat("FatalibuildersTrader Scalper 1: attached to a %s chart, but this build requires the M1 (1-minute) chart -- refusing to initialize. Change the chart timeframe to M1 and re-attach.", EnumToString(_Period));
       return(INIT_FAILED);
    }
 
@@ -656,6 +693,45 @@ bool HasSufficientMargin(ENUM_ORDER_TYPE orderType, double lots, double price)
    return freeMargin >= marginRequired;
 }
 
+// "Session-Open Delay" (2026-07-14z): blocks new trades for a set number
+// of minutes after each of the 3 major session opens (Asia/Tokyo,
+// London, New York), server time -- see the input-group comment above
+// AvoidSessionOpens_Enabled for why, and the server-time caveat. Works
+// in total minutes-since-midnight so a window that crosses midnight
+// (e.g. a session opening at 23:xx server time) is still handled
+// correctly.
+bool IsWithinSessionOpenDelay()
+{
+   if(!AvoidSessionOpens_Enabled) return false;
+
+   MqlDateTime t;
+   TimeToStruct(TimeCurrent(), t);
+   int nowMinutes = t.hour * 60 + t.min;
+
+   int sessionOpenMinutes[3];
+   sessionOpenMinutes[0] = AsiaSession_OpenHour_ServerTime    * 60;
+   sessionOpenMinutes[1] = LondonSession_OpenHour_ServerTime  * 60;
+   sessionOpenMinutes[2] = NewYorkSession_OpenHour_ServerTime * 60;
+
+   for(int i = 0; i < 3; i++)
+   {
+      int windowStart = sessionOpenMinutes[i];
+      int windowEnd   = sessionOpenMinutes[i] + AvoidSessionOpens_DelayMinutes;
+
+      if(windowEnd <= 1440)
+      {
+         if(nowMinutes >= windowStart && nowMinutes < windowEnd)
+            return true;
+      }
+      else // window wraps past midnight
+      {
+         if(nowMinutes >= windowStart || nowMinutes < (windowEnd - 1440))
+            return true;
+      }
+   }
+   return false;
+}
+
 // "Weekend Protection": avoid opening new risk into a weekend gap, and
 // block new entries approaching Friday close / just after Monday open.
 bool IsWeekendEntryBlocked()
@@ -892,6 +968,12 @@ void OnTick()
    if(IsWeekendEntryBlocked())
    {
       LogBlockReason("weekend protection window (near Friday close / Monday open)");
+      return;
+   }
+
+   if(IsWithinSessionOpenDelay())
+   {
+      LogBlockReason(StringFormat("within %d minutes of a session open (Asia/London/New York server time) -- waiting for the market to settle", AvoidSessionOpens_DelayMinutes));
       return;
    }
 

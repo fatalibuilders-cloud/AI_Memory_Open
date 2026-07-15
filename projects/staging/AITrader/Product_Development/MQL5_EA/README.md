@@ -1,6 +1,10 @@
-# FatalibuildersTraderScalper1.mq5 — Draft Expert Advisor (v0.80)
+# FatalibuildersTraderScalper1.mq5 — Draft Expert Advisor (v0.90)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, and very-aggressive-equity-risk decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, and symbol/session-restriction decisions from `Master-Context.md`, not a finished product.
+
+### v0.90 — narrowed to XAUUSD/GBPUSD, M1 enforced, session-open delay filter (2026-07-14z)
+
+Founder asked to trade only XAUUSD and GBPUSD, and to wait one hour after each of the 3 major session opens (Asia, London, New York) before trading, analyzing 1-minute candles. Three changes: **`IsAllowedInstrument()` narrowed** from "any forex or metals symbol" to exactly XAUUSD/GBPUSD (prefix-matched to tolerate broker suffixes); **M1 chart timeframe is now enforced** in `OnInit()` (previously only recommended); and a **new session-open delay filter** (`AvoidSessionOpens_Enabled`, default 60-minute delay after each of 3 configurable session-open hours, all in server time — see the input comments for the important server-time-vs-UTC caveat). **Did not** hardcode a $0.30 profit target as the request's second half implied — Safe Mode's $1.50/$3.00 targets were deliberately raised from a smaller default in session 13 to fix a risk:reward problem, and silently reverting that wasn't done without being asked; the existing profit-target inputs already support entering $0.30 directly if wanted. See `decisions-learnings/2026-07-14z_symbol-restriction-session-timing.md`.
 
 ### v0.80 — "Scalper 1" name + Aggressive Mode redesigned around equity-percentage risk (2026-07-14y)
 
@@ -40,6 +44,7 @@ Founder asked for a genuine short-timeframe scalper restricted to forex and meta
 - Max 2 concurrent open trades — 2026-07-14h
 - **Tier-boundary fix** (`RemainingDailyLossBudget()`): a single trade's risk is capped at whatever remains of the day's loss budget, resolving the interaction flagged 2026-07-14i where a $3 stop-loss could exceed a $1.50 daily budget in one trade
 - A first-pass news-awareness check using MT5's native economic calendar (skips new entries within a configurable window of high-impact events for the traded symbol's currencies)
+- Restricted to XAUUSD and GBPUSD only, M1 chart enforced, and a session-open delay filter (waits a configurable number of minutes after each of the Asia/London/New York session opens before trading) — 2026-07-14z
 
 ### v0.20 additions — entry-condition filters (2026-07-14o)
 
@@ -60,11 +65,12 @@ Founder shared a screenshot of a third-party commercial EA's settings panel ("Fo
 
 1. **`GetEntrySignal()` — real methodology, unvalidated parameters.** Bollinger Bands (20, 2.0) + RSI (14, 30/70) + Stochastic (14,1,3, 20/80) is a real, documented approach, but this specific parameter combination has never been backtested on real data for these instruments. Treat it as a serious hypothesis to test, not a finished strategy.
 2. **`GetSignalConfidence()` — Safe Mode's 65-75% win-probability filter.** A rule-based heuristic (RSI extremity + low ADX), not a hardcoded number, but still not a calibrated probability — needs validation against real win-rate outcomes.
-3. **`IsAllowedInstrument()` — heuristic symbol classification.** Checks forex calc-mode + XAU/XAG/XPT/XPD in the name; verify against your actual broker's symbol names, don't assume it's perfect across every broker.
-4. **`MaxAllowedSpread_Points` (default 30)** is tuned for major forex pairs and is almost certainly too tight for metals — raise it manually for XAUUSD/XAGUSD, there's no auto-detection.
-5. **Chart timeframe is not enforced.** M1-M5 is recommended for this scalping signal, but the code will run on whatever timeframe you attach it to.
-6. **`GetStopDistancePoints()` — stop distance in price terms.** Uses a basic ATR multiple as a placeholder. The full volatility/news-adaptive parameter system described in Document 2 (widening stops, adjusting lot size, etc. around news/volatility) is not implemented — this file only has a simple "skip new entries near high-impact news" reaction, not the full adaptive design.
-7. **Equity-based lot-size scaling on winning streaks** is not implemented — only the downside protections (tiered stop-loss, daily loss limit) are here. Gating rules for scaling up were flagged as open in `NextSteps.md`.
+3. **`IsAllowedInstrument()` — heuristic symbol classification (narrowed 2026-07-14z).** Checks for an XAUUSD or GBPUSD prefix in the symbol name; verify against your actual broker's exact symbol names (e.g. `XAUUSDm`, `GBPUSD.a`), don't assume it's perfect across every broker.
+4. **`MaxAllowedSpread_Points` (default 30)** is tuned for major forex pairs and is almost certainly too tight for XAUUSD — raise it manually, there's no auto-detection.
+5. **Chart timeframe is now enforced as M1 (2026-07-14z)** — `OnInit()` refuses to run on anything else.
+6. **Session-open delay filter (2026-07-14z) default hours are UTC approximations, not your broker's actual server time** — `AsiaSession_OpenHour_ServerTime`/`LondonSession_OpenHour_ServerTime`/`NewYorkSession_OpenHour_ServerTime` need verifying against your broker's real server clock before the "wait 1 hour after session open" behavior fires at the right time.
+7. **`GetStopDistancePoints()` — stop distance in price terms.** Uses a basic ATR multiple as a placeholder. The full volatility/news-adaptive parameter system described in Document 2 (widening stops, adjusting lot size, etc. around news/volatility) is not implemented — this file only has a simple "skip new entries near high-impact news" reaction, not the full adaptive design.
+8. **Equity-based lot-size scaling on winning streaks** is not implemented — only the downside protections (tiered stop-loss, daily loss limit) are here. Gating rules for scaling up were flagged as open in `NextSteps.md`.
 
 ## What I have not done (and can't do in this environment)
 
@@ -74,8 +80,8 @@ Founder shared a screenshot of a third-party commercial EA's settings panel ("Fo
 ## Suggested next steps
 
 1. Open in MetaEditor, compile, fix any syntax errors.
-2. On a forex or metals symbol, at M1 or M5, run it in MT5's Strategy Tester on historical data — with a real strategy hypothesis behind it now — to see actual win rate, drawdown, and profitability, not just plumbing.
+2. On XAUUSD or GBPUSD, on the M1 chart (both now required), run it in MT5's Strategy Tester on historical data — with a real strategy hypothesis behind it now — to see actual win rate, drawdown, and profitability, not just plumbing.
 3. Compare actual win rate against the break-even bars already documented (Safe Mode: 40%/50%; Aggressive Mode: 66.7%/85.7%) and against the Monte Carlo simulation's assumptions.
-4. Tune `MaxAllowedSpread_Points` per symbol, especially for metals.
+4. Tune `MaxAllowedSpread_Points` per symbol, especially for XAUUSD. Verify the session-open hours against the actual broker's server time.
 5. Consider walk-forward testing (validate on a period the parameters weren't tuned on) to guard against curve-fitting before trusting results.
 6. If results are weak, iterate on this rule-based hypothesis (different band/RSI/Stochastic settings, different instruments) before considering ML-based signal generation — the agreed plan treats ML as a later path, not an immediate fallback.

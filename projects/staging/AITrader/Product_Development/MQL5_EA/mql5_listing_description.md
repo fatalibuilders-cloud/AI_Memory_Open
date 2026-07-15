@@ -8,13 +8,13 @@
 
 ## Short Description (for listing summary / search results)
 
-FatalibuildersTrader Scalper 1 is a short-timeframe scalping Expert Advisor for MetaTrader 5, trading forex and metals only, with two trading modes — a selective Safe Mode and a high-risk, high-activity Aggressive Mode — built around tiered/percentage risk management, daily loss and profit limits, configurable entry filters, and a choice between full automation and manual (signal-only) operation.
+FatalibuildersTrader Scalper 1 is a 1-minute scalping Expert Advisor for MetaTrader 5, trading gold (XAUUSD) and GBPUSD only, with two trading modes — a selective Safe Mode and a high-risk, high-activity Aggressive Mode — built around tiered/percentage risk management, daily loss and profit limits, configurable entry filters (including a session-open timing filter), and a choice between full automation and manual (signal-only) operation.
 
 ## Full Description
 
 ### Overview
 
-FatalibuildersTrader Scalper 1 is a scalping Expert Advisor for MetaTrader 5, designed for short timeframes (M1-M5) on forex and metals instruments only — it will not run on indices, crypto, or stock CFDs. It looks for short-term mean-reversion setups (price extending to a statistical extreme and turning back) and offers two operating modes so you can choose the risk profile that fits your account:
+FatalibuildersTrader Scalper 1 is a scalping Expert Advisor for MetaTrader 5, designed specifically for the M1 (1-minute) chart on **gold (XAUUSD) and GBPUSD only** — it will not run on any other instrument or any other timeframe. It looks for short-term mean-reversion setups (price extending to a statistical extreme and turning back) and offers two operating modes so you can choose the risk profile that fits your account:
 
 - **Safe Mode** — trades only setups that clear a higher internal confidence filter, risks a small fixed dollar amount per trade based on your account size, and prioritizes selectivity over frequency.
 - **Aggressive Mode** — trades more opportunistically (a lower, but still present, confidence filter applies) and risks a configurable **percentage of current account equity per trade** rather than a small fixed dollar amount. This is a deliberately high-risk setting: with realistic default settings, simulation shows a meaningful probability of substantial account loss if the underlying signal's real win rate turns out to be mediocre, versus very low risk if the signal performs as intended. See "Important Risk Disclosure" below — this is not a low-risk setting and should not be marketed as one.
@@ -33,17 +33,18 @@ Every mode can additionally be run in one of two operation modes:
 - No more than [N] positions are held concurrently.
 - Weekend protection closes open positions ahead of the weekend and blocks new entries near the Friday close and Monday open, avoiding gap risk from a closed market.
 - An economic-calendar check avoids opening new trades immediately ahead of high-impact news events.
+- A session-open delay filter blocks new trades for a set number of minutes (60 by default) after each of the 3 major trading sessions opens (Asia, London, New York), letting spreads and volatility settle before the EA acts on a signal.
 
 ### Entry Filters
 
-FatalibuildersTrader evaluates multiple conditions before entering a trade, including recent trading volume, current volatility relative to its recent average, and current trend strength — designed to avoid illiquid periods, abnormal volatility spikes, and strongly trending conditions that don't suit a mean-reversion approach.
+FatalibuildersTrader Scalper 1 evaluates multiple conditions before entering a trade, including recent trading volume, current volatility relative to its recent average, current trend strength, and proximity to a session open — designed to avoid illiquid periods, abnormal volatility spikes, session-open whipsaws, and strongly trending conditions that don't suit a mean-reversion approach.
 
 ### Recommended Setup
 
-- **Symbol(s):** Forex pairs and metals (gold, silver) only — the EA will not initialize on other instrument types
-- **Timeframe:** M1 or M5 (short-timeframe scalping)
-- **Minimum recommended balance:** [fill in once backtested — depends heavily on account leverage and traded symbol; the EA includes a pre-trade margin check (2026-07-14w) so a too-small account gets a clear log message rather than silently failing, but that's not a substitute for testing a realistic minimum]
-- **Recommended broker:** compatible with any MT5 broker; developed and tested with Exness. Spread settings should be reviewed per symbol — metals typically require a wider allowed-spread setting than forex majors.
+- **Symbol(s):** Gold (XAUUSD) and GBPUSD only — the EA will not initialize on any other instrument
+- **Timeframe:** M1 (1-minute chart) — required, the EA will not initialize on any other timeframe
+- **Minimum recommended balance:** [fill in once backtested — depends heavily on account leverage; the EA includes a pre-trade margin check (2026-07-14w) so a too-small account gets a clear log message rather than silently failing, but that's not a substitute for testing a realistic minimum]
+- **Recommended broker:** compatible with any MT5 broker; developed and tested with Exness. XAUUSD's normal spread is typically wider than GBPUSD's — the allowed-spread setting should be reviewed per symbol.
 
 ### Important Risk Disclosure
 
@@ -55,7 +56,7 @@ Trading forex and CFDs carries a substantial risk of loss and is not suitable fo
 
 ## Fields Still Needing Real Data Before This Can Be Published
 
-- [ ] Confirm final symbol list once backtested (which specific forex pairs and metals performed acceptably)
+- [ ] Confirm XAUUSD and GBPUSD both perform acceptably once backtested (symbol list itself is fixed per founder decision, 2026-07-14z)
 - [ ] Minimum recommended balance
 - [ ] Any performance figures — **only add these once backed by a real, verifiable backtest/forward-test.** Do not add illustrative or hoped-for numbers (see the marketing red-flag checklist in `decisions-learnings/2026-07-14j_realistic-targets-launch-readiness.md`).
 - [ ] Confirm [N] for max concurrent trades matches the shipped build (currently 2 in the code)
