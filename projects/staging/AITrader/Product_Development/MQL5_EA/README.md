@@ -1,6 +1,10 @@
-# FatalibuildersTraderScalper1.mq5 — Draft Expert Advisor (v0.90)
+# FatalibuildersTraderScalper1.mq5 — Draft Expert Advisor (v0.95)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, and symbol/session-restriction decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, and micro-scalp-target decisions from `Master-Context.md`, not a finished product.
+
+### v0.95 — Safe Mode profit target lowered to $0.30 (2026-07-14zz)
+
+Founder confirmed the $0.30 profit target flagged in `2026-07-14z` should ship as-is ("just make it as instructed"). `SafeMode_ProfitTarget_SmallAccount_Dollars` and `SafeMode_ProfitTarget_LargerAccount_Dollars` both changed from $1.50/$3.00 to **$0.30**. This reintroduces the risk:reward problem session 13 (`2026-07-14m`) originally fixed — break-even win rate is now ~77% (small-account tier) / ~91% (larger-account tier), both above the 65% confidence filter still in place. Implemented directly per instruction; documented in full in `decisions-learnings/2026-07-14zz_safe-mode-profit-target-lowered-to-30-cents.md`, including inline code comments at the input declarations. Aggressive Mode (equity-percentage-based) is untouched.
 
 ### v0.90 — narrowed to XAUUSD/GBPUSD, M1 enforced, session-open delay filter (2026-07-14z)
 
@@ -36,7 +40,7 @@ Founder asked for a genuine short-timeframe scalper restricted to forex and meta
 
 ## What's implemented (matches staging decisions)
 
-- Safe Mode: tiered fixed-dollar stop-loss ($1 < $50 equity, $3 ≥ $50 equity) and profit-lock targets ($1.50/$3.00 by tier) — 2026-07-14f, 2026-07-14m
+- Safe Mode: tiered fixed-dollar stop-loss ($1 < $50 equity, $3 ≥ $50 equity) — 2026-07-14f; flat $0.30 profit-lock target on both tiers (lowered from $1.50/$3.00) — 2026-07-14zz
 - Aggressive Mode: equity-percentage risk/reward per trade (15%/15% by default, 1:1), not fixed dollars — 2026-07-14y
 - Dynamic risk-based lot sizing (dollar risk ÷ stop distance, not a fixed table) — 2026-07-14e
 - Dual exit modes: outright close, or move to breakeven and let the position run — 2026-07-14

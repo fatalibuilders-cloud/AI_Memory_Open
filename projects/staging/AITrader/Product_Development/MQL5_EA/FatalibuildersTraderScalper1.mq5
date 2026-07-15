@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTraderScalper1.mq5                                    |
-//| Draft v0.90 (Market tag 1.60) -- implements the risk-management,   |
+//| Draft v0.95 (Market tag 1.65) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -16,7 +16,10 @@
 //| the M1 (1-minute) chart, and a new session-open delay filter that     |
 //| waits a configurable number of minutes after each of the 3 major      |
 //| session opens (Asia/London/New York, server time) before allowing     |
-//| a new trade. See the big comment above                                |
+//| a new trade, and (2026-07-14zz) Safe Mode's profit target lowered     |
+//| to $0.30 (both tiers) per explicit founder instruction -- see the      |
+//| comment above SafeMode_ProfitTarget_SmallAccount_Dollars for the       |
+//| resulting break-even win-rate math. See the big comment above          |
 //| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest      |
 //| math behind Aggressive Mode's risk before using it.                   |
 //|                                                                    |
@@ -26,7 +29,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader Scalper 1"
-#property version   "1.60"
+#property version   "1.65"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -181,8 +184,19 @@ input double MaxLossPerTrade_LargerAccount_Dollars  = 3.0;    // 2026-07-14f
 input double AggressiveMode_RiskPerTrade_PercentOfEquity = 15.0; // 2026-07-14y
 
 input group "=== 3. HOW MUCH PROFIT DOES EACH TRADE AIM FOR? ==="
-input double SafeMode_ProfitTarget_SmallAccount_Dollars   = 1.50;  // 2026-07-14m
-input double SafeMode_ProfitTarget_LargerAccount_Dollars  = 3.00;  // 2026-07-14m
+// (2026-07-14zz) Set to $0.30 per founder instruction -- take a trade off
+// the table as soon as it's up $0.30, rather than holding out for the
+// larger $1.50/$3.00 targets used before. NOTE: this changes the math
+// that Safe Mode's win-probability filter (below) was calibrated
+// against -- at $0.30 profit against a $1 stop-loss (small-account
+// tier), the trade needs to win about 77% of the time just to break
+// even; at $0.30 against the $3 stop-loss (larger-account tier), about
+// 91% of the time. Both are higher than SafeMode_MinimumConfidence_Percent's
+// 65% floor below, which was tuned for the old $1.50/$3.00 targets, not
+// this one. Documented, not auto-adjusted -- see decisions-learnings/
+// 2026-07-14zz for the full math.
+input double SafeMode_ProfitTarget_SmallAccount_Dollars   = 0.30;  // 2026-07-14zz
+input double SafeMode_ProfitTarget_LargerAccount_Dollars  = 0.30;  // 2026-07-14zz
 // SAFE mode only takes a trade if the bot's own confidence score for
 // that setup is at or above this percentage (0-100). Higher = pickier.
 input double SafeMode_MinimumConfidence_Percent     = 65.0;   // 2026-07-14m (65-75% range; floor used here)
@@ -502,8 +516,8 @@ double GetProfitTargetDollars()
       return equity * (AggressiveMode_RewardPerTrade_PercentOfEquity / 100.0); // 2026-07-14y, default 15% (1:1 with risk)
 
    return (equity < AccountSizeThreshold_Dollars)
-           ? SafeMode_ProfitTarget_SmallAccount_Dollars                        // $1.50, 2026-07-14m
-           : SafeMode_ProfitTarget_LargerAccount_Dollars;                      // $3.00, 2026-07-14m
+           ? SafeMode_ProfitTarget_SmallAccount_Dollars                        // $0.30, 2026-07-14zz
+           : SafeMode_ProfitTarget_LargerAccount_Dollars;                      // $0.30, 2026-07-14zz
 }
 
 //+------------------------------------------------------------------+
