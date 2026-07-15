@@ -9,7 +9,7 @@
 //| any part of this for real trading. Not yet compiled or backtested.|
 //+------------------------------------------------------------------+
 #property copyright "AITrader"
-#property version   "0.30"
+#property version   "1.00"
 #property strict
 
 #include <Trade\Trade.mqh>

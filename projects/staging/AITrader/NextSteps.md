@@ -52,6 +52,7 @@
 - **Declined to receive MT5/MQL5 login credentials** — no technical capability to run MetaEditor/MT5 or browse to mql5.com here, and sharing live trading/marketplace credentials with an AI agent isn't good security practice regardless. See `2026-07-14p`.
 - **Real v1 entry signal designed:** multi-timeframe trend + pullback momentum entry replaces the naive EMA-crossover placeholder — grounded in published methodology, agreed with founder to start rule-based rather than ML-first. `GetSignalConfidence()` upgraded to a rule-based (ADX+RSI) heuristic. See `2026-07-14q`. **Still unbacktested — this is a hypothesis, not a proven strategy.**
 - **Step-by-step compile guide written:** `Product_Development/MQL5_EA/compile_guide.md` — exact MetaEditor menu paths, folder locations, and what to do with compile errors. Flags that the founder's earlier reference screenshot was from MT4, not MT5 — `.mq5` files require MT5 specifically.
+- **First real compile attempt made (milestone):** founder opened the file in actual MetaEditor. First error was a Market version-format rule (`#property version` needed `X.XX` format, not `0.30`) — fixed to `1.00`. Not a logic bug, a submission-format rule.
 
 ## Superseded (no longer critical path)
 
