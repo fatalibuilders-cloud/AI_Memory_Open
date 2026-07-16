@@ -14,9 +14,9 @@
 >    cd <path-to-AI_Memory>
 >    git pull origin main
 >    ```
->    - The canonical repo is **https://github.com/Qosil/AI_Memory_Open**
+>    - The canonical repo is **https://github.com/fatalibuilders-cloud/AI_Memory_Open** (this system's fork; upstream template is Qosil/AI_Memory_Open — never push there)
 >    - If you are in Cowork, the folder is already mounted — just confirm files are current.
->    - If the repo has not been cloned yet: `git clone https://github.com/Qosil/AI_Memory_Open.git`
+>    - If the repo has not been cloned yet: `git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git`
 >
 > 1. **Read Core Context Files:** Read these files to understand the system:
 >    - `AI_Memory_Open/Master-AI-Context.md` — System overview, project portfolio, folder structure, operational standards, shared resources, and session infrastructure
@@ -141,7 +141,7 @@ This protocol should be executed when the user says any of the following:
 
 ### Staging Projects (Last 5)
 *Updated during closure protocol based on last-modified date of folders inside `staging/`.*
-1. `projects/staging/FatalibuildersConstructionApp/` — Construction management app (Software). Staged 2026-07-16; Document 1 in progress, drafts pending owner review.
+1. `projects/staging/FatalibuildersConstructionApp/` — Construction management app (Software). Staged 2026-07-16; Documents 1 & 2 in progress; integration-first architecture confirmed by owner.
 
 ### Main Folder Structure
 

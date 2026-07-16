@@ -34,7 +34,7 @@
 
 *Updated by the closure protocol.*
 
-- **Document 1 (Project Context):** In Progress — AI-drafted vision pending owner review
-- **Document 2 (Architecture/Design):** Not Started
+- **Document 1 (Project Context):** In Progress — AI-drafted vision pending owner review; integration constraint confirmed by owner
+- **Document 2 (Architecture/Design):** In Progress — integration-first architecture confirmed (owner: "integrate with all kinds of tools"); connector prioritization pending
 - **Document 3 (Release Plan):** Not Started (candidate epics drafted)
-- **Top blocker:** Owner confirmation of drafted vision and project scope
+- **Top blocker:** Owner confirmation of drafted vision; tool inventory for connector prioritization

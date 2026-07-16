@@ -4,7 +4,7 @@
 **Category:** Software (web/mobile construction management app)
 **Owner:** Fatali Builders (fatalibuilders@gmail.com) — Owner/Founder *(full name and role title pending owner confirmation)*
 **Stage:** Staging (Ideation & Preparation)
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-07-16 (session 2 — integration strategy confirmed by owner)
 
 ---
 
@@ -36,8 +36,9 @@ Once these three documents are complete and approved, this project will be promo
 **Note:** Vision drafted by AI; all sections require owner input and confirmation.
 
 ### Document 2: Architecture/Design
-**Status:** [x] Not Started [ ] In Progress [ ] Complete
+**Status:** [ ] Not Started [x] In Progress [ ] Complete
 **Description:** System design, technology stack, data model, security model, deployment strategy
+**Note:** Integration-first architecture confirmed by owner (2026-07-16); candidate integration list drafted, prioritization pending.
 
 ### Document 3: Release Plan
 **Status:** [x] Not Started [ ] In Progress [ ] Complete
@@ -112,7 +113,8 @@ The following domain-expert agents are available in this project's department fo
 - *(draft)* Legal (contracts, client data privacy), Finance (estimating/invoicing controls), Security (role-based access, client PII), Operations (field workflow design)
 
 ### Assumptions & Constraints
-- *(open — owner input needed)* Budget, timeline, existing tools to integrate or replace (QuickBooks? Zoho? spreadsheets?), offline access requirements for job sites, language(s) required
+- **CONFIRMED (owner, 2026-07-16):** The app must **integrate with all kinds of tools** — it should be built integration-first rather than as a closed system. Specific tool inventory (which accounting/CRM/messaging tools Fatali Builders uses today) still to be collected.
+- *(open — owner input needed)* Budget, timeline, offline access requirements for job sites, language(s) required
 
 ---
 
@@ -121,10 +123,15 @@ The following domain-expert agents are available in this project's department fo
 > Not started. To be developed collaboratively. This is a **Software** project — use the software sections below.
 
 ### For Software Projects
-- System architecture (services, layers, boundaries)
+- System architecture (services, layers, boundaries) — **owner directive (2026-07-16): integration-first architecture.** The app must be able to connect to all kinds of tools: design around an API-first core with webhooks and connector modules (MCP-style connectors, like the system's `zoho-mcp-server/` reference implementation).
 - Technology stack (frontend, backend, databases, infrastructure) — *(open)* mobile-first (crews are in the field) vs. web-first; native vs. PWA
-- Data model and integrations — *(open)* accounting system, CRM, document storage, photo storage
-- Security model and constraints — role-based access (owner/office/supervisor/crew/client)
+- Data model and integrations — **broad integration surface, candidates to prioritize with owner:**
+  - *Accounting/Finance:* QuickBooks, Zoho Books, Xero, Stripe (payments)
+  - *CRM:* Zoho CRM (pre-built connector available), HubSpot, Salesforce
+  - *Productivity:* Google Workspace (Gmail, Drive, Calendar), Microsoft 365
+  - *Messaging:* WhatsApp Business, Slack, SMS (Twilio), email (SendGrid/Resend)
+  - *Field/Construction:* weather services, maps/geolocation, supplier catalogs, e-signature (Zoho Sign/DocuSign)
+- Security model and constraints — role-based access (owner/office/supervisor/crew/client); credential management for third-party integrations must follow the system rule: secrets never committed to git
 - Deployment targets and CI/CD strategy
 - Development conventions and standards
 

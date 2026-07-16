@@ -3,7 +3,7 @@
 **Project:** FatalibuildersConstructionApp
 **Owner:** Fatali Builders (fatalibuilders@gmail.com)
 **Current Stage:** Staging (Ideation & Preparation)
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-07-16 (session 2)
 
 ---
 
@@ -15,9 +15,9 @@
 - **Next Action:** **Owner review** — confirm/correct the drafted vision, then fill Primary Goal, Target Audience details, Success Metrics, Assumptions & Constraints
 
 ### Document 2: Architecture/Design
-- **Status:** [x] Not Started [ ] In Progress [ ] Complete
-- **Completed Sections:** (None yet)
-- **Next Action:** Defer until Document 1 is confirmed. Key early questions: mobile-first vs. web-first, offline support for job sites, integrations (accounting/CRM)
+- **Status:** [ ] Not Started [x] In Progress [ ] Complete
+- **Completed Sections:** Integration strategy (owner-confirmed: integration-first, "all kinds of tools"); candidate connector list drafted
+- **Next Action:** Prioritize the first 2-3 connectors (which tools does Fatali Builders use today?); decide mobile-first vs. web-first and offline support
 
 ### Document 3: Release Plan
 - **Status:** [x] Not Started [ ] In Progress [ ] Complete
@@ -31,8 +31,8 @@
 1. **Owner confirmation needed:** The project was staged autonomously from the task name alone. The vision, category (Software), target users, and candidate epics are AI drafts — the owner must review and correct them before staging proceeds.
 2. **Owner identity:** Full name and role title for the project owner record.
 3. **Scope question:** Internal tool for Fatali Builders only, or a product to offer other contractors?
-4. **Environment question:** Existing tools in use today (accounting, CRM, spreadsheets) that the app must integrate with or replace?
-5. **System setup:** Root-level `setup-AI-Memory.md` has not been run yet (owner, keys, model preferences unconfigured).
+4. ~~**Environment question:** Existing tools in use today that the app must integrate with or replace?~~ **RESOLVED 2026-07-16:** Owner directed integration with all kinds of tools (integration-first architecture). Follow-up: prioritize which connectors to build first based on the tools in use today.
+5. ~~**System setup:** Root-level `setup-AI-Memory.md` has not been run yet.~~ **RESOLVED 2026-07-16:** One-time setup completed (owner identity, fork URL, model preferences). API key registration deferred.
 
 ---
 

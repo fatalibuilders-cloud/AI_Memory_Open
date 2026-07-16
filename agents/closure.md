@@ -69,6 +69,7 @@
 >    git commit -m "Root session closure [YYYY-MM-DD_HHMM]: <brief summary>"
 >    git push origin main
 >    ```
+>    - The remote is this system's fork: **https://github.com/fatalibuilders-cloud/AI_Memory_Open**. Never push to the upstream template (Qosil/AI_Memory_Open).
 >    - If in Cowork (sandbox), remind the user to run `git add . && git commit -m "..." && git push` manually.
 >    - **Do NOT push sensitive files** — ensure `.gitignore` excludes credential files.
 >
