@@ -137,11 +137,11 @@ This protocol should be executed when the user says any of the following:
 
 ### Recent Projects (Last 5)
 *Updated during closure protocol based on last-modified date.*
-*(none yet — populated after project initialization)*
+1. `projects/FatalibuildersConstructionApp_AI_Training/` — **ACTIVE.** Public Fatalibuilders app ($30 lifetime, worldwide/Kenya). Initialized 2026-07-16; Release 1.0 "Sellable Core" planned (29 stories, 0%). Sessions use its own `agents/open.md`.
 
 ### Staging Projects (Last 5)
 *Updated during closure protocol based on last-modified date of folders inside `staging/`.*
-1. `projects/staging/FatalibuildersConstructionApp/` — Construction management app (Software). Staged 2026-07-16; Documents 1 & 2 in progress; integration-first architecture confirmed by owner.
+1. `projects/staging/FatalibuildersConstructionApp/` — **PROMOTED 2026-07-16** → see Recent Projects. Preserved as ideation archive.
 
 ### Main Folder Structure
 

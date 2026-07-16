@@ -40,7 +40,7 @@ The system operates at two levels:
 
 | Project | Folder | Type | Status | Description |
 |---------|--------|------|--------|-------------|
-| FatalibuildersConstructionApp | `projects/staging/FatalibuildersConstructionApp/` | Software (public product) | **Staging COMPLETE — awaiting owner sign-off for PROJECT_MEMORY_INIT** | Public Fatalibuilders app, $30 lifetime access, worldwide (launched from Kenya): project data in → 7 outputs (quantities, cost, labor, 2D drawings, renders, structural, geotech). R1 residential; management features R4 |
+| FatalibuildersConstructionApp | `projects/FatalibuildersConstructionApp_AI_Training/` | Software (public product) | **ACTIVE — Release 1.0 "Sellable Core" (0%, 29 stories)** | Public Fatalibuilders app, $30 lifetime access, worldwide (launched from Kenya): project data in → 7 outputs (quantities, cost, labor, 2D drawings, renders, structural, geotech). Staging archive: `projects/staging/FatalibuildersConstructionApp/` |
 
 ---
 
@@ -172,8 +172,8 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ## 9. Session History & Handover
 
-- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1030.md` — Staging COMPLETE: all three documents done; awaiting owner sign-off for PROJECT_MEMORY_INIT
-- **Latest Decisions:** staging project's `Key-Decisions-2026-07-16_1030.md` (worldwide market, residential R1, management features R4, stack proposal)
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1044.md` — PROJECT_MEMORY_INIT executed; FatalibuildersConstructionApp promoted to full project with Release 1.0 planned (29 stories)
+- **Latest Decisions:** captured in the 1044 session summary (init decisions) and the project's own Key-Decisions.md going forward
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)

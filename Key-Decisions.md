@@ -25,6 +25,7 @@ When performing any action that matches a keyword below, read the referenced det
 | core tool, drawings, engineering outputs | Core tool defined (7 outputs); engineering-liability safeguards; 3-release phasing (project-level) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1019.md` | 2026-07-16 |
 | standards, code profiles, Kenya | Standards baseline: Eurocodes+BS+US+KEBS as per-project code profiles; Kenya inferred as market (project-level) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1026.md` | 2026-07-16 |
 | staging complete, worldwide, sign-off | All three staging documents complete: worldwide/Kenya launch, residential R1, management features R4 (project-level) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1030.md` | 2026-07-16 |
+| initialization, promotion, PROJECT_MEMORY_INIT | FatalibuildersConstructionApp promoted to full project; Release 1.0 planned (29 stories); staging archived | `session-summary/AI-Session-Summary-2026-07-16_1044.md` | 2026-07-16 |
 | onboarding, communication | Owner is a first-time app builder — communications must be jargon-free with explicit action lists | `decisions-learnings/Key-Decisions-2026-07-16_0945.md` | 2026-07-16 |
 
 ---

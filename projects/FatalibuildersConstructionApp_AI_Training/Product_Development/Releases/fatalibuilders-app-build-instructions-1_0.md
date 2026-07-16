@@ -1,0 +1,180 @@
+# FATALIBUILDERSCONSTRUCTIONAPP BUILD INSTRUCTIONS: RELEASE 1.0 — SELLABLE CORE
+
+**Document Purpose:** Granular user stories and acceptance criteria for Release 1.0. Master execution guide for AI assistants and the owner.
+
+**Release:** 1.0 — Sellable Core
+**Story Prefix:** CORE-
+**Created:** 2026-07-16
+**Source:** Staging Document 3 (owner-approved 2026-07-16)
+
+**Release goal / success criteria:** a stranger can sign up, pay $30 (card or M-Pesa), enter a residential project, and download/share a correct materials + cost + labor estimate stamped with its code profile.
+
+**Instructions:**
+* **[Human] stories:** owner acts directly (plain-language steps provided at execution time).
+* **[AI] stories:** AI executes directly — reads story, runs commands, writes files.
+* **[AI + Human] stories:** AI performs technical work; owner acts at explicit `[Human]` checkpoints.
+
+---
+
+## Epic Overview
+
+| Epic | Name | Stories | Status |
+|:---:|:---|:---:|:---:|
+| 1 | Foundation & Infrastructure | 4 | Pending |
+| 2 | Accounts & Access | 3 | Pending |
+| 3 | Payments ($30 Lifetime) | 4 | Pending |
+| 4 | Project Data Input (Residential) | 3 | Pending |
+| 5 | Calculators | 4 | Pending |
+| 6 | Outputs & Sharing | 4 | Pending |
+| 7 | Product Site & Onboarding | 4 | Pending |
+| 8 | Launch Readiness | 3 | Pending |
+
+**Total: 29 stories** — 17 [AI], 11 [AI+Human], 1 [Human]
+
+---
+
+## Epic 1: Foundation & Infrastructure
+
+**CORE-1.0 [AI] — Scaffold the app repository**
+Create the `fatalibuilders-app` repository: Next.js + TypeScript + Tailwind, PWA config (manifest, service worker), ESLint/Prettier, folder structure per architecture doc §3, README, CI (lint + test on PR).
+*Acceptance:* `npm run dev` serves a placeholder page; lint and test pass in CI; module-map.md updated.
+
+**CORE-1.1 [AI+Human] — Hosting platform + first deploy**
+AI evaluates Vercel/Railway/Fly.io against architecture cost guardrails and recommends one; `[Human]` owner creates the hosting account (free tier) and connects the GitHub repo per plain-language steps; AI configures auto-deploy.
+*Acceptance:* placeholder page live on a public URL over HTTPS; every push to `main` auto-deploys.
+
+**CORE-1.2 [AI+Human] — Database & object storage**
+AI provisions managed PostgreSQL + S3-compatible bucket on the chosen platform (`[Human]` confirms/creates add-on if dashboard action needed); migration tooling set up.
+*Acceptance:* app connects to DB in production; migrations run on deploy; storage bucket reachable.
+
+**CORE-1.3 [AI] — Base app shell**
+Mobile-first layout, navigation, theme (Fatalibuilders branding placeholder), error/loading states, health endpoint.
+*Acceptance:* shell renders correctly on phone-size and desktop viewports; Lighthouse PWA installability passes.
+
+## Epic 2: Accounts & Access
+
+**CORE-2.0 [AI] — Signup & login**
+Email + password auth: argon2 hashing, secure httpOnly sessions, signup/login/logout flows, basic profile.
+*Acceptance:* full auth round-trip works in production; passwords never logged; auth unit tests pass.
+
+**CORE-2.1 [AI+Human] — Email verification & password reset**
+Transactional email provider (Resend or similar — free tier): `[Human]` owner creates the account and pastes the API key into hosting env vars per instructions; AI builds verify + reset flows.
+*Acceptance:* new users receive verification email; reset flow works end-to-end.
+
+**CORE-2.2 [AI] — Entitlement & preview gating**
+`lifetime_access` flag on user; free preview allowance (one sample calculation, limited output, no export); paid users unrestricted.
+*Acceptance:* preview limits enforced server-side; upgrade path visible to free users.
+
+## Epic 3: Payments ($30 Lifetime)
+
+**CORE-3.0 [AI+Human] — Choose & set up merchant-of-record provider**
+AI presents final Paddle vs Lemon Squeezy recommendation for a Kenya-based seller selling worldwide; `[Human]` owner signs up, completes identity/business verification (ID + bank details), creates the "$30 lifetime access" product, and pastes TEST keys into env vars — all with step-by-step plain-language instructions.
+*Acceptance:* provider account verified; test keys configured; product exists in the provider dashboard.
+
+**CORE-3.1 [AI] — Card checkout integration**
+Provider-hosted checkout from the pricing page; webhook receiver sets `lifetime_access=true`; idempotent handling; test-mode purchase flow verified.
+*Acceptance:* test purchase grants access automatically within seconds; webhook signature verified; failure paths logged.
+
+**CORE-3.2 [AI+Human] — M-Pesa checkout (Kenya)**
+AI recommends the gateway (Pesapal/Flutterwave/DPO) and integrates its hosted flow; `[Human]` owner creates the gateway account (business verification) and pastes sandbox keys.
+*Acceptance:* sandbox M-Pesa payment grants lifetime access via the same entitlement path.
+
+**CORE-3.3 [AI] — Pricing display & receipts**
+USD $30 with KES equivalent (and provider-localized prices where supported); post-purchase receipt/confirmation screen and email.
+*Acceptance:* prices render correctly; purchase confirmation delivered.
+
+## Epic 4: Project Data Input (Residential)
+
+**CORE-4.0 [AI] — Unified project data model**
+DB schema + TypeScript types for the residential input model: location, code profile, plot/building dimensions, floors, rooms (type + dimensions), wall/finish/roof material preferences, soil type (optional). Designed to feed ALL seven outputs (R2/R3 fields included but optional).
+*Acceptance:* schema migrated; model validated with zod (or equivalent); documented in module-map.md.
+
+**CORE-4.1 [AI] — Input wizard UI**
+Mobile-first step-by-step wizard (project basics → dimensions → floors/rooms → materials → review); draft autosave; edit any step later.
+*Acceptance:* a full residential project can be entered on a phone in under 10 minutes; drafts persist across sessions.
+
+**CORE-4.2 [AI] — Code profile selection**
+Profile picker (Eurocode / BS / US / KEBS-Kenya) with plain-language descriptions; default suggested from country; stored per project; stamped through to every output.
+*Acceptance:* profile selectable and persisted; downstream engines receive it; UI explains what a code profile is.
+
+## Epic 5: Calculators
+
+**CORE-5.0 [AI+Human] — Material quantities engine**
+TypeScript rule module: concrete (foundations/slabs/columns/beams), masonry blocks/bricks, steel reinforcement estimates, mortar/plaster, sand/ballast, paint, roofing — residential rules per Eurocode/BS conventions. `[Human]` owner-engineer validates worked examples (sample house → expected quantities) before sign-off.
+*Acceptance:* unit tests pass against ≥3 owner-validated worked examples; results itemized per element.
+
+**CORE-5.1 [AI+Human] — Cost estimation engine**
+Itemized costs = quantities × unit rates; editable price tables (default Kenyan baseline `[Human]` owner provides/approves; user-adjustable rates per project); currency display.
+*Acceptance:* client-ready itemized estimate; owner confirms baseline rates realistic; totals reconcile with quantities.
+
+**CORE-5.2 [AI+Human] — Labor & time engine**
+Crew composition and duration estimates from productivity rates per trade; `[Human]` owner validates rates and a worked example.
+*Acceptance:* outputs crew size + duration per phase; owner-validated example passes.
+
+**CORE-5.3 [AI] — Engine hardening**
+Edge-case tests (tiny/large inputs, missing optionals), input bounds with friendly validation messages, deterministic outputs, engine versioning (results record engine + profile version).
+*Acceptance:* test suite green; nonsense inputs rejected with clear messages; results reproducible.
+
+## Epic 6: Outputs & Sharing
+
+**CORE-6.0 [AI] — Results screens**
+Mobile-first results: summary cards + itemized tables per output type; per-project results history.
+*Acceptance:* all three calculator outputs render clearly on a phone; saved and reloadable.
+
+**CORE-6.1 [AI] — Excel export**
+.xlsx export (quantities, cost estimate, labor plan as sheets) with code-profile stamp and project header.
+*Acceptance:* file opens correctly in Excel; matches on-screen results.
+
+**CORE-6.2 [AI] — PDF export**
+Branded PDF result sheets with project details, code-profile stamp, and the standard disclaimer block.
+*Acceptance:* clean A4 output; stamp + disclaimer on every page footer.
+
+**CORE-6.3 [AI] — WhatsApp share & tap-to-call**
+wa.me share links with pre-filled summary + document link; `tel:` links on contact surfaces.
+*Acceptance:* share opens WhatsApp with correct message on mobile; links work from exported PDFs where applicable.
+
+## Epic 7: Product Site & Onboarding
+
+**CORE-7.0 [AI] — Landing & pricing pages**
+Landing page (what it does, the 7 outputs with R2/R3 marked "coming"), pricing page ($30 lifetime), FAQ.
+*Acceptance:* pages live, mobile-first, load fast; checkout reachable from pricing.
+
+**CORE-7.1 [AI] — Free preview flow**
+Sample calculation for visitors/free accounts with limited output and a clear upgrade prompt.
+*Acceptance:* preview works without payment; export blocked with friendly upgrade message.
+
+**CORE-7.2 [AI+Human] — Legal pages**
+AI drafts Terms of Service, Privacy Policy (Kenya DPA + GDPR-aware), Refund Policy; `[Human]` owner reviews (and may consult a lawyer) before publishing.
+*Acceptance:* pages published and linked from footer + checkout; provider requirements satisfied.
+
+**CORE-7.3 [AI] — First-run onboarding**
+Post-signup guidance: 3-step intro → start first project; empty states teach the flow.
+*Acceptance:* new user reaches their first result without external help.
+
+## Epic 8: Launch Readiness
+
+**CORE-8.0 [AI] — Analytics & admin basics**
+Signups, activation (first calculation), purchases funnel; simple admin view (users, purchases).
+*Acceptance:* funnel numbers visible; no PII leakage to third parties.
+
+**CORE-8.1 [AI+Human] — UAT with the owner**
+Full end-to-end test by the owner on their phone (signup → pay test-mode → project → results → exports → WhatsApp share); findings logged in Bugs.md and fixed.
+*Acceptance:* owner completes the journey without assistance; all UAT bugs closed.
+
+**CORE-8.2 [AI+Human] — Go live**
+`[Human]` owner switches provider(s) to LIVE keys and confirms bank payout details; AI runs the go-live checklist (domain, SSL, live webhook, smoke test with a real $30 purchase refunded after verification).
+*Acceptance:* production accepts real payments on both rails; first live purchase verified; launch announced in NextSteps.
+
+---
+
+## Story Count Summary
+
+| Label | Count |
+|---|---|
+| [AI] | 17 |
+| [AI+Human] | 11 |
+| [Human] | 1 (owner UAT sign-off inside CORE-8.1 counted as AI+Human; standalone human actions occur as checkpoints) |
+
+---
+
+*Stories are executed in epic order unless dependencies allow parallelism. Statuses: Pending → [IN-PROGRESS] → [DONE], updated by the closure protocol.*

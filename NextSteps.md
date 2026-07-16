@@ -10,8 +10,8 @@
 
 ### High Priority
 
-1. **Owner sign-off on staging Documents 2 & 3** — Staging is COMPLETE (2026-07-16): worldwide product launched from Kenya, R1 residential, management features R4, PWA/Next.js stack proposed. On approval, run **PROJECT_MEMORY_INIT.md** for FatalibuildersConstructionApp and begin Release 1 development.
-2. ~~Define core tool / confirm market / R1 scope~~ **ALL RESOLVED (2026-07-16)** — see staging Key-Decisions.md for the full trail.
+1. **Begin FatalibuildersConstructionApp Release 1.0 development** — Project initialized (2026-07-16). Next session: use the project's own `agents/open.md`, start CORE-1.0 (scaffold the `fatalibuilders-app` repository, pure [AI]). *(Project-level work — root NextSteps tracks only that the project is active.)*
+2. ~~Owner sign-off / staging~~ **DONE (2026-07-16):** owner approved; PROJECT_MEMORY_INIT executed; staging archived.
 3. ~~Tool inventory~~ *Mostly done: Excel-only accounting; WhatsApp + calls.* Photo storage/scheduling questions now only matter if Epic 5 (management features) stays.
 
 ### Medium Priority

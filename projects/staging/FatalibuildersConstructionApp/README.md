@@ -1,6 +1,8 @@
-# FatalibuildersConstructionApp — Staging Project
+# FatalibuildersConstructionApp — Staging Project [PROMOTED ✅]
 
-This is a staging project in progress. Staging is the preparation phase before PROJECT_MEMORY_INIT.md launches a full AI Memory project.
+> **This project was PROMOTED to a full AI Memory project on 2026-07-16** (owner approval: "approved — initialize the project"). The active workspace is now **`projects/FatalibuildersConstructionApp_AI_Training/`** — all future sessions use that folder's `agents/open.md`. This staging folder is preserved as the historical record of the ideation phase (Documents 1-3 and the founding decision trail).
+
+This is a staging project. Staging is the preparation phase before PROJECT_MEMORY_INIT.md launches a full AI Memory project.
 
 ## Quick Links
 

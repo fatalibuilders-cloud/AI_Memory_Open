@@ -1,4 +1,6 @@
-# open.md — Session Initialization Protocol (FatalibuildersConstructionApp — Staging)
+# open.md — Session Initialization Protocol (FatalibuildersConstructionApp — Staging) [PROMOTED]
+
+> **⚠️ THIS PROJECT WAS PROMOTED on 2026-07-16.** Do NOT run staging sessions here. Use the full project workspace: `projects/FatalibuildersConstructionApp_AI_Training/agents/open.md`.
 
 **Purpose:** Execute this protocol at the start of any AI session working on the **FatalibuildersConstructionApp staging project**. This is a project-level protocol — for work on the AI Memory system itself, use the root `AI_Memory_Open/agents/open.md` instead.
 
