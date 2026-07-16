@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#3a2415">
+<title>Oware Legends — Africa's Game</title>
+<style>
+  /* ------------------------------------------------------------------
+     Oware Legends — mobile-first, offline-first, data-light (~30 KB).
+     Themes are pure CSS custom properties, unlockable with coins.
+     ------------------------------------------------------------------ */
+  :root, [data-theme="savanna"] {
+    --bg1:#3a2415; --bg2:#5c3a1e; --board:#7a4a24; --pit:#4a2c14;
+    --pit-glow:#ffb84d; --seed:#f5d998; --seed2:#e0a458;
+    --ink:#fdf3e3; --ink-dim:#d8b98f; --accent:#ff9d2e; --accent2:#41a05c;
+    --danger:#d9534f; --card:#4a2f18;
+  }
+  [data-theme="coast"] {
+    --bg1:#0c3547; --bg2:#14506b; --board:#1b6a8c; --pit:#0a2a3a;
+    --pit-glow:#5ad1ff; --seed:#ffe9b3; --seed2:#ffc46b;
+    --ink:#eafaff; --ink-dim:#9cc9dc; --accent:#2ec1ff; --accent2:#38c98a;
+    --danger:#ff7a6b; --card:#11455d;
+  }
+  [data-theme="sahara"] {
+    --bg1:#7a4f1d; --bg2:#a86f2d; --board:#c98f43; --pit:#6b421a;
+    --pit-glow:#fff0b3; --seed:#fff6dd; --seed2:#f2c879;
+    --ink:#fff8ea; --ink-dim:#ecd7ac; --accent:#ffb937; --accent2:#4aa564;
+    --danger:#e06a56; --card:#8c5c22;
+  }
+  [data-theme="midnight"] {
+    --bg1:#10101e; --bg2:#1c1c33; --board:#28284a; --pit:#0c0c18;
+    --pit-glow:#8f7bff; --seed:#e8e2ff; --seed2:#a99bf5;
+    --ink:#f2f0ff; --ink-dim:#9d97c9; --accent:#8f7bff; --accent2:#43c793;
+    --danger:#ff6b81; --card:#22223e;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    font-family:"Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    background:radial-gradient(120% 100% at 50% 0%, var(--bg2) 0%, var(--bg1) 70%);
+    color:var(--ink);
+    overflow:hidden; user-select:none; touch-action:manipulation;
+  }
+  .screen { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; padding:max(14px, env(safe-area-inset-top)) 14px 14px; }
+  .screen.active { display:flex; }
+
+  /* ---------- Home ---------- */
+  #home { justify-content:space-between; text-align:center; }
+  .brand { margin-top:6vh; }
+  .brand h1 { font-size:clamp(34px, 9vw, 56px); letter-spacing:1px; text-shadow:0 3px 0 rgba(0,0,0,.35); }
+  .brand h1 em { font-style:normal; color:var(--accent); }
+  .brand p { color:var(--ink-dim); margin-top:6px; font-size:15px; }
+  .mini-board { display:flex; gap:8px; justify-content:center; margin:22px 0 0; }
+  .mini-board i { width:26px; height:26px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seed), var(--seed2)); box-shadow:0 2px 4px rgba(0,0,0,.4); animation:bob 2.2s ease-in-out infinite; }
+  .mini-board i:nth-child(2){animation-delay:.2s} .mini-board i:nth-child(3){animation-delay:.4s}
+  .mini-board i:nth-child(4){animation-delay:.6s} .mini-board i:nth-child(5){animation-delay:.8s}
+  @keyframes bob { 50% { transform:translateY(-7px); } }
+
+  .statbar { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .chip { background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:8px 14px; font-size:14px; font-weight:bold; }
+  .chip span { color:var(--accent); }
+
+  .menu { width:min(360px, 100%); display:flex; flex-direction:column; gap:12px; margin-bottom:4vh; }
+  .btn {
+    appearance:none; border:0; border-radius:14px; padding:15px 18px;
+    font-size:17px; font-weight:bold; font-family:inherit; color:#2b1707; cursor:pointer;
+    background:linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 72%, #000));
+    box-shadow:0 4px 0 rgba(0,0,0,.35); transition:transform .06s;
+  }
+  .btn:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.35); }
+  .btn.secondary { background:linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 70%, #000)); color:var(--ink); border:1px solid rgba(255,255,255,.14); }
+  .btn.small { padding:9px 14px; font-size:14px; border-radius:10px; }
+  .btn:disabled { opacity:.45; cursor:default; }
+
+  .diff-row { display:flex; gap:8px; }
+  .diff-row .btn { flex:1; padding:11px 6px; font-size:14px; }
+  .diff-row .btn[aria-pressed="true"] { outline:3px solid var(--pit-glow); }
+
+  /* ---------- Game ---------- */
+  #game { justify-content:space-between; }
+  .topbar { width:100%; max-width:520px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .score { flex:1; background:rgba(0,0,0,.28); border-radius:12px; padding:8px 10px; text-align:center; border:2px solid transparent; }
+  .score.turn { border-color:var(--pit-glow); box-shadow:0 0 12px color-mix(in srgb, var(--pit-glow) 55%, transparent); }
+  .score .name { font-size:12px; color:var(--ink-dim); }
+  .score .pts { font-size:22px; font-weight:bold; }
+  .icon-btn { background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.14); color:var(--ink); border-radius:12px; width:42px; height:42px; font-size:18px; cursor:pointer; }
+
+  #board {
+    width:min(96vw, 560px);
+    background:linear-gradient(180deg, color-mix(in srgb, var(--board) 108%, #fff 0%), color-mix(in srgb, var(--board) 80%, #000));
+    border-radius:26px; padding:16px 12px; margin:8px 0;
+    box-shadow:inset 0 3px 10px rgba(255,255,255,.12), inset 0 -6px 14px rgba(0,0,0,.35), 0 10px 24px rgba(0,0,0,.45);
+  }
+  .row { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
+  .row + .row { margin-top:14px; }
+  .pit {
+    position:relative; aspect-ratio:1; border-radius:50%;
+    background:radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--pit) 88%, #fff 6%), var(--pit) 72%);
+    box-shadow:inset 0 5px 12px rgba(0,0,0,.65), inset 0 -2px 4px rgba(255,255,255,.08);
+    cursor:pointer; transition:box-shadow .15s;
+  }
+  .pit.playable { box-shadow:inset 0 5px 12px rgba(0,0,0,.65), 0 0 0 3px color-mix(in srgb, var(--pit-glow) 65%, transparent); }
+  .pit.sown { animation:drop .28s; }
+  .pit.robbed { animation:steal .5s; }
+  @keyframes drop { 40% { transform:scale(1.12); } }
+  @keyframes steal { 30% { transform:scale(.7); filter:brightness(2); } }
+  .pit .count {
+    position:absolute; top:-7px; right:-3px; z-index:2;
+    background:var(--accent); color:#2b1707; font-size:12px; font-weight:bold;
+    border-radius:999px; min-width:22px; height:22px; line-height:22px; text-align:center;
+    box-shadow:0 2px 4px rgba(0,0,0,.4);
+  }
+  .pit .count.zero { background:rgba(255,255,255,.15); color:var(--ink-dim); }
+  .seed { position:absolute; width:22%; height:22%; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--seed), var(--seed2));
+    box-shadow:0 1px 3px rgba(0,0,0,.5); }
+
+  #msg { min-height:22px; font-size:15px; color:var(--ink-dim); text-align:center; }
+  #msg b { color:var(--ink); }
+
+  /* ---------- Modals ---------- */
+  .overlay { position:absolute; inset:0; background:rgba(0,0,0,.62); display:none; align-items:center; justify-content:center; padding:18px; z-index:10; }
+  .overlay.active { display:flex; }
+  .modal { width:min(380px, 100%); background:linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 78%, #000)); border:1px solid rgba(255,255,255,.16); border-radius:20px; padding:22px; text-align:center; box-shadow:0 14px 40px rgba(0,0,0,.5); max-height:88vh; overflow-y:auto; }
+  .modal h2 { margin-bottom:8px; }
+  .modal .sub { color:var(--ink-dim); font-size:14px; margin-bottom:16px; }
+  .modal .col { display:flex; flex-direction:column; gap:10px; }
+  .reward { font-size:20px; font-weight:bold; color:var(--accent); margin:10px 0 14px; }
+
+  .theme-card { display:flex; align-items:center; gap:12px; background:rgba(0,0,0,.24); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:10px 12px; }
+  .theme-card.selected { border-color:var(--pit-glow); }
+  .swatch { width:44px; height:44px; border-radius:12px; flex:none; box-shadow:inset 0 0 0 2px rgba(255,255,255,.2); }
+  .theme-card .info { flex:1; text-align:left; }
+  .theme-card .info b { display:block; }
+  .theme-card .info small { color:var(--ink-dim); }
+
+  #toast { position:absolute; left:50%; bottom:26px; transform:translateX(-50%) translateY(80px); background:var(--accent2); color:#fff; font-weight:bold; padding:10px 18px; border-radius:999px; box-shadow:0 6px 18px rgba(0,0,0,.4); transition:transform .3s; z-index:20; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+
+  #adSim { position:absolute; inset:0; background:#000; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:30; color:#fff; text-align:center; }
+  #adSim.active { display:flex; }
+  #adSim .bar { width:min(280px, 70vw); height:8px; background:#333; border-radius:99px; overflow:hidden; }
+  #adSim .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width 2.6s linear; }
+</style>
+</head>
+<body data-theme="savanna">
+
+  <!-- ================= HOME ================= -->
+  <section id="home" class="screen active">
+    <div class="brand">
+      <h1>Oware <em>Legends</em></h1>
+      <p>Ayo · Awalé · Warri · Adji — one game, one continent.</p>
+      <div class="mini-board"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="statbar">
+      <div class="chip">🔥 Streak <span id="hStreak">0</span></div>
+      <div class="chip">🪙 <span id="hCoins">0</span></div>
+      <div class="chip">🏆 Wins <span id="hWins">0</span></div>
+    </div>
+
+    <div class="menu">
+      <div class="diff-row">
+        <button class="btn secondary small" data-diff="easy">Easy</button>
+        <button class="btn secondary small" data-diff="medium">Classic</button>
+        <button class="btn secondary small" data-diff="hard">Master</button>
+      </div>
+      <button class="btn" id="btnPlayAI">▶ &nbsp;Play vs Computer</button>
+      <button class="btn secondary" id="btnPlay2P">👥 &nbsp;Two Players (pass &amp; play)</button>
+      <button class="btn secondary" id="btnShop">🎨 &nbsp;Themes &amp; Shop</button>
+      <button class="btn secondary" id="btnHow">❓ &nbsp;How to Play</button>
+      <button class="btn secondary small" id="btnSound">🔊 Sound: On</button>
+    </div>
+  </section>
+
+  <!-- ================= GAME ================= -->
+  <section id="game" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btnBack" title="Back to menu">←</button>
+      <div class="score" id="scoreN"><div class="name" id="nameN">Computer</div><div class="pts" id="ptsN">0</div></div>
+      <div class="score" id="scoreS"><div class="name" id="nameS">You</div><div class="pts" id="ptsS">0</div></div>
+      <button class="icon-btn" id="btnRestart" title="Restart">⟳</button>
+    </div>
+
+    <div id="board">
+      <div class="row" id="rowN"></div>
+      <div class="row" id="rowS"></div>
+    </div>
+
+    <div id="msg">Your move — pick a pit on your row.</div>
+  </section>
+
+  <!-- ================= MODALS ================= -->
+  <div class="overlay" id="endOverlay">
+    <div class="modal">
+      <h2 id="endTitle">You win! 🎉</h2>
+      <p class="sub" id="endSub">25 – 12</p>
+      <div class="reward" id="endReward">+20 🪙</div>
+      <div class="col">
+        <button class="btn" id="btnDouble">🎬 Double reward (watch ad)</button>
+        <button class="btn secondary" id="btnAgain">Play again</button>
+        <button class="btn secondary" id="btnEndHome">Home</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="shopOverlay">
+    <div class="modal">
+      <h2>Shop</h2>
+      <p class="sub">Balance: <b id="shopCoins">0</b> 🪙 — win games to earn coins.</p>
+      <div class="col" id="themeList"></div>
+      <div class="col" style="margin-top:14px">
+        <button class="btn" id="btnBuyCoins">🪙 500 coins — $0.99 (or mobile money)</button>
+        <button class="btn secondary" id="btnShopClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="howOverlay">
+    <div class="modal" style="text-align:left">
+      <h2 style="text-align:center">How to Play</h2>
+      <p class="sub" style="text-align:center">The 1,000-year-old strategy game of Africa</p>
+      <ol style="line-height:1.65; padding-left:20px; font-size:15px">
+        <li>Tap one of <b>your pits</b> (bottom row) to scoop its seeds and sow them one-by-one, counter-clockwise.</li>
+        <li>If your <b>last seed</b> lands in an opponent pit making it <b>2 or 3 seeds</b>, you capture them — plus any unbroken chain of 2s and 3s just behind it.</li>
+        <li>You may never starve your opponent: if they have no seeds, you must play a move that reaches their side.</li>
+        <li>First to capture <b>25 seeds</b> wins!</li>
+      </ol>
+      <div class="col" style="margin-top:16px">
+        <button class="btn secondary" id="btnHowClose">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulated rewarded ad (dev only — see Monetization below) -->
+  <div id="adSim">
+    <h2>Ad playing…</h2>
+    <p style="color:#888">(simulated — real network SDK goes here)</p>
+    <div class="bar"><i id="adBar"></i></div>
+  </div>
+
+  <div id="toast">+20 🪙</div>
+
+<script src="engine.js"></script>
+<script>
+'use strict';
+const E = window.OwareEngine;
+const $ = (id) => document.getElementById(id);
+
+/* ==================================================================
+ * Monetization — single integration point for real SDKs.
+ *
+ * The rest of the game only ever calls these three functions, so
+ * wiring in production services never touches game code:
+ *
+ *  - showRewardedAd(cb): TODO integrate a rewarded-video network
+ *    (Google AdMob / Unity Ads / AppLovin). Rewarded-only by design —
+ *    no forced interstitials, no banner clutter.
+ *  - purchase(productId, cb): TODO integrate Google Play Billing /
+ *    App Store IAP, plus mobile-money checkout for Africa
+ *    (Flutterwave, Paystack, M-Pesa/Daraja, MTN MoMo) for the
+ *    majority of players who don't have cards.
+ *  - All purchases are OPTIONAL cosmetics/coins. Gameplay is never
+ *    pay-to-win and never gated behind payment.
+ * ================================================================== */
+const Monetization = {
+  showRewardedAd(onReward) {
+    // Dev simulation: 2.6s fake ad, then grant the reward.
+    const sim = $('adSim'); const bar = $('adBar');
+    sim.classList.add('active'); bar.style.width = '0';
+    requestAnimationFrame(() => { bar.style.width = '100%'; });
+    setTimeout(() => { sim.classList.remove('active'); onReward(); }, 2700);
+  },
+  purchase(productId, onSuccess) {
+    // Dev simulation: instant success. Replace with real billing flow.
+    console.info('[Monetization] purchase requested:', productId);
+    onSuccess();
+  },
+};
+
+/* ---------------- Persistence ---------------- */
+const SAVE_KEY = 'owareLegends.v1';
+const defaultSave = {
+  coins: 0, wins: 0, losses: 0, draws: 0,
+  streak: 0, lastDay: null,
+  themes: ['savanna'], theme: 'savanna',
+  sound: true, difficulty: 'medium',
+};
+let save = { ...defaultSave };
+try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+
+const THEMES = [
+  { id: 'savanna',  name: 'Savanna',  desc: 'Warm acacia evenings', cost: 0,   bg: '#5c3a1e' },
+  { id: 'coast',    name: 'Coast',    desc: 'Zanzibar to Dakar',    cost: 150, bg: '#14506b' },
+  { id: 'sahara',   name: 'Sahara',   desc: 'Golden dune light',    cost: 200, bg: '#a86f2d' },
+  { id: 'midnight', name: 'Midnight', desc: 'Play under the stars', cost: 300, bg: '#1c1c33' },
+];
+
+/* ---------------- Sound (tiny WebAudio blips, no assets) ---------------- */
+let audioCtx = null;
+function blip(freq, dur = 0.07, type = 'sine', gain = 0.12) {
+  if (!save.sound) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(gain, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+const sfx = {
+  sow: (i) => blip(360 + i * 28, 0.06, 'triangle'),
+  capture: () => { blip(660, 0.12, 'square', 0.1); setTimeout(() => blip(880, 0.14, 'square', 0.1), 90); },
+  win: () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => blip(f, 0.18, 'triangle', 0.14), i * 140)),
+  lose: () => [400, 330, 262].forEach((f, i) => setTimeout(() => blip(f, 0.2, 'sine', 0.12), i * 160)),
+  tap: () => blip(500, 0.04, 'sine', 0.08),
+};
+function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+/* ---------------- UI helpers ---------------- */
+function show(screenId) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  $(screenId).classList.add('active');
+}
+function toast(text) {
+  const t = $('toast'); t.textContent = text; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+function applyTheme() { document.body.dataset.theme = save.theme; }
+function refreshHome() {
+  $('hStreak').textContent = save.streak;
+  $('hCoins').textContent = save.coins;
+  $('hWins').textContent = save.wins;
+  $('btnSound').textContent = save.sound ? '🔊 Sound: On' : '🔇 Sound: Off';
+  document.querySelectorAll('[data-diff]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.diff === save.difficulty));
+  });
+}
+
+/* Daily streak: counts consecutive calendar days with ≥1 finished game. */
+function bumpStreak() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (save.lastDay === today) return 0;
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  save.streak = save.lastDay === yesterday ? save.streak + 1 : 1;
+  save.lastDay = today;
+  return Math.min(save.streak, 7) * 5; // small daily bonus, capped
+}
+
+/* ---------------- Board rendering ---------------- */
+// Display order: top row shows pits 11..6 (so sowing flows visually
+// counter-clockwise), bottom row shows pits 0..5.
+const pitEls = new Array(12);
+function buildBoard() {
+  const rowN = $('rowN'); const rowS = $('rowS');
+  rowN.innerHTML = ''; rowS.innerHTML = '';
+  for (let i = 11; i >= 6; i -= 1) {
+    const el = document.createElement('div');
+    el.className = 'pit'; el.dataset.pit = i;
+    rowN.appendChild(el); pitEls[i] = el;
+  }
+  for (let i = 0; i <= 5; i += 1) {
+    const el = document.createElement('div');
+    el.className = 'pit'; el.dataset.pit = i;
+    rowS.appendChild(el); pitEls[i] = el;
+  }
+  pitEls.forEach((el) => el.addEventListener('click', () => onPitTap(+el.dataset.pit)));
+}
+
+/* Deterministic pseudo-random seed positions per pit so seeds don't jump. */
+function seedPos(pit, k) {
+  const h = Math.sin(pit * 127.1 + k * 311.7) * 43758.5453;
+  const a = (h - Math.floor(h)) * Math.PI * 2;
+  const h2 = Math.sin(pit * 269.5 + k * 183.3) * 24634.6345;
+  const r = 8 + (h2 - Math.floor(h2)) * 26; // % from centre
+  return [50 + Math.cos(a) * r - 11, 50 + Math.sin(a) * r - 11];
+}
+function renderPit(i, count, playable) {
+  const el = pitEls[i];
+  el.classList.toggle('playable', playable);
+  let html = '';
+  const dots = Math.min(count, 14);
+  for (let k = 0; k < dots; k += 1) {
+    const [x, y] = seedPos(i, k);
+    html += `<span class="seed" style="left:${x}%;top:${y}%"></span>`;
+  }
+  html += `<span class="count ${count === 0 ? 'zero' : ''}">${count}</span>`;
+  el.innerHTML = html;
+}
+
+/* ---------------- Game flow ---------------- */
+let G = null;          // engine state
+let mode = 'ai';       // 'ai' | '2p'
+let busy = false;      // animation / AI thinking lock
+
+function humanTurn() { return mode === '2p' || G.turn === 0; }
+
+function renderAll() {
+  const legal = !G.ended && humanTurn() && !busy ? E.legalMoves(G) : [];
+  for (let i = 0; i < 12; i += 1) renderPit(i, G.board[i], legal.includes(i));
+  $('ptsS').textContent = G.captured[0];
+  $('ptsN').textContent = G.captured[1];
+  $('scoreS').classList.toggle('turn', !G.ended && G.turn === 0);
+  $('scoreN').classList.toggle('turn', !G.ended && G.turn === 1);
+}
+
+function setMsg(html) { $('msg').innerHTML = html; }
+
+function startGame(newMode) {
+  mode = newMode;
+  G = E.newGame(0);
+  busy = false;
+  $('nameS').textContent = mode === '2p' ? 'Player 1' : 'You';
+  $('nameN').textContent = mode === '2p' ? 'Player 2' : `Computer (${save.difficulty})`;
+  $('endOverlay').classList.remove('active');
+  show('game');
+  renderAll();
+  setMsg(mode === '2p' ? '<b>Player 1</b> — pick a pit on the bottom row.' : 'Your move — pick a glowing pit.');
+}
+
+function onPitTap(pit) {
+  if (busy || !G || G.ended || !humanTurn()) return;
+  if (!E.legalMoves(G).includes(pit)) { sfx.tap(); return; }
+  playMove(pit);
+}
+
+/* Animate sowing along the path, then captures, then hand over. */
+function playMove(pit) {
+  busy = true;
+  const mover = G.turn;
+  const result = E.applyMove(G, pit);
+  const { path, capturedPits, capturedCount, grandSlam } = result;
+
+  // Step the seeds visually along the sowing path.
+  const working = G.board.slice();
+  working[pit] = 0;
+  renderPit(pit, 0, false);
+  pitEls.forEach((el) => el.classList.remove('playable'));
+
+  const STEP = Math.max(55, 200 - path.length * 6);
+  path.forEach((p, idx) => {
+    setTimeout(() => {
+      working[p] += 1;
+      renderPit(p, working[p], false);
+      pitEls[p].classList.remove('sown'); void pitEls[p].offsetWidth;
+      pitEls[p].classList.add('sown');
+      sfx.sow(idx);
+    }, idx * STEP);
+  });
+
+  const afterSow = path.length * STEP + 120;
+  setTimeout(() => {
+    if (capturedPits.length > 0) {
+      sfx.capture(); buzz(40);
+      capturedPits.forEach((p) => { pitEls[p].classList.add('robbed'); });
+      setTimeout(() => {
+        capturedPits.forEach((p) => pitEls[p].classList.remove('robbed'));
+        finishMove(result, mover, capturedCount, grandSlam);
+      }, 520);
+    } else {
+      finishMove(result, mover, capturedCount, grandSlam);
+    }
+  }, afterSow);
+}
+
+function finishMove(result, mover, capturedCount, grandSlam) {
+  G = result.state;
+  busy = false;
+  renderAll();
+
+  if (G.ended) { onGameEnd(); return; }
+
+  const moverName = mode === '2p' ? (mover === 0 ? 'Player 1' : 'Player 2')
+    : (mover === 0 ? 'You' : 'Computer');
+  if (grandSlam) setMsg(`<b>${moverName}</b>: grand slam! Captures forfeited — opponent must keep seeds.`);
+  else if (capturedCount > 0) setMsg(`<b>${moverName}</b> captured <b>${capturedCount}</b> seeds!`);
+  else setMsg(mode === '2p'
+    ? `<b>${G.turn === 0 ? 'Player 1' : 'Player 2'}</b> to move.`
+    : (G.turn === 0 ? 'Your move.' : 'Computer is thinking…'));
+
+  if (mode === 'ai' && G.turn === 1) {
+    busy = true;
+    renderAll();
+    setTimeout(() => {
+      const m = E.bestMove(G, save.difficulty);
+      busy = false;
+      if (m !== null) playMove(m);
+    }, 550 + Math.random() * 500);
+  }
+}
+
+function onGameEnd() {
+  const w = E.winner(G);
+  const bonus = bumpStreak();
+  let title; let reward = 0;
+
+  if (mode === '2p') {
+    title = w === -1 ? 'Draw!' : (w === 0 ? 'Player 1 wins! 🎉' : 'Player 2 wins! 🎉');
+    sfx.win();
+  } else if (w === 0) {
+    title = 'You win! 🎉';
+    reward = save.difficulty === 'hard' ? 40 : save.difficulty === 'medium' ? 25 : 15;
+    save.wins += 1; sfx.win(); buzz([60, 40, 60]);
+  } else if (w === 1) {
+    title = 'Computer wins';
+    reward = 5; // consolation — losing never feels like wasted time
+    save.losses += 1; sfx.lose();
+  } else {
+    title = 'Draw!'; reward = 10; save.draws += 1;
+  }
+
+  reward += bonus;
+  save.coins += reward;
+  persist();
+
+  $('endTitle').textContent = title;
+  $('endSub').textContent = `${G.captured[0]} – ${G.captured[1]}` + (bonus ? ` · 🔥 day ${save.streak} streak bonus +${bonus}` : '');
+  $('endReward').textContent = reward > 0 ? `+${reward} 🪙` : '';
+  $('btnDouble').style.display = (mode === 'ai' && reward > 0) ? '' : 'none';
+  $('btnDouble').disabled = false;
+  setTimeout(() => $('endOverlay').classList.add('active'), 650);
+
+  $('btnDouble').onclick = () => {
+    $('btnDouble').disabled = true;
+    Monetization.showRewardedAd(() => {
+      save.coins += reward; persist();
+      toast(`+${reward} 🪙 doubled!`);
+      $('endReward').textContent = `+${reward * 2} 🪙`;
+    });
+  };
+}
+
+/* ---------------- Shop ---------------- */
+function renderShop() {
+  $('shopCoins').textContent = save.coins;
+  const list = $('themeList');
+  list.innerHTML = '';
+  THEMES.forEach((t) => {
+    const owned = save.themes.includes(t.id);
+    const card = document.createElement('div');
+    card.className = 'theme-card' + (save.theme === t.id ? ' selected' : '');
+    card.innerHTML = `
+      <div class="swatch" style="background:${t.bg}"></div>
+      <div class="info"><b>${t.name}</b><small>${t.desc}</small></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn small' + (owned ? ' secondary' : '');
+    btn.textContent = owned ? (save.theme === t.id ? 'Active' : 'Use') : `${t.cost} 🪙`;
+    btn.disabled = owned && save.theme === t.id;
+    btn.onclick = () => {
+      if (owned) {
+        save.theme = t.id; applyTheme(); persist(); renderShop(); sfx.tap();
+      } else if (save.coins >= t.cost) {
+        save.coins -= t.cost; save.themes.push(t.id); save.theme = t.id;
+        applyTheme(); persist(); renderShop(); toast(`${t.name} unlocked! 🎨`); sfx.capture();
+      } else {
+        toast('Not enough coins — win more games!');
+      }
+    };
+    card.appendChild(btn);
+    list.appendChild(card);
+  });
+}
+
+/* ---------------- Wiring ---------------- */
+buildBoard();
+applyTheme();
+refreshHome();
+
+document.querySelectorAll('[data-diff]').forEach((b) => {
+  b.addEventListener('click', () => { save.difficulty = b.dataset.diff; persist(); refreshHome(); sfx.tap(); });
+});
+$('btnPlayAI').onclick = () => { sfx.tap(); startGame('ai'); };
+$('btnPlay2P').onclick = () => { sfx.tap(); startGame('2p'); };
+$('btnShop').onclick = () => { renderShop(); $('shopOverlay').classList.add('active'); };
+$('btnShopClose').onclick = () => { $('shopOverlay').classList.remove('active'); refreshHome(); };
+$('btnHow').onclick = () => $('howOverlay').classList.add('active');
+$('btnHowClose').onclick = () => $('howOverlay').classList.remove('active');
+$('btnSound').onclick = () => { save.sound = !save.sound; persist(); refreshHome(); };
+$('btnBack').onclick = () => { show('home'); refreshHome(); };
+$('btnRestart').onclick = () => { if (!busy) startGame(mode); };
+$('btnAgain').onclick = () => startGame(mode);
+$('btnEndHome').onclick = () => { $('endOverlay').classList.remove('active'); show('home'); refreshHome(); };
+$('btnBuyCoins').onclick = () => {
+  Monetization.purchase('coins_500', () => {
+    save.coins += 500; persist(); renderShop(); toast('+500 🪙 — thank you for supporting the game!');
+  });
+};
+</script>
+</body>
+</html>

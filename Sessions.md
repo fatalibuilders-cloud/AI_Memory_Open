@@ -16,6 +16,7 @@ Before performing any root-level action (modifying standards, creating new proje
 
 | Session File | Date | Keywords |
 |-------------|------|----------|
+<<<<<<< HEAD
 | `session-summary/AI-Session-Summary-2026-07-16_0728.md` | 2026-07-16 | staging, FatalibuildersConstructionApp, construction, software, project creation, agent distribution, autonomous, first session, vision draft, owner review |
 | `session-summary/AI-Session-Summary-2026-07-16_0908.md` | 2026-07-16 | setup, system configuration, owner, repository, fork, model preferences, keys deferred, standards, integrations, connectors |
 | `session-summary/AI-Session-Summary-2026-07-16_0945.md` | 2026-07-16 | API keys, guide, QuickBooks, security, first-time builder, onboarding, AliKeys.txt, roadmap |
@@ -25,6 +26,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `session-summary/AI-Session-Summary-2026-07-16_1026.md` | 2026-07-16 | standards, Eurocodes, British Standards, US codes, KEBS, Kenya, code profiles, M-Pesa, geotechnical |
 | `session-summary/AI-Session-Summary-2026-07-16_1030.md` | 2026-07-16 | staging complete, worldwide market, residential, management features, PWA, tech stack, release plan, sign-off |
 | `session-summary/AI-Session-Summary-2026-07-16_1044.md` | 2026-07-16 | PROJECT_MEMORY_INIT, initialization, promotion, Release 1.0, Sellable Core, 29 stories, project workspace, staging archived |
+| `projects/Oware_Legends_AI_Training/session-summary/2026-07-16--project-kickoff-v0.1.md` | 2026-07-16 | new-project, oware-legends, game, prototype, monetization |
 
 ---
 
