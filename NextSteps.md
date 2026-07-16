@@ -10,8 +10,9 @@
 
 ### High Priority
 
-1. **Owner review of FatalibuildersConstructionApp staging drafts** — The vision, users, and candidate epics in `projects/staging/FatalibuildersConstructionApp/Master-Context.md` are AI drafts and need confirmation before staging continues.
-2. **Tool inventory for connector prioritization** — *Mostly done (2026-07-16): accounting = Excel ONLY (QuickBooks dropped); communication = WhatsApp + calls → priorities: 1) Excel import/export, 2) WhatsApp (wa.me links first).* Still needed: photo/document storage, scheduling method.
+1. **Define the app's core tool (BLOCKING)** — Owner redefined the product (2026-07-16): public app, login, data-in → results-out, $30 lifetime access. Staging cannot finish Document 1 until the owner defines **what data users insert and what results come out** (material quantities? cost estimates? labor/time?), and whether management features stay in scope (Epic 5).
+2. **Primary market/country** — Needed to choose the payment provider and identify tax/legal requirements for selling the $30 lifetime access.
+3. ~~Tool inventory~~ *Mostly done: Excel-only accounting; WhatsApp + calls.* Photo storage/scheduling questions now only matter if Epic 5 (management features) stays.
 
 ### Medium Priority
 

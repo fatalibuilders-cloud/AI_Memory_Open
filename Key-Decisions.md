@@ -21,6 +21,7 @@ When performing any action that matches a keyword below, read the referenced det
 | integrations, connectors | App integration directive: integrate with all kinds of tools (project-level decision) | `decisions-learnings/Key-Decisions-2026-07-16_0908.md` | 2026-07-16 |
 | API keys, security, guide | AI never creates/holds keys; owner follows API-Keys-Guide.md; release 1 needs no keys (post-0959 revision) | `decisions-learnings/Key-Decisions-2026-07-16_0945.md` | 2026-07-16 |
 | Excel, QuickBooks dropped, WhatsApp | App tooling revised: Excel-only accounting, WhatsApp+calls (project-level; guide updated accordingly) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_0959.md` | 2026-07-16 |
+| public product, pricing, payments | Product redefined: public app, login, $30 lifetime access; payment provider now required (project-level; guide updated) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1007.md` | 2026-07-16 |
 | onboarding, communication | Owner is a first-time app builder — communications must be jargon-free with explicit action lists | `decisions-learnings/Key-Decisions-2026-07-16_0945.md` | 2026-07-16 |
 
 ---

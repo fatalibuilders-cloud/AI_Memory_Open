@@ -20,6 +20,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `session-summary/AI-Session-Summary-2026-07-16_0908.md` | 2026-07-16 | setup, system configuration, owner, repository, fork, model preferences, keys deferred, standards, integrations, connectors |
 | `session-summary/AI-Session-Summary-2026-07-16_0945.md` | 2026-07-16 | API keys, guide, QuickBooks, security, first-time builder, onboarding, AliKeys.txt, roadmap |
 | `session-summary/AI-Session-Summary-2026-07-16_0959.md` | 2026-07-16 | Excel only, QuickBooks dropped, WhatsApp, calls, integration priorities, keys guide revision, no keys needed |
+| `session-summary/AI-Session-Summary-2026-07-16_1007.md` | 2026-07-16 | public product, pricing, lifetime access, login, payments, vision revision, advisor consultation, epics restructured |
 
 ---
 

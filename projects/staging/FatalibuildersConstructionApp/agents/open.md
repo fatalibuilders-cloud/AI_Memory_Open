@@ -34,7 +34,8 @@
 
 *Updated by the closure protocol.*
 
-- **Document 1 (Project Context):** In Progress — AI-drafted vision pending owner review; integration constraint confirmed by owner
-- **Document 2 (Architecture/Design):** In Progress — integration-first; accounting = Excel ONLY (QuickBooks dropped 2026-07-16); WhatsApp + tap-to-call for communication. Priorities: 1) Excel import/export, 2) WhatsApp (wa.me first, Business API later)
-- **Document 3 (Release Plan):** Not Started (candidate epics drafted; in-app invoicing with Excel export; WhatsApp share stories to be included)
-- **Top blocker:** Owner confirmation of drafted vision; photo/document storage and scheduling method still unknown
+- **PRODUCT DIRECTION (owner, 2026-07-16):** Public Fatalibuilders app — anyone logs in, inserts construction data, gets results; **$30 one-time lifetime access**.
+- **Document 1 (Project Context):** In Progress — vision/audience/business model owner-confirmed. **BLOCKING: core tool definition (what data in, what results out) and whether management features stay (Epic 5).**
+- **Document 2 (Architecture/Design):** In Progress — integration-first; auth + payment provider added; Excel export priority 1, WhatsApp share priority 2.
+- **Document 3 (Release Plan):** Epics restructured: 1) Accounts & Payment, 2) Core Tool, 3) Output & Sharing, 4) Product Site, 5) management features (pending).
+- **Top blocker:** Core tool definition from owner.

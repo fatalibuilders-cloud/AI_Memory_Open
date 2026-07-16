@@ -10,9 +10,17 @@
 
 ## Project Vision
 
-> **STATUS: AI-DRAFTED — PENDING OWNER REVIEW.** This vision was drafted by the AI during autonomous staging initialization because the project was staged from the task name alone. The owner should confirm, correct, or replace it in the next session.
+> **STATUS: OWNER-DIRECTED (2026-07-16), core feature definition still open.** The owner redefined the product: it is NOT an internal tool — it is a public Fatalibuilders product.
 
-The Fatalibuilders Construction App is a construction management application for Fatali Builders that connects the field and the office in one system. It solves the fragmentation problem of running construction jobs across phone calls, paper, and spreadsheets by unifying job/project tracking, estimates and quotes, crew scheduling, daily site logs with photos, materials and expense tracking, and client communication/invoicing. It is built for the company's owner, office staff, site supervisors, and field crews — and gives clients a transparent window into their project's progress.
+The Fatalibuilders Construction App is a **Fatalibuilders-branded product open to the public**. Anyone can create an account and log in. Users **insert their construction data and the app gives out results** (calculations/estimates — exact inputs and outputs to be defined with the owner, see Open Question 1). Access is sold as a **one-time payment of $30 for lifetime access**. The app integrates with the tools people already use: results export to Excel, and quotes/results can be shared via WhatsApp; contact screens support tap-to-call.
+
+> **KEY OPEN QUESTION 1 (blocks Document 1 completion):** What exactly does the user type in, and what results come out? Examples to confirm or correct with the owner:
+> - Material quantity calculator (enter room/wall dimensions → cement, blocks, steel, paint quantities)
+> - Cost estimator (enter project specs → itemized cost estimate / client-ready quote)
+> - Labor/time estimator (enter scope → crew size and duration)
+> - Some or all of the above?
+>
+> **KEY OPEN QUESTION 2:** Are the earlier-drafted management features (job tracking, crew scheduling, daily site logs) still wanted as part of this product, or is the product focused purely on the data-in → results-out tool? The $30 price point suggests a focused tool.
 
 ---
 
@@ -97,20 +105,28 @@ The following domain-expert agents are available in this project's department fo
 > Fill in this section collaboratively with the owner. Items marked *(draft)* were proposed by the AI and need confirmation.
 
 ### Vision & Goals
-- **Vision Statement:** *(draft)* One system connecting Fatali Builders' field crews, office, and clients — replacing scattered calls, paper, and spreadsheets with unified job tracking, estimating, scheduling, and invoicing.
-- **Primary Goal:** *(open — owner input needed)* What outcome defines success? (e.g., every active job tracked in the app within 3 months of launch)
-- **Secondary Goals:** *(open — owner input needed)*
+- **Vision Statement (owner-directed, 2026-07-16):** A public Fatalibuilders product: users log in, insert construction data, get results — $30 one-time for lifetime access.
+- **Primary Goal:** *(draft)* Paying users — the product generates revenue for Fatali Builders as a product line, not just internal savings.
+- **Secondary Goals:** *(draft)* Brand visibility for Fatali Builders; the company itself uses the app for its own estimates.
 
 ### Target Audience / Users
-- *(draft)* Company owner, office/admin staff, site supervisors, field crews, and clients of Fatali Builders
-- *(open)* Is this an internal tool only, or also a product to offer other contractors?
-- *(open)* How many users/jobs are expected at launch?
+- **CONFIRMED (owner, 2026-07-16):** Anyone can use it after logging in — a public product, not an internal tool. Likely users: contractors, builders, site engineers, and possibly homeowners planning projects.
+- *(open)* Primary market/geography and language(s)?
+
+### Business Model
+- **CONFIRMED (owner, 2026-07-16):** One-time payment, **$30 for lifetime access**.
+- **Advisor note (Growth-n-Revenue advisor, consulted 2026-07-16):** Lifetime pricing caps revenue per customer at $30 while hosting/support costs continue for the customer's lifetime — unit economics must be watched (LTV is fixed; keep infrastructure cost per user very low). Recommendations to revisit before launch: (a) treat $30 lifetime as a launch offer that can later become a tier; (b) leave room for future expansion revenue (e.g., a pro tier with advanced features); (c) validate willingness-to-pay with the first real users. The owner's $30 lifetime directive stands for release 1.
 
 ### Success Metrics
-- *(open — owner input needed)* Candidate KPIs: % of jobs managed in-app, estimate turnaround time, invoice collection time, daily-log compliance, client satisfaction
+- *(draft — aligned to the business model)* Paid signups, revenue, activation rate (% of signups who run their first calculation), retention/usage (results generated per user per month), refund rate
 
 ### Institutional Dependencies
-- *(draft)* Legal (contracts, client data privacy), Finance (estimating/invoicing controls), Security (role-based access, client PII), Operations (field workflow design)
+- **Updated for public product (2026-07-16):**
+  - **Marketing** — now essential: go-to-market for a paid public product (app store/web presence, launch messaging)
+  - **Legal** — terms of service, privacy policy, refund policy for the $30 purchase, consumer protection compliance in target markets
+  - **Finance** — payment processing, revenue tracking, tax on digital sales
+  - **Security** — user accounts and credentials, payment security, personal data protection
+  - **Operations/Tech Support** — support channel for paying customers
 
 ### Assumptions & Constraints
 - **CONFIRMED (owner, 2026-07-16):** The app must **integrate with all kinds of tools** — it should be built integration-first rather than as a closed system.
@@ -126,6 +142,8 @@ The following domain-expert agents are available in this project's department fo
 
 ### For Software Projects
 - System architecture (services, layers, boundaries) — **owner directive (2026-07-16): integration-first architecture.** The app must be able to connect to all kinds of tools: design around an API-first core with webhooks and connector modules (MCP-style connectors, like the system's `zoho-mcp-server/` reference implementation).
+- **User accounts & authentication (NEW, owner 2026-07-16):** public product — signup/login required. Email + password baseline; social login (Google) optional later. Payment status gates access.
+- **Payments (NEW, owner 2026-07-16):** one-time $30 checkout for lifetime access → requires a payment provider (Stripe, Paddle, or Lemon Squeezy — Paddle/Lemon Squeezy act as merchant-of-record and handle sales tax globally, worth considering for a first-time seller). Provider account + keys needed at build/launch of the payment step.
 - Technology stack (frontend, backend, databases, infrastructure) — *(open)* mobile-first (crews are in the field) vs. web-first; native vs. PWA
 - Data model and integrations — **broad integration surface, candidates to prioritize with owner:**
   - *Accounting/Finance:* **CONFIRMED (owner, 2026-07-16, revised): Microsoft Excel ONLY — QuickBooks dropped by owner decision.** → Priority integration 1: **Excel import/export** (.xlsx) for estimates, job-cost reports, invoices, and migration of existing spreadsheets. The app itself becomes the system of record for job finances, with Excel as the in/out format. ~~QuickBooks connector~~ (superseded 2026-07-16). Payment processing optional/later.
@@ -150,13 +168,15 @@ The following domain-expert agents are available in this project's department fo
 - **Success Criteria:** *(open — owner input needed)*
 
 ### Epics (Major Work Streams)
-*(draft candidates for discussion — refine with owner)*
+*(revised 2026-07-16 for the public-product direction — refine with owner)*
 
-**Epic 1: Jobs & Projects Core** — job records, status tracking, documents, photos
-**Epic 2: Estimates & Quotes** — line-item estimating, quote generation, client approval
-**Epic 3: Scheduling & Crews** — calendar, crew assignment, dispatch
-**Epic 4: Field Logs** — daily site logs, photo capture, timesheets, offline support
-**Epic 5: Invoicing & Payments** — invoices from estimates/actuals, payment tracking
+**Epic 1: Accounts & Access** — signup, login, password reset; $30 lifetime-access checkout (payment provider); access gating
+**Epic 2: Core Tool — Data In → Results Out** — the heart of the product; scope depends on Open Question 1 (material calculator / cost estimator / labor estimator)
+**Epic 3: Results Output & Sharing** — Excel export of results, WhatsApp share (wa.me), printable/PDF result sheets
+**Epic 4: Product Site & Onboarding** — landing page explaining the product, pricing page, first-run guidance
+**Epic 5 (pending Open Question 2):** Job tracking / scheduling / site-log management features — only if the owner wants them in this product
+
+*(Former management-app epics — jobs, scheduling, field logs, invoicing — are folded into Epic 5 pending the owner's answer.)*
 
 ### Milestones
 *(to be defined)*

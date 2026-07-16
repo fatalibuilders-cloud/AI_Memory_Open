@@ -40,7 +40,7 @@ The system operates at two levels:
 
 | Project | Folder | Type | Status | Description |
 |---------|--------|------|--------|-------------|
-| FatalibuildersConstructionApp | `projects/staging/FatalibuildersConstructionApp/` | Software | Staging (Documents 1 & 2 in progress) | Construction management app for Fatali Builders: job tracking, estimates, crew scheduling, field logs, invoicing. Integration-first architecture per owner directive |
+| FatalibuildersConstructionApp | `projects/staging/FatalibuildersConstructionApp/` | Software (public product) | Staging (Documents 1 & 2 in progress; core tool definition pending) | Public Fatalibuilders app: users log in, insert construction data, get results — $30 one-time lifetime access. Excel export + WhatsApp share; integration-first architecture |
 
 ---
 
@@ -172,8 +172,8 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ## 9. Session History & Handover
 
-- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_0959.md` — Tool decisions revised: Excel-only accounting, WhatsApp + calls; release 1 needs no API keys
-- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_0945.md` (root) and the staging project's `Key-Decisions-2026-07-16_0959.md` (integration priorities)
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1007.md` — Product redefined: public app, $30 lifetime access; core tool definition is the blocking question
+- **Latest Decisions:** staging project's `Key-Decisions-2026-07-16_1007.md` (product direction, pricing, payments)
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)

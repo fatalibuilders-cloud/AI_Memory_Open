@@ -26,13 +26,14 @@ Three facts every beginner should know:
 |---|---|---|
 | Staging (planning documents) | ✅ **We are here** | **None** |
 | Design (architecture + release plan) | Next | **None** |
-| Build — Excel import/export (priority 1) | During development | **None** (Excel is file-based, no key needed) |
-| Build — WhatsApp share links (priority 2, first version) | During development | **None** (wa.me links need no key) |
-| Launch (real company data) | After testing | Hosting provider account only |
+| Build — Core tool + Excel export | During development | **None** (Excel is file-based, no key needed) |
+| Build — WhatsApp share links | During development | **None** (wa.me links need no key) |
+| Build — **$30 checkout (payments)** | During development | **Payment provider keys** (test mode first — see §3.4) |
+| Launch (paying customers) | After testing | Payment provider **live** keys + hosting provider account |
 | Later — WhatsApp Business API (automated messages) | If/when decided | Meta/WhatsApp Business keys |
 | Later integrations (email, maps…) | As decided | One key each, created the same way |
 
-> **Good news (updated 2026-07-16):** With Excel-only accounting and WhatsApp share links, the first version of your app needs **NO API keys at all** to build. Your first key will likely be the hosting account at launch.
+> **Updated 2026-07-16:** Because the app now sells **$30 lifetime access**, one key became necessary: a **payment provider** account (so customers can pay you securely by card). Everything else stays key-free. Like all keys, it has a free "test mode" — no real money moves until launch.
 
 ---
 
@@ -65,14 +66,27 @@ Tap-to-call uses your phone's normal dialer — no integration, no key, no cost.
 
 You decided to use Excel only and drop QuickBooks, so **no Intuit/QuickBooks keys are needed.** If you ever change your mind, this guide's git history has the full instructions.
 
-### 3.4 Anthropic / Claude (optional — only if the app gets AI features)
+### 3.4 Payment Provider (needed at build time for the $30 checkout)
+
+To accept the $30 lifetime-access payment, the app needs a payment provider. **Wait for the architecture session (Document 2) to pick which one** — the AI will recommend based on your country and target market. The main candidates:
+
+| Provider | Why consider it |
+|---|---|
+| **Paddle** (https://paddle.com) or **Lemon Squeezy** (https://lemonsqueezy.com) | They act as the "merchant of record" — they handle sales tax/VAT worldwide for you. **Usually the easiest choice for a first-time seller.** |
+| **Stripe** (https://stripe.com) | The industry standard, most flexible, but YOU handle tax obligations. Not available in every country. |
+
+Whichever is chosen, the pattern is the same: sign up with your business details → the dashboard gives you **test keys** (fake money, for building) and **live keys** (real money, for launch) → copy them into `AliKeys.txt`. Each provider takes a small fee per sale (roughly 3-6%) — that's how they're paid; creating the account is free.
+
+> **Important:** Payment providers will ask for identity/business verification (this protects you and your customers). Have your ID and bank account details ready when you sign up.
+
+### 3.5 Anthropic / Claude (optional — only if the app gets AI features)
 
 If we build AI features into the app (like auto-drafting an estimate from a site description):
 1. Go to **https://console.anthropic.com**
 2. Sign up / sign in → **API Keys** → **Create Key**.
 3. Name it `fatalibuilders-app`, copy it into `AliKeys.txt` immediately (it is shown only once).
 
-### 3.5 Future keys (create only when we decide to build these)
+### 3.6 Future keys (create only when we decide to build these)
 
 | Service | Where to create | For |
 |---|---|---|
@@ -91,6 +105,11 @@ Create a plain text file named **`AliKeys.txt`** in the root of your AI_Memory_O
 **Format (copy this template):**
 
 ```
+#Payments (provider chosen in Document 2 — Paddle / Lemon Squeezy / Stripe):
+
+Test/Sandbox Key: ADD_AT_BUILD_TIME
+Live Key: ADD_AT_LAUNCH
+
 #Hosting:
 
 API Token: ADD_AT_LAUNCH
@@ -105,7 +124,7 @@ Phone Number ID: ADD_LATER_IF_NEEDED
 API Key: PASTE_HERE_IF_CREATED
 ```
 
-*(Right now this file has nothing urgent to hold — your first release needs no keys. Create the file when the first real key arrives.)*
+*(The first real key you'll create is the payment provider's test key, during the build phase — the AI will tell you exactly when.)*
 
 Add a new `#ServiceName:` section for each service as you create keys.
 
@@ -130,17 +149,17 @@ Building an app for the first time follows this path — we track it all in this
 3. RELEASE PLAN           → Break the work into small, ordered steps
 4. INITIALIZE PROJECT     → PROJECT_MEMORY_INIT.md builds the full project workspace
 5. BUILD, in releases     → AI develops the app step by step; you test each release
-   ↳ No keys needed (Excel + WhatsApp links are key-free)
-6. LAUNCH                 → Real data, real crews; hosting account created here
+   ↳ Payment provider TEST keys needed here (fake money, free)
+6. LAUNCH                 → Payment provider LIVE keys + hosting account; real customers pay $30
 7. IMPROVE                → New integrations and features, one release at a time
 ```
 
 **Your only jobs right now:**
-1. Read the app vision in `projects/staging/FatalibuildersConstructionApp/Master-Context.md` and say "looks right" or what to change.
-2. Tell the AI where job photos/documents live today (phone gallery? Google Drive? paper?).
-3. Tell the AI how you schedule crews today (paper, Excel, calendar app?).
+1. **Define the core tool** (this is the big one): what exactly does a user type in, and what results come out? For example: "enter room dimensions → get cement, blocks, and steel quantities" or "enter project details → get a full cost estimate."
+2. Say whether job tracking / crew scheduling / site logs should ALSO be in the product, or if it's the focused calculator only.
+3. Tell the AI your primary market/country — it decides the best payment provider and any tax/legal needs for selling at $30.
 
-That's it — no keys to create for now.
+No keys to create yet — the payment provider gets chosen during the design phase, and I'll walk you through its signup when we get there.
 
 ---
 

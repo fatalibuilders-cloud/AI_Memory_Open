@@ -11,8 +11,8 @@
 
 ### Document 1: Project Context
 - **Status:** [ ] Not Started [x] In Progress [ ] Complete
-- **Completed Sections:** Vision (AI draft — pending owner confirmation), Institutional Dependencies (draft)
-- **Next Action:** **Owner review** — confirm/correct the drafted vision, then fill Primary Goal, Target Audience details, Success Metrics, Assumptions & Constraints
+- **Completed Sections:** Vision (owner-directed: public product, data-in → results-out, $30 lifetime); Target Audience (public, login required); Business Model ($30 lifetime + advisor guardrails); Institutional Dependencies (updated for public product)
+- **Next Action:** **BLOCKING — owner defines the core tool:** what data does the user insert, and what results come out? (material quantities / cost estimate / labor & time / all). Also: do management features (job tracking, scheduling, site logs) stay in scope?
 
 ### Document 2: Architecture/Design
 - **Status:** [ ] Not Started [x] In Progress [ ] Complete
@@ -28,7 +28,7 @@
 
 ## Blockers / Open Questions
 
-1. **Owner confirmation needed:** The project was staged autonomously from the task name alone. The vision, category (Software), target users, and candidate epics are AI drafts — the owner must review and correct them before staging proceeds.
+1. ~~**Owner confirmation needed:** vision drafts.~~ **LARGELY RESOLVED 2026-07-16 (1007):** Owner redefined the product — public app, login, data-in → results-out, $30 lifetime access. **NEW BLOCKING QUESTION: define the core tool** (inputs and outputs) and whether management features stay (Epic 5).
 2. ~~**Owner identity:** Full name and role title for the project owner record.~~ **RESOLVED 2026-07-16:** Eng Ali Ahmed, Owner of Fatali Builders. Contact profile created at `contacts/Eng-Ali-Ahmed.md` (root level).
 3. **Scope question:** Internal tool for Fatali Builders only, or a product to offer other contractors?
 4. ~~**Environment question:** Existing tools in use today that the app must integrate with or replace?~~ **MOSTLY RESOLVED (2026-07-16):** Accounting = **Excel only** (QuickBooks explicitly dropped — 0959 decision supersedes 0943); communication = **WhatsApp + phone calls**. Integration priorities: 1) Excel import/export, 2) WhatsApp (wa.me links first). Still open: photo/document storage, scheduling method.
