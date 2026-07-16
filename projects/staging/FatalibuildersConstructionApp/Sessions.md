@@ -13,6 +13,7 @@ Before starting a session, skim this index to understand prior context. If a pri
 | 2026-07-16 | ~5 min | accounting, QuickBooks, Excel, connector priority | `decisions-learnings/Key-Decisions-2026-07-16_0943.md` | Owner confirmed accounting stack (Excel + QuickBooks); first two integrations prioritized *(superseded same day)* |
 | 2026-07-16 | ~10 min | Excel only, QuickBooks dropped, WhatsApp, calls | `decisions-learnings/Key-Decisions-2026-07-16_0959.md` | Owner revised: Excel-only accounting; WhatsApp + calls for communication; integration priorities re-sequenced |
 | 2026-07-16 | ~15 min | public product, pricing, lifetime access, login, payments, vision revision | `decisions-learnings/Key-Decisions-2026-07-16_1007.md` | Owner redefined product as public data-in → results-out app, $30 lifetime access; vision and epics rewritten; Growth-n-Revenue advisor consulted on pricing |
+| 2026-07-16 | ~10 min | core tool, calculators, drawings, renders, structural, geotechnical, phasing | `decisions-learnings/Key-Decisions-2026-07-16_1019.md` | Core tool fully defined (7 output types); engineering-liability safeguards recorded; 3-release phasing established |
 
 ---
 

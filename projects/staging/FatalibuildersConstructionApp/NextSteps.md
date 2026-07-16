@@ -10,9 +10,9 @@
 ## Staging Progress
 
 ### Document 1: Project Context
-- **Status:** [ ] Not Started [x] In Progress [ ] Complete
-- **Completed Sections:** Vision (owner-directed: public product, data-in → results-out, $30 lifetime); Target Audience (public, login required); Business Model ($30 lifetime + advisor guardrails); Institutional Dependencies (updated for public product)
-- **Next Action:** **BLOCKING — owner defines the core tool:** what data does the user insert, and what results come out? (material quantities / cost estimate / labor & time / all). Also: do management features (job tracking, scheduling, site logs) stay in scope?
+- **Status:** [ ] Not Started [x] In Progress [ ] Nearly Complete
+- **Completed Sections:** Vision; Target Audience; Business Model ($30 lifetime + advisor guardrails); **Core tool definition (7 outputs: quantities, costs, labor, 2D drawings, renders, structural, geotech)**; Institutional Dependencies (incl. engineering-liability disclaimers)
+- **Next Action:** Final three answers from owner: (1) management features in or out (Epic 8); (2) primary market/country → building codes + payment provider; (3) Release-1 construction types (residential only? multi-storey?)
 
 ### Document 2: Architecture/Design
 - **Status:** [ ] Not Started [x] In Progress [ ] Complete
@@ -28,7 +28,7 @@
 
 ## Blockers / Open Questions
 
-1. ~~**Owner confirmation needed:** vision drafts.~~ **LARGELY RESOLVED 2026-07-16 (1007):** Owner redefined the product — public app, login, data-in → results-out, $30 lifetime access. **NEW BLOCKING QUESTION: define the core tool** (inputs and outputs) and whether management features stay (Epic 5).
+1. ~~**Owner confirmation needed:** vision drafts.~~ ~~**Define the core tool.**~~ **RESOLVED 2026-07-16 (1019):** Full output set confirmed: calculators + 2D drawings + renders + structural drawings + geotech report. Remaining: management features in/out (Epic 8); market/country + building codes; Release-1 construction types.
 2. ~~**Owner identity:** Full name and role title for the project owner record.~~ **RESOLVED 2026-07-16:** Eng Ali Ahmed, Owner of Fatali Builders. Contact profile created at `contacts/Eng-Ali-Ahmed.md` (root level).
 3. **Scope question:** Internal tool for Fatali Builders only, or a product to offer other contractors?
 4. ~~**Environment question:** Existing tools in use today that the app must integrate with or replace?~~ **MOSTLY RESOLVED (2026-07-16):** Accounting = **Excel only** (QuickBooks explicitly dropped — 0959 decision supersedes 0943); communication = **WhatsApp + phone calls**. Integration priorities: 1) Excel import/export, 2) WhatsApp (wa.me links first). Still open: photo/document storage, scheduling method.

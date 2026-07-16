@@ -12,15 +12,20 @@
 
 > **STATUS: OWNER-DIRECTED (2026-07-16), core feature definition still open.** The owner redefined the product: it is NOT an internal tool — it is a public Fatalibuilders product.
 
-The Fatalibuilders Construction App is a **Fatalibuilders-branded product open to the public**. Anyone can create an account and log in. Users **insert their construction data and the app gives out results** (calculations/estimates — exact inputs and outputs to be defined with the owner, see Open Question 1). Access is sold as a **one-time payment of $30 for lifetime access**. The app integrates with the tools people already use: results export to Excel, and quotes/results can be shared via WhatsApp; contact screens support tap-to-call.
+The Fatalibuilders Construction App is a **Fatalibuilders-branded product open to the public**. Anyone can create an account and log in. Users **insert their construction project data and the app gives out results**. Access is sold as a **one-time payment of $30 for lifetime access**. Results export to Excel and share via WhatsApp; contact screens support tap-to-call.
 
-> **KEY OPEN QUESTION 1 (blocks Document 1 completion):** What exactly does the user type in, and what results come out? Examples to confirm or correct with the owner:
-> - Material quantity calculator (enter room/wall dimensions → cement, blocks, steel, paint quantities)
-> - Cost estimator (enter project specs → itemized cost estimate / client-ready quote)
-> - Labor/time estimator (enter scope → crew size and duration)
-> - Some or all of the above?
->
-> **KEY OPEN QUESTION 2:** Are the earlier-drafted management features (job tracking, crew scheduling, daily site logs) still wanted as part of this product, or is the product focused purely on the data-in → results-out tool? The $30 price point suggests a focused tool.
+**Core tool outputs — CONFIRMED (owner, 2026-07-16):** from the user's project data the app produces:
+1. **Material quantities** — cement, blocks, steel, sand, paint, etc.
+2. **Cost estimate** — itemized, client-ready
+3. **Labor/time estimate** — crew size and duration
+4. **2D drawings** — plans generated from the entered dimensions
+5. **Renders** — visualizations of the project
+6. **Structural drawings** — preliminary structural layouts
+7. **Geotechnical report** — generated once the user enters the soil type
+
+> **⚠️ ENGINEERING RESPONSIBILITY (recorded 2026-07-16, must be reflected in Legal + product design):** Structural drawings and geotechnical reports are professional engineering deliverables. In most jurisdictions they legally require review and stamping by a licensed engineer before use in construction. The app MUST label outputs 4-7 as **preliminary/indicative — for guidance only, not for construction without licensed engineer review**, with clear disclaimers at generation and on every exported document. This protects users' safety and Fatali Builders' liability.
+
+> **KEY OPEN QUESTION 2 (still open):** Are the earlier-drafted management features (job tracking, crew scheduling, daily site logs) also wanted in this product (Epic 6), or is the product the focused results-generator above?
 
 ---
 
@@ -123,7 +128,7 @@ The following domain-expert agents are available in this project's department fo
 ### Institutional Dependencies
 - **Updated for public product (2026-07-16):**
   - **Marketing** — now essential: go-to-market for a paid public product (app store/web presence, launch messaging)
-  - **Legal** — terms of service, privacy policy, refund policy for the $30 purchase, consumer protection compliance in target markets
+  - **Legal** — terms of service, privacy policy, refund policy for the $30 purchase, consumer protection compliance in target markets; **professional-liability disclaimers for engineering outputs (structural drawings, geotechnical reports) — mandatory before Release 3**
   - **Finance** — payment processing, revenue tracking, tax on digital sales
   - **Security** — user accounts and credentials, payment security, personal data protection
   - **Operations/Tech Support** — support channel for paying customers
@@ -168,15 +173,22 @@ The following domain-expert agents are available in this project's department fo
 - **Success Criteria:** *(open — owner input needed)*
 
 ### Epics (Major Work Streams)
-*(revised 2026-07-16 for the public-product direction — refine with owner)*
+*(revised 2026-07-16 after full core-tool definition — sequenced by feasibility)*
 
 **Epic 1: Accounts & Access** — signup, login, password reset; $30 lifetime-access checkout (payment provider); access gating
-**Epic 2: Core Tool — Data In → Results Out** — the heart of the product; scope depends on Open Question 1 (material calculator / cost estimator / labor estimator)
-**Epic 3: Results Output & Sharing** — Excel export of results, WhatsApp share (wa.me), printable/PDF result sheets
-**Epic 4: Product Site & Onboarding** — landing page explaining the product, pricing page, first-run guidance
-**Epic 5 (pending Open Question 2):** Job tracking / scheduling / site-log management features — only if the owner wants them in this product
+**Epic 2: Project Data Input** — structured entry of project data (dimensions, floors, rooms, materials preferences, location, soil type when known) — the single input flow that feeds ALL outputs
+**Epic 3: Calculators** — material quantities, itemized cost estimate, labor/time estimate
+**Epic 4: Results Output & Sharing** — Excel export, WhatsApp share (wa.me), printable/PDF result sheets with disclaimers
+**Epic 5: Drawings & Visuals** — 2D plan drawings generated from entered dimensions; renders (visualizations)
+**Epic 6: Engineering Outputs** — preliminary structural drawings; geotechnical report generated from soil type input — **both watermarked "preliminary — requires licensed engineer review"**
+**Epic 7: Product Site & Onboarding** — landing page, pricing page, first-run guidance
+**Epic 8 (pending Open Question 2):** Job tracking / scheduling / site-log management features
 
-*(Former management-app epics — jobs, scheduling, field logs, invoicing — are folded into Epic 5 pending the owner's answer.)*
+**Suggested release phasing (to get to market fast and de-risk the hard parts):**
+- **Release 1 (MVP):** Epics 1, 2, 3, 4, 7 — accounts, payment, calculators, exports, site. Sellable on day one.
+- **Release 2:** Epic 5 — 2D drawings, then renders.
+- **Release 3:** Epic 6 — structural drawings + geotechnical report (needs engineering rule-sets and legal review first).
+- **Release 4 (if wanted):** Epic 8 — management features.
 
 ### Milestones
 *(to be defined)*

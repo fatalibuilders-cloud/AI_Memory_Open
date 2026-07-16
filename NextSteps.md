@@ -10,8 +10,9 @@
 
 ### High Priority
 
-1. **Define the app's core tool (BLOCKING)** — Owner redefined the product (2026-07-16): public app, login, data-in → results-out, $30 lifetime access. Staging cannot finish Document 1 until the owner defines **what data users insert and what results come out** (material quantities? cost estimates? labor/time?), and whether management features stay in scope (Epic 5).
-2. **Primary market/country** — Needed to choose the payment provider and identify tax/legal requirements for selling the $30 lifetime access.
+1. ~~**Define the app's core tool.**~~ **RESOLVED (2026-07-16 1019):** 7 outputs confirmed — calculators (quantities/cost/labor), 2D drawings, renders, structural drawings, geotech report — with engineering-review safeguards and 3-release phasing.
+2. **Primary market/country (now the top blocker)** — Determines building codes/standards for the calculators and engineering rules, the payment provider, and tax/legal requirements for the $30 sale.
+3. **Release-1 construction types** — Owner to choose the scope of the first version (e.g., residential houses only) for accuracy and speed.
 3. ~~Tool inventory~~ *Mostly done: Excel-only accounting; WhatsApp + calls.* Photo storage/scheduling questions now only matter if Epic 5 (management features) stays.
 
 ### Medium Priority

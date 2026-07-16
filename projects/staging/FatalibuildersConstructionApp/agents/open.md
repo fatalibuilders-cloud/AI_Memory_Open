@@ -34,8 +34,8 @@
 
 *Updated by the closure protocol.*
 
-- **PRODUCT DIRECTION (owner, 2026-07-16):** Public Fatalibuilders app — anyone logs in, inserts construction data, gets results; **$30 one-time lifetime access**.
-- **Document 1 (Project Context):** In Progress — vision/audience/business model owner-confirmed. **BLOCKING: core tool definition (what data in, what results out) and whether management features stay (Epic 5).**
-- **Document 2 (Architecture/Design):** In Progress — integration-first; auth + payment provider added; Excel export priority 1, WhatsApp share priority 2.
-- **Document 3 (Release Plan):** Epics restructured: 1) Accounts & Payment, 2) Core Tool, 3) Output & Sharing, 4) Product Site, 5) management features (pending).
-- **Top blocker:** Core tool definition from owner.
+- **PRODUCT (owner, 2026-07-16):** Public Fatalibuilders app, $30 one-time lifetime access. Users insert project data → get: material quantities, cost estimate, labor/time estimate, 2D drawings, renders, structural drawings, geotech report (from soil type). Engineering outputs carry "preliminary — licensed engineer review required" safeguards.
+- **Document 1 (Project Context):** Nearly complete. Remaining: management features in/out; market/country; Release-1 construction types.
+- **Document 2 (Architecture/Design):** In Progress — key design artifact is the unified project-data input model that feeds all 7 outputs; auth + payment provider; Excel/WhatsApp/PDF outputs.
+- **Document 3 (Release Plan):** Skeleton set — R1: accounts+payment+calculators+exports+site; R2: 2D drawings, renders; R3: structural+geotech; R4: management features (if kept).
+- **Top blocker:** Market/country (determines building codes, payment provider, legal).
