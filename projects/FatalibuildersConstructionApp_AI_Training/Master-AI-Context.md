@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~3% (1/29) — CORE-1.0 built & verified 2026-07-16 (awaiting repo migration for [DONE]); app scaffold live at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~7% (2/29) — CORE-1.0 built & verified (awaiting repo migration for [DONE]); CORE-1.3 app shell [DONE] 2026-07-16. App at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

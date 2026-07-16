@@ -19,9 +19,10 @@ The AI cannot create repositories, so this one needs you:
 
 ### 2. Next build session
 - [x] ~~CORE-1.0 scaffold~~ **BUILT & VERIFIED 2026-07-16** (8/8 tests, lint, build, health check ✅) — [DONE] after repo migration
-- [ ] **CORE-1.3** — base app shell polish (nav, theme, error/loading states) — pure [AI]
+- [x] ~~CORE-1.3 base app shell~~ **[DONE] 2026-07-16** (header/footer/pricing placeholder/error/loading/404, all routes verified live)
+- [ ] **CORE-2.0** — signup & login (pure [AI]; local dev DB, wired to hosted DB at CORE-1.2)
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account (plain-language steps at that point)
-- [ ] **CORE-2.0** — signup & login (can start before hosting if useful)
+- [ ] **CORE-4.0/4.1** — project data model + input wizard (pure [AI])
 
 ### Release 1.0 — Sellable Core (0%)
 **File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`

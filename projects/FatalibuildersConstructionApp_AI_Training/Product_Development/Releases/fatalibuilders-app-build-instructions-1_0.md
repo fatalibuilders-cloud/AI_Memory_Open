@@ -48,9 +48,10 @@ AI evaluates Vercel/Railway/Fly.io against architecture cost guardrails and reco
 AI provisions managed PostgreSQL + S3-compatible bucket on the chosen platform (`[Human]` confirms/creates add-on if dashboard action needed); migration tooling set up.
 *Acceptance:* app connects to DB in production; migrations run on deploy; storage bucket reachable.
 
-**CORE-1.3 [AI] — Base app shell**
+**CORE-1.3 [AI] — Base app shell** `[DONE 2026-07-16]`
 Mobile-first layout, navigation, theme (Fatalibuilders branding placeholder), error/loading states, health endpoint.
 *Acceptance:* shell renders correctly on phone-size and desktop viewports; Lighthouse PWA installability passes.
+*Status note (2026-07-16):* Header (logo, nav, CTA), footer (with engineering disclaimer line), pricing placeholder page ($30 lifetime card), error boundary, loading state, custom 404, manifest+icons wired into metadata. Verified: lint clean, 8/8 tests, production build, all routes live (200/200/404/health-ok). PWA install audit re-checked at CORE-8.1 UAT on a real phone.
 
 ## Epic 2: Accounts & Access
 

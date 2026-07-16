@@ -15,10 +15,14 @@
 - **Verified:** `npm install` clean; **tests 8/8 pass**; **lint clean**; **production build succeeds**; server starts and `/api/health` returns ok; homepage renders.
 - Memory updated: release file (Epic 1 In Progress, CORE-1.0 status note), module-map (key files + temp location), NextSteps (owner action added).
 
+- **(Continuation ~11:05 UTC)** Owner reported GitHub connected; verified via list_repos that `fatalibuilders-app` does NOT exist yet; retried create_repository → still 403 (integration lacks repo-creation permission permanently). Owner's manual 5-minute step re-queued in NextSteps.
+- **CORE-1.3 executed:** Header (logo/nav/CTA), Footer (engineering disclaimer line), pricing placeholder page, error boundary, loading spinner, custom 404, icons in metadata; fixed lint ignore for generated `next-env.d.ts`. Verified: lint clean, tests 8/8, build ✓, live routes 200/200/404 + health ok.
+
 ## Stories Completed This Session
 | Story ID | Name | Status |
 |----------|------|--------|
 | CORE-1.0 | Scaffold the app repository | [IN-PROGRESS] — built & verified; awaiting repo migration |
+| CORE-1.3 | Base app shell | [DONE] |
 
 ## Key Decisions
 | Decision | Rationale |

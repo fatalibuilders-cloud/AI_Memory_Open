@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,6 +8,7 @@ export const metadata: Metadata = {
   description:
     "Insert your construction project data — get material quantities, cost estimates, labor plans, drawings and reports. One payment, lifetime access.",
   manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {
@@ -19,8 +22,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
-        {children}
+      <body className="flex min-h-screen flex-col bg-stone-50 text-stone-900 antialiased">
+        <Header />
+        <div className="flex-1">{children}</div>
+        <Footer />
       </body>
     </html>
   );
