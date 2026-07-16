@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTraderSuperScalpers.mq5                                |
-//| Draft v1.12 (Market tag 1.82) -- implements the risk-management,   |
+//| Draft v1.13 (Market tag 1.83) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -47,7 +47,15 @@
 //| MQLInfoInteger(MQL_TESTER) is true -- staleness is a live-feed         |
 //| concept that doesn't apply to a deterministic historical replay. See   |
 //| decisions-learnings/2026-07-16b_stale-quote-check-skipped-in-tester.md.|
-//| See the big comment above                                              |
+//| Both fixes CONFIRMED via a real GBPUSD backtest showing actual         |
+//| trades. (2026-07-16c) But a founder XAUUSD backtest, same build,       |
+//| still showed ZERO trades (confirmed via the actual .xlsx report: 0     |
+//| trades, 0 deals besides the opening balance, over 536,861 real bars).  |
+//| Gold's normal spread runs much wider than GBPUSD's, and the two        |
+//| symbols were sharing one MaxAllowedSpread_Points limit -- split into   |
+//| MaxAllowedSpread_Points (forex) and MaxAllowedSpread_Points_Gold       |
+//| (default 200), see decisions-learnings/2026-07-16c_gold-needs-its-     |
+//| own-spread-limit.md. See the big comment above                         |
 //| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest       |
 //| math behind Aggressive Mode's risk before using it.                    |
 //|                                                                    |
@@ -57,7 +65,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader Super Scalpers"
-#property version   "1.82"
+#property version   "1.83"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -127,12 +135,13 @@ CTrade trade;
 //|    for an XAUUSD or GBPUSD prefix. Some brokers may name symbols      |
 //|    unusually (unexpected prefixes rather than suffixes); verify it   |
 //|    matches your broker's actual symbol names before relying on it.   |
-//|    MaxAllowedSpread_Points (default 60, raised 2026-07-16 -- see     |
-//|    decisions-learnings/2026-07-16_spread-filter-blocking-all-trades.  |
-//|    md) is still just a starting point, not tuned per symbol -- raise  |
-//|    or lower it manually once you know your actual account's real     |
-//|    GBPUSD/XAUUSD spread, the code does not auto-detect a sane        |
-//|    per-symbol default. The chart timeframe is now ENFORCED as M1 (2026-07-14z,  |
+//|    MaxAllowedSpread_Points (GBPUSD/forex, default 60) and             |
+//|    MaxAllowedSpread_Points_Gold (XAUUSD, default 200, added           |
+//|    2026-07-16c) are now SEPARATE per-symbol settings -- see           |
+//|    decisions-learnings/2026-07-16c_gold-needs-its-own-spread-limit.   |
+//|    md. Both are still just starting points, not validated against a  |
+//|    real account -- raise or lower them once you know your actual     |
+//|    broker's real GBPUSD/XAUUSD spread. The chart timeframe is now ENFORCED as M1 (2026-07-14z,  |
 //|    OnInit refuses to run on anything else) -- this used to be only   |
 //|    a recommendation.                                                 |
 //+------------------------------------------------------------------+
@@ -381,9 +390,6 @@ input double AvoidStrongTrends_MaxTrendStrength = 30.0;  // higher = allows stro
 // Refuses to trade if the buy/sell price gap (the "spread") is
 // unusually wide, or if the price feed looks stale/frozen -- both are
 // signs of a bad moment to trade, not a real opportunity.
-// NOTE: metals (like gold) commonly have a much wider normal spread
-// than forex pairs. If you're trading gold/silver and the bot seems to
-// never trade, this setting is the first thing to check and raise.
 // (2026-07-16) RAISED from 30 to 60 -- MT5's Strategy Tester applies a
 // single FIXED spread for the whole backtest (pulled from the symbol's
 // current market spread when the test starts, not real historical
@@ -391,13 +397,27 @@ input double AvoidStrongTrends_MaxTrendStrength = 30.0;  // higher = allows stro
 // 50-point spread the entire time. At the old 30-point cap, that alone
 // blocked every trade for the whole test, before the entry signal was
 // ever evaluated -- see decisions-learnings/2026-07-16_spread-filter-
-// blocking-all-trades.md. 60 gives headroom over that specific tester
-// run, NOT a claim that 60 points is the right number for your real,
-// live account -- check your broker's actual typical GBPUSD/XAUUSD
-// spread and set this to something sensible above it once you're
-// looking at live/demo quotes, not just this backtest.
+// blocking-all-trades.md.
+// (2026-07-16c) GOLD NOW HAS ITS OWN, SEPARATE SPREAD LIMIT (below) --
+// a founder backtest on XAUUSD with THIS same 60-point limit produced
+// ZERO trades even after the two earlier fixes (0 trades, 0 total
+// deals other than the opening balance, over 536,861 real bars) --
+// because gold's normal spread runs far wider than GBPUSD's, exactly
+// as flagged here before: metals commonly trade with a much wider
+// normal spread than forex pairs. One shared number can't fit both, so
+// this setting below is now GBPUSD/forex-only.
 input bool   AvoidBadPriceData_Enabled    = true;
+// GBPUSD (and any other forex pair) spread limit, in points.
 input double MaxAllowedSpread_Points      = 60.0;   // 2026-07-16 (was 30.0)
+// (2026-07-16c) XAUUSD's OWN spread limit -- separate from the forex
+// one above because gold's normal spread runs much wider. This default
+// (200) is a rough headroom estimate to unblock backtesting, NOT a
+// validated real-account number -- same caveat as the forex value:
+// check your broker's actual typical XAUUSD spread once you're looking
+// at live/demo quotes, and if trades still don't happen on gold, check
+// the Experts/Journal log for "data feed check failed (spread=X pts...)"
+// to see the real spread values being rejected and raise this to match.
+input double MaxAllowedSpread_Points_Gold = 200.0;  // 2026-07-16c
 input int    MaxAllowedPriceDelay_Seconds = 60;
 
 // (2026-07-14z) Many traders avoid the first stretch of a trading
@@ -461,11 +481,20 @@ bool     g_dailyHalted = false;
 //| classification across every broker's symbol-naming convention --    |
 //| verify it matches your actual broker's symbol names.                |
 //+------------------------------------------------------------------+
+// (2026-07-16c) Pulled out of IsAllowedInstrument() so the spread filter
+// can also tell gold and GBPUSD apart, not just the init-time check.
+bool IsGoldSymbol()
+{
+   string name = _Symbol;
+   StringToUpper(name);
+   return (StringFind(name, "XAUUSD") == 0);
+}
+
 bool IsAllowedInstrument()
 {
    string name = _Symbol;
    StringToUpper(name);
-   bool isGold   = (StringFind(name, "XAUUSD") == 0);
+   bool isGold   = IsGoldSymbol();
    bool isGbpUsd = (StringFind(name, "GBPUSD") == 0);
 
    return (isGold || isGbpUsd);
@@ -786,7 +815,10 @@ bool PassesDataFeedSanityCheck()
 
    double spread = (SymbolInfoDouble(_Symbol, SYMBOL_ASK) - SymbolInfoDouble(_Symbol, SYMBOL_BID))
                      / SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   if(spread > MaxAllowedSpread_Points)
+   // (2026-07-16c) Gold uses its own, wider spread ceiling -- see the
+   // input comments above MaxAllowedSpread_Points_Gold.
+   double maxSpreadForThisSymbol = IsGoldSymbol() ? MaxAllowedSpread_Points_Gold : MaxAllowedSpread_Points;
+   if(spread > maxSpreadForThisSymbol)
       return false;
 
    if(!MQLInfoInteger(MQL_TESTER))
@@ -1181,8 +1213,9 @@ void OnTick()
    {
       double spreadNow = (SymbolInfoDouble(_Symbol, SYMBOL_ASK) - SymbolInfoDouble(_Symbol, SYMBOL_BID))
                           / SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+      double maxSpreadNow = IsGoldSymbol() ? MaxAllowedSpread_Points_Gold : MaxAllowedSpread_Points;
       LogBlockReason(StringFormat("data feed check failed (spread=%.1f pts, max=%.1f, or stale quote)",
-                     spreadNow, MaxAllowedSpread_Points));
+                     spreadNow, maxSpreadNow));
       return;
    }
 
