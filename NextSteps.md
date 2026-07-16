@@ -16,7 +16,7 @@
 ### Medium Priority
 
 1. **Continue FatalibuildersConstructionApp staging Documents 1 & 2** — After owner review: fill goals, success metrics, constraints; decide mobile-first vs. web-first and offline support. *(Project-level work — use the staging project's own agents/open.md.)*
-2. **Register API keys** — Owner creates a git-ignored `AliKeys.txt` per setup-AI-Memory.md Step 2.6 when credentials are ready.
+2. **Register API keys** — **Full beginner guide now at `API-Keys-Guide.md`.** Owner follows §3.1 to create QuickBooks developer keys (needed at build phase, not before) and stores them in a local git-ignored `AliKeys.txt` per the template in §4.
 3. **Confirm enterprise OS** — Remaining deferred setup field; Zoho One has a pre-built MCP connector if chosen.
 
 ### Low Priority

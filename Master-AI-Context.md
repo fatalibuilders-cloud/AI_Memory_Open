@@ -166,14 +166,14 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 **All Available Models:** Claude (Anthropic). *(Other models can be registered later by re-running the model preferences step.)*
 
-**API Keys:** Not yet registered. When ready, create a git-ignored `AliKeys.txt` at the repo root (pattern `*Keys.txt` is already excluded by `.gitignore`) following the format in `setup-AI-Memory.md` Step 2.6.
+**API Keys:** Not yet registered. Owner follows **`API-Keys-Guide.md`** (beginner-friendly, at repo root) to create keys when the build phase needs them, storing them in a local git-ignored `AliKeys.txt` (pattern `*Keys.txt` is already excluded by `.gitignore`).
 
 ---
 
 ## 9. Session History & Handover
 
-- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_0908.md` — One-time system setup completed; app integration directive recorded
-- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_0908.md` — Setup configuration, keys deferred, standards as-is, integration-first app architecture
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_0945.md` — API-Keys-Guide.md created for first-time app builder onboarding
+- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_0945.md` — AI never creates/holds keys; keys deferred to build phase; jargon-free communication for owner
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)

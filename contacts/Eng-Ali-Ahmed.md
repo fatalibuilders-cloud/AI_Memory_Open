@@ -40,6 +40,7 @@
 - **Structure as:** Short paragraphs and bullet points
 - **Tone:** Direct, professional
 - **Avoid:** Long process narration; burying the ask
+- **IMPORTANT — first-time app builder (self-declared 2026-07-16):** This is their first software project. Avoid jargon, explain the "why" behind technical steps, never assume prior developer knowledge, and end every significant message with a short explicit list of what they need to do. Guides written for them live at repo root (e.g., `API-Keys-Guide.md`).
 
 ---
 

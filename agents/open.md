@@ -179,6 +179,9 @@ This protocol should be executed when the user says any of the following:
 - `NextSteps.md`: System-level priority queue
 
 **Tools & Templates (3-Step Project Lifecycle):**
-- `setup-AI-Memory.md`: One-time first-run initialization protocol (Step 1)
+- `setup-AI-Memory.md`: One-time first-run initialization protocol (Step 1) — completed 2026-07-16
 - `staging.md`: Per-project ideation and planning protocol (Step 2)
 - `PROJECT_MEMORY_INIT.md`: Per-project full build protocol (Step 3)
+
+**Owner Guides:**
+- `API-Keys-Guide.md`: Beginner-friendly guide for creating and safely storing API keys (owner is a first-time app builder — keep guidance jargon-free)
