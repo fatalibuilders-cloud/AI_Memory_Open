@@ -148,6 +148,12 @@ pocket-option-bot/
 - **Orders rejected** — stake below the platform minimum ($1), asset closed,
   or expiry not supported for that asset.
 
+## Running it 24/7 for free
+
+See [deploy/DEPLOY.md](deploy/DEPLOY.md) — step-by-step guide for an Oracle
+Cloud Always-Free VM, with `deploy/setup-vps.sh` doing the install,
+auto-start-on-boot and auto-restart-on-crash in one command.
+
 ## Extending
 
 Add a strategy by subclassing `Strategy` in `pocket_bot/strategy.py` and

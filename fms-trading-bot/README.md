@@ -125,6 +125,12 @@ fms-trading-bot/
         └── mt5.py         # MetaTrader 5 adapter
 ```
 
+## Running it 24/7 for free
+
+See [deploy/DEPLOY.md](deploy/DEPLOY.md) — AWS free-tier Windows (12 months)
+or your broker's free VPS, with `deploy/setup-windows.ps1` handling install,
+auto-start-on-boot and auto-restart-on-crash.
+
 ## Troubleshooting
 
 - **`MetaTrader5 package not available`** — you're not on Windows, or
