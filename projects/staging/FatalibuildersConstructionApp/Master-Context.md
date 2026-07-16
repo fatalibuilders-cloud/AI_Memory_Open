@@ -113,7 +113,8 @@ The following domain-expert agents are available in this project's department fo
 - *(draft)* Legal (contracts, client data privacy), Finance (estimating/invoicing controls), Security (role-based access, client PII), Operations (field workflow design)
 
 ### Assumptions & Constraints
-- **CONFIRMED (owner, 2026-07-16):** The app must **integrate with all kinds of tools** — it should be built integration-first rather than as a closed system. Specific tool inventory (which accounting/CRM/messaging tools Fatali Builders uses today) still to be collected.
+- **CONFIRMED (owner, 2026-07-16):** The app must **integrate with all kinds of tools** — it should be built integration-first rather than as a closed system.
+- **CONFIRMED (owner, 2026-07-16):** Current accounting tools are **Microsoft Excel and QuickBooks** — the app must sync with QuickBooks and import/export Excel files. Remaining tool inventory (CRM, messaging, document storage) still to be collected.
 - *(open — owner input needed)* Budget, timeline, offline access requirements for job sites, language(s) required
 
 ---
@@ -126,7 +127,7 @@ The following domain-expert agents are available in this project's department fo
 - System architecture (services, layers, boundaries) — **owner directive (2026-07-16): integration-first architecture.** The app must be able to connect to all kinds of tools: design around an API-first core with webhooks and connector modules (MCP-style connectors, like the system's `zoho-mcp-server/` reference implementation).
 - Technology stack (frontend, backend, databases, infrastructure) — *(open)* mobile-first (crews are in the field) vs. web-first; native vs. PWA
 - Data model and integrations — **broad integration surface, candidates to prioritize with owner:**
-  - *Accounting/Finance:* QuickBooks, Zoho Books, Xero, Stripe (payments)
+  - *Accounting/Finance:* **CONFIRMED (owner, 2026-07-16): Fatali Builders uses Microsoft Excel and QuickBooks for accounting.** → Priority integration 1: **QuickBooks connector** (invoices, expenses, payments sync via QuickBooks Online API). Priority integration 2: **Excel import/export** (.xlsx) for estimates, job cost reports, and migration of existing spreadsheets. Stripe/other payment processing remains optional/later.
   - *CRM:* Zoho CRM (pre-built connector available), HubSpot, Salesforce
   - *Productivity:* Google Workspace (Gmail, Drive, Calendar), Microsoft 365
   - *Messaging:* WhatsApp Business, Slack, SMS (Twilio), email (SendGrid/Resend)

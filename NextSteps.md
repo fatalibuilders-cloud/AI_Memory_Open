@@ -11,7 +11,7 @@
 ### High Priority
 
 1. **Owner review of FatalibuildersConstructionApp staging drafts** — The vision, users, and candidate epics in `projects/staging/FatalibuildersConstructionApp/Master-Context.md` are AI drafts and need confirmation before staging continues.
-2. **Tool inventory for connector prioritization** — Owner confirmed integration-first direction; list the tools Fatali Builders uses today (accounting, CRM, messaging, etc.) so the first 2-3 connectors can be chosen.
+2. **Tool inventory for connector prioritization** — *Partially done (2026-07-16): accounting = Excel + QuickBooks → QuickBooks connector priority 1, Excel import/export priority 2.* Still needed: QuickBooks Online vs. Desktop; CRM, messaging, document/photo storage, calendar tools.
 
 ### Medium Priority
 

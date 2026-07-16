@@ -35,6 +35,6 @@
 *Updated by the closure protocol.*
 
 - **Document 1 (Project Context):** In Progress — AI-drafted vision pending owner review; integration constraint confirmed by owner
-- **Document 2 (Architecture/Design):** In Progress — integration-first architecture confirmed (owner: "integrate with all kinds of tools"); connector prioritization pending
-- **Document 3 (Release Plan):** Not Started (candidate epics drafted)
-- **Top blocker:** Owner confirmation of drafted vision; tool inventory for connector prioritization
+- **Document 2 (Architecture/Design):** In Progress — integration-first architecture confirmed; accounting integrations locked: QuickBooks connector (priority 1) + Excel import/export (priority 2)
+- **Document 3 (Release Plan):** Not Started (candidate epics drafted; QuickBooks sync and Excel migration stories to be included)
+- **Top blocker:** Owner confirmation of drafted vision; QuickBooks Online vs. Desktop; remaining tool inventory (CRM, messaging, storage)
