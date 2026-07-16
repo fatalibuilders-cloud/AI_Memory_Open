@@ -27,11 +27,21 @@ fatalibuilders-app/
 └── tests/                      # engine worked-example tests, API tests
 ```
 
+> **Current physical location (temporary):** `AI_Memory_Open/app-src/fatalibuilders-app/` — moves to its own repository `fatalibuilders-cloud/fatalibuilders-app` once the owner creates it (see NextSteps).
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| *(populated as files are created)* | |
+| `package.json` | Scripts: dev, build, start, lint, test |
+| `src/app/layout.tsx`, `src/app/page.tsx` | App shell + placeholder landing page |
+| `src/app/api/health/route.ts` | Health check endpoint |
+| `src/engines/profiles/index.ts` | Code profiles (Eurocode/BS/KEBS) + document stamp helper |
+| `src/engines/materials/index.ts` | Materials engine v0.1.0: concreteVolume, concreteMaterials (1:2:4 mix), wallBlocks |
+| `src/engines/materials/materials.test.ts` | 8 unit tests incl. 1 m³ worked example (owner validation pending, CORE-5.0) |
+| `public/manifest.webmanifest`, `public/icon.svg` | PWA installability |
+| `.github/workflows/ci.yml` | CI: lint + test + build (activates after repo migration) |
+| `vitest.config.ts`, `eslint.config.mjs`, `tsconfig.json` | Tooling config |
 
 ## Production Deployment Mapping
 

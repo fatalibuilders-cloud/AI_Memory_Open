@@ -8,10 +8,20 @@
 
 ## Immediate Next Steps
 
-### 1. First Build Session
-- [ ] **Run `agents/open.md`** to load context
-- [ ] **Begin Release 1.0, Epic 1:** CORE-1.0 (scaffold the `fatalibuilders-app` repository) — pure [AI], no owner action needed
-- [ ] Continue CORE-1.1 → hosting choice; the owner's first checkpoint is creating the hosting account (plain-language steps will be provided)
+### 1. Owner action — create the app's GitHub repository (5 minutes, whenever convenient)
+The AI cannot create repositories, so this one needs you:
+1. Go to **https://github.com/new** (logged in as `fatalibuilders-cloud`)
+2. Repository name: **`fatalibuilders-app`** (exactly this)
+3. Choose **Private** (recommended for now — can be changed later)
+4. Do NOT tick any of the "initialize" checkboxes (no README, no .gitignore, no license) — leave it completely empty
+5. Click **Create repository** — done. Tell the AI "the repo is created" in any session and it will move the code over automatically.
+*(Development is NOT blocked while you wait — the app lives temporarily at `app-src/fatalibuilders-app/` in this repository.)*
+
+### 2. Next build session
+- [x] ~~CORE-1.0 scaffold~~ **BUILT & VERIFIED 2026-07-16** (8/8 tests, lint, build, health check ✅) — [DONE] after repo migration
+- [ ] **CORE-1.3** — base app shell polish (nav, theme, error/loading states) — pure [AI]
+- [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account (plain-language steps at that point)
+- [ ] **CORE-2.0** — signup & login (can start before hosting if useful)
 
 ### Release 1.0 — Sellable Core (0%)
 **File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`

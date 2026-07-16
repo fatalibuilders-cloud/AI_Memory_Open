@@ -18,7 +18,8 @@
 
 | File | Keywords |
 |------|----------|
-| *(populated by closure protocol — staging-phase sessions are indexed in `projects/staging/FatalibuildersConstructionApp/Sessions.md`)* | |
+| `AI-Session-Summary-2026-07-16_1051.md` | CORE-1.0, scaffold, Next.js, PWA, materials engine, code profiles, tests, temporary location, repo migration, health endpoint |
+| *(staging-phase sessions are indexed in `projects/staging/FatalibuildersConstructionApp/Sessions.md`)* | |
 
 ---
 

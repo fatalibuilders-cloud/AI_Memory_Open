@@ -132,8 +132,8 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ## 9. Session History & Handover
 
-- **Latest Summary:** (updated by closure protocol — none yet; initialized 2026-07-16)
-- **Latest Decisions:** (updated by closure protocol)
+- **Latest Summary:** `session-summary/AI-Session-Summary-2026-07-16_1051.md` — first build session: CORE-1.0 scaffolded & verified
+- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_1051.md` — temporary in-repo scaffold; engine baseline conventions pending owner validation
 - **Master Indexes:** [Key-Decisions.md](./Key-Decisions.md), [Sessions.md](./Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](./Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](./NextSteps.md)
@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** 0% — project initialized 2026-07-16, no stories executed yet.
+- **Completion:** ~3% (1/29) — CORE-1.0 built & verified 2026-07-16 (awaiting repo migration for [DONE]); app scaffold live at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

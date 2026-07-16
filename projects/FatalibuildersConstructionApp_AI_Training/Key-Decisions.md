@@ -28,7 +28,9 @@ Project initialized from staging. The founding decisions (product direction, $30
 | standards, code profiles, Eurocodes, BS, KEBS | staging `decisions-learnings/Key-Decisions-2026-07-16_1026.md` |
 | market, residential scope, management features, stack | staging `decisions-learnings/Key-Decisions-2026-07-16_1030.md` |
 | Excel-only, WhatsApp, QuickBooks dropped | staging `decisions-learnings/Key-Decisions-2026-07-16_0959.md` |
-| *(project-phase entries populated by closure protocol)* | |
+| repo migration, temporary location, app-src, GitHub 403 | `decisions-learnings/Key-Decisions-2026-07-16_1051.md` |
+| materials engine, dry-volume factor, worked example, blocks per m² | `decisions-learnings/Key-Decisions-2026-07-16_1051.md` |
+| *(further entries populated by closure protocol)* | |
 
 ---
 
@@ -37,6 +39,7 @@ Project initialized from staging. The founding decisions (product direction, $30
 | Date | File | Focus |
 |------|------|-------|
 | 2026-07-16 | *(staging trail — see above)* | Founding decisions during staging |
+| 2026-07-16 | `Key-Decisions-2026-07-16_1051.md` | CORE-1.0 scaffold: temporary location deviation; engine baseline conventions |
 | *(populated by closure protocol)* | | |
 
 ---
