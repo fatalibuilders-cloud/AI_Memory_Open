@@ -36,3 +36,4 @@
 | Session 26 — Safe Mode profit target lowered to $0.30 | 2026-07-14 | $0.30 profit target, Safe Mode, break-even win rate, risk:reward |
 | Session 27 — Super Scalpers rename, 20 concurrent trades, signal stacking | 2026-07-14 | decompile declined, ex5, IP, Super Scalpers, MaxTradesOpenAtOnce, concurrent trades, signal stacking, max trades in 5 minutes |
 | Session 28 — trailing stop, max trade duration | 2026-07-15 | decompile declined again, trailing stop, breakeven and run, max trade duration, super bot |
+| Session 29 — zero-trades bug diagnosed from backtest video | 2026-07-16 | strategy tester, zero trades, spread filter, MaxAllowedSpread_Points, ffmpeg, video diagnosis, GBPUSD backtest |

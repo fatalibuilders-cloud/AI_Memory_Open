@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTraderSuperScalpers.mq5                                |
-//| Draft v1.10 (Market tag 1.80) -- implements the risk-management,   |
+//| Draft v1.11 (Market tag 1.81) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -31,7 +31,15 @@
 //| standard scalping safeguard, MaxTradeDuration_Minutes, that force-     |
 //| closes any trade still open past a time limit -- both independently    |
 //| implemented, well-documented techniques, not derived from any          |
-//| third-party bot. See the big comment above                             |
+//| third-party bot. (2026-07-16) Founder shared a Strategy Tester video   |
+//| showing ZERO trades over a long GBPUSD M1 backtest -- diagnosed from   |
+//| the video's Data Window: the tester was running a flat 50-point       |
+//| simulated spread the whole time, which the old MaxAllowedSpread_Points |
+//| default (30) rejected on every single tick before the entry signal     |
+//| was ever checked. Raised the default to 60 -- see decisions-learnings/ |
+//| 2026-07-16_spread-filter-blocking-all-trades.md for the full           |
+//| diagnosis and why 60 is a tester-headroom number, not a validated      |
+//| real-account spread setting. See the big comment above                 |
 //| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest       |
 //| math behind Aggressive Mode's risk before using it.                    |
 //|                                                                    |
@@ -41,7 +49,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader Super Scalpers"
-#property version   "1.80"
+#property version   "1.81"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -111,10 +119,12 @@ CTrade trade;
 //|    for an XAUUSD or GBPUSD prefix. Some brokers may name symbols      |
 //|    unusually (unexpected prefixes rather than suffixes); verify it   |
 //|    matches your broker's actual symbol names before relying on it.   |
-//|    MaxAllowedSpread_Points (default 30) is tuned for major forex     |
-//|    pairs and is almost certainly too tight for XAUUSD -- raise it    |
-//|    manually, the code does not auto-detect a sane per-symbol         |
-//|    default. The chart timeframe is now ENFORCED as M1 (2026-07-14z,  |
+//|    MaxAllowedSpread_Points (default 60, raised 2026-07-16 -- see     |
+//|    decisions-learnings/2026-07-16_spread-filter-blocking-all-trades.  |
+//|    md) is still just a starting point, not tuned per symbol -- raise  |
+//|    or lower it manually once you know your actual account's real     |
+//|    GBPUSD/XAUUSD spread, the code does not auto-detect a sane        |
+//|    per-symbol default. The chart timeframe is now ENFORCED as M1 (2026-07-14z,  |
 //|    OnInit refuses to run on anything else) -- this used to be only   |
 //|    a recommendation.                                                 |
 //+------------------------------------------------------------------+
@@ -366,8 +376,20 @@ input double AvoidStrongTrends_MaxTrendStrength = 30.0;  // higher = allows stro
 // NOTE: metals (like gold) commonly have a much wider normal spread
 // than forex pairs. If you're trading gold/silver and the bot seems to
 // never trade, this setting is the first thing to check and raise.
+// (2026-07-16) RAISED from 30 to 60 -- MT5's Strategy Tester applies a
+// single FIXED spread for the whole backtest (pulled from the symbol's
+// current market spread when the test starts, not real historical
+// spread), and a founder-run backtest showed GBPUSD sitting at a flat
+// 50-point spread the entire time. At the old 30-point cap, that alone
+// blocked every trade for the whole test, before the entry signal was
+// ever evaluated -- see decisions-learnings/2026-07-16_spread-filter-
+// blocking-all-trades.md. 60 gives headroom over that specific tester
+// run, NOT a claim that 60 points is the right number for your real,
+// live account -- check your broker's actual typical GBPUSD/XAUUSD
+// spread and set this to something sensible above it once you're
+// looking at live/demo quotes, not just this backtest.
 input bool   AvoidBadPriceData_Enabled    = true;
-input double MaxAllowedSpread_Points      = 30.0;
+input double MaxAllowedSpread_Points      = 60.0;   // 2026-07-16 (was 30.0)
 input int    MaxAllowedPriceDelay_Seconds = 60;
 
 // (2026-07-14z) Many traders avoid the first stretch of a trading

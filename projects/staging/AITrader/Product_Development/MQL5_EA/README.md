@@ -1,6 +1,10 @@
-# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.10)
+# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.11)
 
-**Status:** Draft, uncompiled, unbacktested. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, high-concurrency, and trailing-stop/time-limit decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled (past the founder's own successful MetaEditor compile of an earlier revision), **backtested once — 0 trades, root cause diagnosed and fixed (2026-07-16)**. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, high-concurrency, and trailing-stop/time-limit decisions from `Master-Context.md`, not a finished product.
+
+### v1.11 — spread filter was blocking every trade in the Strategy Tester (2026-07-16)
+
+Founder ran the EA in MT5's Strategy Tester on GBPUSD M1 across a multi-decade range and got zero trades. Diagnosed from a shared screenshot and screen-recording: the Data Window consistently showed **`Spread = 50`** at every point in the video (MT5's tester applies one fixed spread for the whole backtest, not real historical spread). `MaxAllowedSpread_Points` defaulted to **30**, so `PassesDataFeedSanityCheck()` rejected every tick before the entry signal was ever evaluated — the actual root cause, not a signal-design problem. Raised the default to **60** to unblock this specific test run. **Explicitly not a validated real-account number** — see `decisions-learnings/2026-07-16_spread-filter-blocking-all-trades.md` for why 50 (and therefore 60) may not reflect the founder's actual live/demo spread, and should be revisited once real quote data is available.
 
 ### v1.10 — trailing stop + max trade duration added (2026-07-15)
 
@@ -87,8 +91,8 @@ Founder shared a screenshot of a third-party commercial EA's settings panel ("Fo
 
 ## What I have not done (and can't do in this environment)
 
-- **Not compiled.** This needs the MetaEditor that ships with MetaTrader 5 — I don't have that here. Open it in MetaEditor and hit Compile (F7) to check for syntax errors before anything else.
-- **Not backtested.** Real backtesting requires MT5's Strategy Tester with real historical tick data for your target symbol(s) via Exness or another broker — also not available in this environment. The only validation this design has had is (a) the Monte Carlo *expectancy* simulation in `../simulations/` (checks the dollar-amount arithmetic, not real market behavior), and (b) general published research on the *class* of strategy (Bollinger/RSI/Stochastic mean-reversion scalping), not this specific parameter set.
+- **Not compiled by me.** This needs the MetaEditor that ships with MetaTrader 5 — I don't have that here. The founder has compiled earlier revisions successfully; this latest revision (spread-filter fix) hasn't been recompiled/re-tested yet.
+- **Backtested once by the founder, in MT5's Strategy Tester on GBPUSD M1 — produced 0 trades.** Root cause diagnosed from a shared screenshot/video (2026-07-16): the tester's fixed 50-point simulated spread exceeded the old 30-point spread filter, blocking every tick before the entry signal was ever checked — not a signal-design problem. Fixed by raising the spread filter; **the backtest has not yet been re-run against this fix**, so it's still unknown whether the underlying signal produces a reasonable trade count/win rate once trades can actually happen. Beyond that one run, the only other validation this design has had is (a) the Monte Carlo *expectancy* simulations in `../simulations/` (check dollar-amount arithmetic, not real market behavior), and (b) general published research on the *class* of strategy (Bollinger/RSI/Stochastic mean-reversion scalping), not this specific parameter set.
 
 ## Suggested next steps
 
