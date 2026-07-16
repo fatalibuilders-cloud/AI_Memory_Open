@@ -10,7 +10,8 @@ When working on FatalibuildersConstructionApp, search this index for relevant ke
 |---|---|---|---|
 | 2026-07-16 | staging, initialization, project category, naming, autonomous session | `decisions-learnings/Key-Decisions-2026-07-16_0728.md` | Staged the project autonomously from the task name; classified as Software; AI-drafted vision pending owner review |
 | 2026-07-16 | integrations, architecture, API-first, connectors, owner directive | `decisions-learnings/Key-Decisions-2026-07-16_0908.md` | Owner confirmed integration-first architecture — the app must integrate with all kinds of tools; candidate connector list drafted |
-| 2026-07-16 | accounting, QuickBooks, Excel, connector priority, data migration | `decisions-learnings/Key-Decisions-2026-07-16_0943.md` | Owner confirmed accounting stack (Excel + QuickBooks); QuickBooks connector set as integration priority 1, Excel import/export as priority 2 |
+| 2026-07-16 | accounting, QuickBooks, Excel, connector priority, data migration | `decisions-learnings/Key-Decisions-2026-07-16_0943.md` | ~~QuickBooks priority 1, Excel priority 2~~ **SUPERSEDED by 0959 entry** |
+| 2026-07-16 | accounting, Excel, QuickBooks dropped, WhatsApp, calls, messaging | `decisions-learnings/Key-Decisions-2026-07-16_0959.md` | Owner revised: Excel ONLY for accounting (QuickBooks dropped); WhatsApp + calls confirmed as communication channels — Excel import/export is now priority 1, WhatsApp priority 2 |
 
 ---
 
@@ -31,4 +32,5 @@ When working on FatalibuildersConstructionApp, search this index for relevant ke
 
 - **2026-07-16:** Project staged autonomously as a **Software** project. Vision, target users, and candidate epics were AI-drafted and are **pending owner review** — see `decisions-learnings/Key-Decisions-2026-07-16_0728.md`.
 - **2026-07-16 (later):** Owner confirmed the app should **integrate with all kinds of tools** → integration-first, API-first architecture with connector modules — see `decisions-learnings/Key-Decisions-2026-07-16_0908.md`.
-- **2026-07-16 (0943):** Owner confirmed accounting stack: **Microsoft Excel + QuickBooks**. Integration priority 1 = QuickBooks connector; priority 2 = Excel import/export (also the data-migration path). Open: QuickBooks Online vs. Desktop; CRM/messaging/storage inventory — see `decisions-learnings/Key-Decisions-2026-07-16_0943.md`.
+- **2026-07-16 (0959, CURRENT):** Owner revised the accounting decision: **Excel ONLY — QuickBooks dropped.** The app becomes the system of record for job finances, with Excel import/export as integration priority 1. **WhatsApp + phone calls** confirmed as communication channels → WhatsApp is priority 2 (wa.me links first, Business API later), tap-to-call throughout. Still open: photo/document storage, scheduling method — see `decisions-learnings/Key-Decisions-2026-07-16_0959.md`.
+- ~~**2026-07-16 (0943):** Excel + QuickBooks; QuickBooks connector priority 1.~~ **Superseded by 0959.**

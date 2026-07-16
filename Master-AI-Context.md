@@ -172,8 +172,8 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ## 9. Session History & Handover
 
-- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_0945.md` — API-Keys-Guide.md created for first-time app builder onboarding
-- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_0945.md` — AI never creates/holds keys; keys deferred to build phase; jargon-free communication for owner
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_0959.md` — Tool decisions revised: Excel-only accounting, WhatsApp + calls; release 1 needs no API keys
+- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_0945.md` (root) and the staging project's `Key-Decisions-2026-07-16_0959.md` (integration priorities)
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)

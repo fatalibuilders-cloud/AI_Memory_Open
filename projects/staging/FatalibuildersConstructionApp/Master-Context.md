@@ -114,7 +114,8 @@ The following domain-expert agents are available in this project's department fo
 
 ### Assumptions & Constraints
 - **CONFIRMED (owner, 2026-07-16):** The app must **integrate with all kinds of tools** — it should be built integration-first rather than as a closed system.
-- **CONFIRMED (owner, 2026-07-16):** Current accounting tools are **Microsoft Excel and QuickBooks** — the app must sync with QuickBooks and import/export Excel files. Remaining tool inventory (CRM, messaging, document storage) still to be collected.
+- **CONFIRMED (owner, 2026-07-16, revised same day):** Accounting tool is **Microsoft Excel only** — the owner explicitly dropped QuickBooks ("use just Microsoft Excel, leave QuickBooks"). The app must import/export Excel files and can act as the primary job-costing/invoicing system itself, with Excel as the reporting/migration format.
+- **CONFIRMED (owner, 2026-07-16):** Communication with clients and crews happens via **WhatsApp and phone calls** — the app should integrate WhatsApp messaging and make calling easy (tap-to-call, call notes). Remaining tool inventory (client contact storage, photo storage, scheduling/calendar) still to be collected.
 - *(open — owner input needed)* Budget, timeline, offline access requirements for job sites, language(s) required
 
 ---
@@ -127,11 +128,11 @@ The following domain-expert agents are available in this project's department fo
 - System architecture (services, layers, boundaries) — **owner directive (2026-07-16): integration-first architecture.** The app must be able to connect to all kinds of tools: design around an API-first core with webhooks and connector modules (MCP-style connectors, like the system's `zoho-mcp-server/` reference implementation).
 - Technology stack (frontend, backend, databases, infrastructure) — *(open)* mobile-first (crews are in the field) vs. web-first; native vs. PWA
 - Data model and integrations — **broad integration surface, candidates to prioritize with owner:**
-  - *Accounting/Finance:* **CONFIRMED (owner, 2026-07-16): Fatali Builders uses Microsoft Excel and QuickBooks for accounting.** → Priority integration 1: **QuickBooks connector** (invoices, expenses, payments sync via QuickBooks Online API). Priority integration 2: **Excel import/export** (.xlsx) for estimates, job cost reports, and migration of existing spreadsheets. Stripe/other payment processing remains optional/later.
-  - *CRM:* Zoho CRM (pre-built connector available), HubSpot, Salesforce
-  - *Productivity:* Google Workspace (Gmail, Drive, Calendar), Microsoft 365
-  - *Messaging:* WhatsApp Business, Slack, SMS (Twilio), email (SendGrid/Resend)
-  - *Field/Construction:* weather services, maps/geolocation, supplier catalogs, e-signature (Zoho Sign/DocuSign)
+  - *Accounting/Finance:* **CONFIRMED (owner, 2026-07-16, revised): Microsoft Excel ONLY — QuickBooks dropped by owner decision.** → Priority integration 1: **Excel import/export** (.xlsx) for estimates, job-cost reports, invoices, and migration of existing spreadsheets. The app itself becomes the system of record for job finances, with Excel as the in/out format. ~~QuickBooks connector~~ (superseded 2026-07-16). Payment processing optional/later.
+  - *Messaging:* **CONFIRMED (owner, 2026-07-16): WhatsApp + phone calls.** → Priority integration 2: **WhatsApp** (send job updates, quotes, and reminders to clients/crews — via WhatsApp Business API, or simple wa.me share links as a no-setup first step). **Calls:** tap-to-call from every contact/job screen + optional call notes. Slack/SMS/email deprioritized.
+  - *CRM:* none in use today — the app's own contact management likely suffices; external CRM connectors deferred
+  - *Productivity:* Google Workspace / Microsoft 365 — pending owner answer on photo storage & calendar
+  - *Field/Construction:* weather services, maps/geolocation, supplier catalogs, e-signature — later releases
 - Security model and constraints — role-based access (owner/office/supervisor/crew/client); credential management for third-party integrations must follow the system rule: secrets never committed to git
 - Deployment targets and CI/CD strategy
 - Development conventions and standards

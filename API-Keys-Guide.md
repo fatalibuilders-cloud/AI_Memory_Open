@@ -26,53 +26,57 @@ Three facts every beginner should know:
 |---|---|---|
 | Staging (planning documents) | ✅ **We are here** | **None** |
 | Design (architecture + release plan) | Next | **None** |
-| Build — QuickBooks connector | During development | QuickBooks **sandbox** keys (test mode — free, no risk to real data) |
-| Build — Excel import/export | During development | **None** (Excel is file-based, no key needed) |
-| Launch (real company data) | After testing | QuickBooks **production** keys + hosting provider account |
-| Later integrations (email, WhatsApp, maps…) | As decided | One key each, created the same way |
+| Build — Excel import/export (priority 1) | During development | **None** (Excel is file-based, no key needed) |
+| Build — WhatsApp share links (priority 2, first version) | During development | **None** (wa.me links need no key) |
+| Launch (real company data) | After testing | Hosting provider account only |
+| Later — WhatsApp Business API (automated messages) | If/when decided | Meta/WhatsApp Business keys |
+| Later integrations (email, maps…) | As decided | One key each, created the same way |
+
+> **Good news (updated 2026-07-16):** With Excel-only accounting and WhatsApp share links, the first version of your app needs **NO API keys at all** to build. Your first key will likely be the hosting account at launch.
 
 ---
 
 ## 3. The Keys, One by One
 
-### 3.1 QuickBooks (Priority 1 — needed at build time)
+### 3.1 Microsoft Excel (Priority 1 — no key needed) ✅
 
-QuickBooks keys come from Intuit's developer portal. You get a **Client ID** and **Client Secret**.
-
-**Before you start:** Confirm you use **QuickBooks Online** (in a web browser / mobile app). If you use QuickBooks **Desktop** (installed program on one PC), tell the AI in the next session — the integration approach is different.
-
-**Steps (about 15 minutes):**
-1. Go to **https://developer.intuit.com** in your browser.
-2. Click **Sign In** (top right). Use the SAME Intuit account you use for QuickBooks. If asked, agree to the developer terms — this is free.
-3. Once signed in, click **Dashboard**, then **Create an app**.
-4. Choose **QuickBooks Online and Payments** as the platform.
-5. Name the app: `Fatalibuilders Construction App`. For scopes, select **Accounting** (com.intuit.quickbooks.accounting).
-6. After the app is created, open it and go to **Keys & credentials**. You'll see two tabs:
-   - **Development keys** (sandbox — use these first)
-   - **Production keys** (real data — only needed at launch)
-7. Copy the **Client ID** and **Client Secret** from the Development tab into your `AliKeys.txt` file (see Section 4).
-8. Also under the Dashboard, find **Sandbox** and note your **sandbox company** — Intuit gives you a fake company with fake invoices to test against safely.
-
-### 3.2 Microsoft Excel (Priority 2 — no key needed)
-
-Good news: **nothing to create.** Excel integration works with .xlsx files directly — the app reads and writes the files themselves. No account, no key.
+**Nothing to create.** Excel integration works with .xlsx files directly — the app reads and writes the files themselves. No account, no key, no setup.
 
 *(Only if we later decide the app should read spreadsheets stored in OneDrive/Microsoft 365 automatically would we need a Microsoft key — skip for now.)*
 
-### 3.3 Anthropic / Claude (optional — only if the app gets AI features)
+### 3.2 WhatsApp (Priority 2 — no key needed for the first version) ✅
+
+The app will use WhatsApp in two stages:
+
+**Stage 1 — Share links (first release, NO key needed):** The app prepares a message (for example, a quote or a job update) and opens WhatsApp on your phone with the message and the client's number already filled in — you just press Send. This uses standard "wa.me" links that work with your existing WhatsApp; nothing to create or configure.
+
+**Stage 2 — WhatsApp Business API (later, optional):** If you eventually want the app to send messages *automatically* (appointment reminders at 7am, automatic "invoice sent" notifications), that requires a **WhatsApp Business API** account:
+1. Go to **https://developers.facebook.com** and sign in with the Facebook account tied to your business.
+2. Create an app → add the **WhatsApp** product → follow the business verification steps (Meta requires verifying your business — this can take days).
+3. Copy the access token and phone number ID into `AliKeys.txt`.
+
+Don't do Stage 2 now — decide after you've used Stage 1 for a while.
+
+### 3.3 Phone Calls (no key needed) ✅
+
+Tap-to-call uses your phone's normal dialer — no integration, no key, no cost.
+
+### ~~QuickBooks~~ (REMOVED 2026-07-16)
+
+You decided to use Excel only and drop QuickBooks, so **no Intuit/QuickBooks keys are needed.** If you ever change your mind, this guide's git history has the full instructions.
+
+### 3.4 Anthropic / Claude (optional — only if the app gets AI features)
 
 If we build AI features into the app (like auto-drafting an estimate from a site description):
 1. Go to **https://console.anthropic.com**
 2. Sign up / sign in → **API Keys** → **Create Key**.
 3. Name it `fatalibuilders-app`, copy it into `AliKeys.txt` immediately (it is shown only once).
 
-### 3.4 Future keys (create only when we decide to build these)
+### 3.5 Future keys (create only when we decide to build these)
 
 | Service | Where to create | For |
 |---|---|---|
 | Google (Gmail/Drive/Calendar sync) | https://console.cloud.google.com → "Credentials" → OAuth Client ID | Emailing clients, storing job photos in Drive |
-| WhatsApp Business | https://developers.facebook.com → Create App → WhatsApp | Messaging clients/crews from the app |
-| Twilio (SMS) | https://www.twilio.com → Console | Text message notifications |
 | SendGrid/Resend (email) | https://sendgrid.com or https://resend.com | Sending invoices/notifications by email |
 | Hosting (to run the app) | Provider chosen in Document 2 (e.g., https://vercel.com, https://railway.app) | Deploying the app to the internet |
 
@@ -87,18 +91,21 @@ Create a plain text file named **`AliKeys.txt`** in the root of your AI_Memory_O
 **Format (copy this template):**
 
 ```
-#QuickBooks:
+#Hosting:
 
-Client ID (Development): PASTE_HERE
-Client Secret (Development): PASTE_HERE
-Client ID (Production): ADD_AT_LAUNCH
-Client Secret (Production): ADD_AT_LAUNCH
-Sandbox Company ID: PASTE_HERE
+API Token: ADD_AT_LAUNCH
+
+#WhatsApp Business (only if Stage 2 is ever activated):
+
+Access Token: ADD_LATER_IF_NEEDED
+Phone Number ID: ADD_LATER_IF_NEEDED
 
 #Claude:
 
 API Key: PASTE_HERE_IF_CREATED
 ```
+
+*(Right now this file has nothing urgent to hold — your first release needs no keys. Create the file when the first real key arrives.)*
 
 Add a new `#ServiceName:` section for each service as you create keys.
 
@@ -123,16 +130,17 @@ Building an app for the first time follows this path — we track it all in this
 3. RELEASE PLAN           → Break the work into small, ordered steps
 4. INITIALIZE PROJECT     → PROJECT_MEMORY_INIT.md builds the full project workspace
 5. BUILD, in releases     → AI develops the app step by step; you test each release
-   ↳ QuickBooks sandbox keys needed here
-6. LAUNCH                 → Real data, real crews, production keys
+   ↳ No keys needed (Excel + WhatsApp links are key-free)
+6. LAUNCH                 → Real data, real crews; hosting account created here
 7. IMPROVE                → New integrations and features, one release at a time
 ```
 
 **Your only jobs right now:**
 1. Read the app vision in `projects/staging/FatalibuildersConstructionApp/Master-Context.md` and say "looks right" or what to change.
-2. Tell the AI: QuickBooks **Online** or **Desktop**?
-3. (Whenever convenient) Tell the AI what you use for client contacts, messaging, photos, and scheduling.
-4. (Optional, no rush) Create the QuickBooks developer keys using Section 3.1 above.
+2. Tell the AI where job photos/documents live today (phone gallery? Google Drive? paper?).
+3. Tell the AI how you schedule crews today (paper, Excel, calendar app?).
+
+That's it — no keys to create for now.
 
 ---
 

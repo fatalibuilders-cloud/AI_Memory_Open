@@ -11,12 +11,12 @@
 ### High Priority
 
 1. **Owner review of FatalibuildersConstructionApp staging drafts** — The vision, users, and candidate epics in `projects/staging/FatalibuildersConstructionApp/Master-Context.md` are AI drafts and need confirmation before staging continues.
-2. **Tool inventory for connector prioritization** — *Partially done (2026-07-16): accounting = Excel + QuickBooks → QuickBooks connector priority 1, Excel import/export priority 2.* Still needed: QuickBooks Online vs. Desktop; CRM, messaging, document/photo storage, calendar tools.
+2. **Tool inventory for connector prioritization** — *Mostly done (2026-07-16): accounting = Excel ONLY (QuickBooks dropped); communication = WhatsApp + calls → priorities: 1) Excel import/export, 2) WhatsApp (wa.me links first).* Still needed: photo/document storage, scheduling method.
 
 ### Medium Priority
 
 1. **Continue FatalibuildersConstructionApp staging Documents 1 & 2** — After owner review: fill goals, success metrics, constraints; decide mobile-first vs. web-first and offline support. *(Project-level work — use the staging project's own agents/open.md.)*
-2. **Register API keys** — **Full beginner guide now at `API-Keys-Guide.md`.** Owner follows §3.1 to create QuickBooks developer keys (needed at build phase, not before) and stores them in a local git-ignored `AliKeys.txt` per the template in §4.
+2. **Register API keys** — **No longer urgent: release 1 needs NO keys** (Excel and wa.me WhatsApp links are key-free). Guide at `API-Keys-Guide.md`; first real key will be the hosting account at launch.
 3. **Confirm enterprise OS** — Remaining deferred setup field; Zoho One has a pre-built MCP connector if chosen.
 
 ### Low Priority

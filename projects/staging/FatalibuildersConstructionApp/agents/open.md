@@ -35,6 +35,6 @@
 *Updated by the closure protocol.*
 
 - **Document 1 (Project Context):** In Progress — AI-drafted vision pending owner review; integration constraint confirmed by owner
-- **Document 2 (Architecture/Design):** In Progress — integration-first architecture confirmed; accounting integrations locked: QuickBooks connector (priority 1) + Excel import/export (priority 2)
-- **Document 3 (Release Plan):** Not Started (candidate epics drafted; QuickBooks sync and Excel migration stories to be included)
-- **Top blocker:** Owner confirmation of drafted vision; QuickBooks Online vs. Desktop; remaining tool inventory (CRM, messaging, storage)
+- **Document 2 (Architecture/Design):** In Progress — integration-first; accounting = Excel ONLY (QuickBooks dropped 2026-07-16); WhatsApp + tap-to-call for communication. Priorities: 1) Excel import/export, 2) WhatsApp (wa.me first, Business API later)
+- **Document 3 (Release Plan):** Not Started (candidate epics drafted; in-app invoicing with Excel export; WhatsApp share stories to be included)
+- **Top blocker:** Owner confirmation of drafted vision; photo/document storage and scheduling method still unknown

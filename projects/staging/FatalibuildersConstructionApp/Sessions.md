@@ -10,7 +10,8 @@ Before starting a session, skim this index to understand prior context. If a pri
 |---|---|---|---|---|
 | 2026-07-16 | ~15 min | staging, initialization, scaffolding, agents, vision draft | *(root-level session — see `AI_Memory_Open/session-summary/AI-Session-Summary-2026-07-16_0728.md`)* | Staging environment created autonomously; agents distributed; vision drafted pending owner review |
 | 2026-07-16 | ~10 min | integrations, architecture, system setup, owner directive | *(root-level session — see `AI_Memory_Open/session-summary/AI-Session-Summary-2026-07-16_0908.md`)* | Owner confirmed integration-first direction; one-time system setup completed at root level |
-| 2026-07-16 | ~5 min | accounting, QuickBooks, Excel, connector priority | `decisions-learnings/Key-Decisions-2026-07-16_0943.md` | Owner confirmed accounting stack (Excel + QuickBooks); first two integrations prioritized |
+| 2026-07-16 | ~5 min | accounting, QuickBooks, Excel, connector priority | `decisions-learnings/Key-Decisions-2026-07-16_0943.md` | Owner confirmed accounting stack (Excel + QuickBooks); first two integrations prioritized *(superseded same day)* |
+| 2026-07-16 | ~10 min | Excel only, QuickBooks dropped, WhatsApp, calls | `decisions-learnings/Key-Decisions-2026-07-16_0959.md` | Owner revised: Excel-only accounting; WhatsApp + calls for communication; integration priorities re-sequenced |
 
 ---
 
