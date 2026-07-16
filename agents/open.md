@@ -141,7 +141,7 @@ This protocol should be executed when the user says any of the following:
 
 ### Staging Projects (Last 5)
 *Updated during closure protocol based on last-modified date of folders inside `staging/`.*
-*(none yet — populated after project staging)*
+1. `projects/staging/FatalibuildersConstructionApp/` — Construction management app (Software). Staged 2026-07-16; Document 1 in progress, drafts pending owner review.
 
 ### Main Folder Structure
 

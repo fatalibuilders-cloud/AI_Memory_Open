@@ -3,7 +3,7 @@
 **Document Purpose:** This is the primary operational context file for any AI assistant working on the **AI Memory system itself** — its structure, standards, policies, shared resources, cross-project coordination, and infrastructure. This is NOT a project-level context file. Each project has its own `Master-AI-Context.md` inside its `{ProjectName}_AI_Training/` folder.
 
 **Memory Design Version:** 1.1
-**Last Updated:** —
+**Last Updated:** 2026-07-16
 **System Owner:** [Your Name] ([your@email.com])
 **Repository:** [Your forked repo URL — configured during setup]
 
@@ -39,7 +39,7 @@ The system operates at two levels:
 
 | Project | Folder | Type | Status | Description |
 |---------|--------|------|--------|-------------|
-| *(Your projects will appear here after staging and initialization)* | | | | |
+| FatalibuildersConstructionApp | `projects/staging/FatalibuildersConstructionApp/` | Software | Staging (Document 1 in progress — drafts pending owner review) | Construction management app for Fatali Builders: job tracking, estimates, crew scheduling, field logs, invoicing |
 
 ---
 
@@ -156,8 +156,8 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ## 8. Session History & Handover
 
-- **Latest Session:** *(populated after first session)*
-- **Latest Decisions:** *(populated after first session)*
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_0728.md` — Staged FatalibuildersConstructionApp (first session in this fork)
+- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_0728.md` — Staging entry point, autonomous-draft flagging policy
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)
