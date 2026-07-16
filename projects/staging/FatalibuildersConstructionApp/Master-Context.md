@@ -25,7 +25,11 @@ The Fatalibuilders Construction App is a **Fatalibuilders-branded product open t
 
 > **⚠️ ENGINEERING RESPONSIBILITY (recorded 2026-07-16, must be reflected in Legal + product design):** Structural drawings and geotechnical reports are professional engineering deliverables. In most jurisdictions they legally require review and stamping by a licensed engineer before use in construction. The app MUST label outputs 4-7 as **preliminary/indicative — for guidance only, not for construction without licensed engineer review**, with clear disclaimers at generation and on every exported document. This protects users' safety and Fatali Builders' liability.
 
-> **KEY OPEN QUESTION 2 (still open):** Are the earlier-drafted management features (job tracking, crew scheduling, daily site logs) also wanted in this product (Epic 6), or is the product the focused results-generator above?
+**Management features — CONFIRMED IN SCOPE (owner, 2026-07-16):** job tracking, crew scheduling, and daily site logs stay in the product (delivered as Release 4, after the core results-generator).
+
+**Release 1 construction scope — CONFIRMED (owner, 2026-07-16, per AI recommendation):** residential buildings — houses/villas, ground floor plus a few storeys. Other construction types follow in later releases.
+
+**Market — CONFIRMED (owner, 2026-07-16):** launch from Kenya; product built for the worldwide market from day one.
 
 ---
 
@@ -44,18 +48,18 @@ Once these three documents are complete and approved, this project will be promo
 ## Staging Roadmap
 
 ### Document 1: Project Context
-**Status:** [ ] Not Started [x] In Progress [ ] Complete
+**Status:** [ ] Not Started [ ] In Progress [x] **COMPLETE (2026-07-16)**
 **Description:** Vision, goals, target market, success metrics, key assumptions, institutional dependencies
-**Note:** Vision drafted by AI; all sections require owner input and confirmation.
+**Note:** All key elements owner-confirmed: public product, 7 outputs, $30 lifetime, worldwide market launching from Kenya, residential-first, management features in scope.
 
 ### Document 2: Architecture/Design
-**Status:** [ ] Not Started [x] In Progress [ ] Complete
+**Status:** [ ] Not Started [ ] In Progress [x] **DRAFT COMPLETE (2026-07-16) — pending owner sign-off**
 **Description:** System design, technology stack, data model, security model, deployment strategy
-**Note:** Integration-first architecture confirmed by owner (2026-07-16); candidate integration list drafted, prioritization pending.
+**Note:** Code-profile standards architecture owner-confirmed; platform/stack AI-proposed (see Document 2 section) — owner may approve as-is.
 
 ### Document 3: Release Plan
-**Status:** [x] Not Started [ ] In Progress [ ] Complete
-**Description:** Phased roadmap with version milestones, epics, and acceptance criteria
+**Status:** [ ] Not Started [ ] In Progress [x] **DRAFT COMPLETE (2026-07-16) — pending owner sign-off**
+**Description:** Phased roadmap (R1-R4) with epics and acceptance criteria (see Document 3 section)
 
 ---
 
@@ -141,9 +145,9 @@ The following domain-expert agents are available in this project's department fo
 
 ---
 
-## Document 2: Architecture/Design [TEMPLATE]
+## Document 2: Architecture/Design [DRAFT COMPLETE — pending owner sign-off]
 
-> Not started. To be developed collaboratively. This is a **Software** project — use the software sections below.
+> Standards, market, integrations, auth, and payments are owner-confirmed. Platform/stack items marked *(AI-proposed)* follow from those decisions; the owner may approve as-is or adjust.
 
 ### For Software Projects
 - **Design codes & standards — CONFIRMED (owner, 2026-07-16).** The app's calculations, drawings, and engineering outputs follow recognized codes, selectable per project as a **code profile**:
@@ -152,32 +156,41 @@ The following domain-expert agents are available in this project's department fo
   - **US codes:** IBC/IRC (building), ACI 318 (concrete), AISC 360 (steel), ASCE 7 (loads), TMS 402/602 (masonry), NDS (wood), NFPA 70/13/101 (electrical/fire)
   - **Kenya profile:** Eurocodes + BS as commonly adopted, **KEBS KS standards** (Kenyan adaptations of ISO/BS/EN), FIDIC contract conditions where relevant
   - **Implementation rule:** every generated output states which code profile produced it. Release 1 calculators use code-consistent quantity/measurement conventions; Release 3 structural/geotech rule-sets implement Eurocode + BS first (Kenya-aligned), US codes later.
-- **Market signal (to confirm with owner):** the Kenya-specific standards guidance suggests **Kenya is the primary market**. If confirmed: payment provider must support **M-Pesa** alongside cards (e.g., Pesapal, Flutterwave, DPO, or Paystack as local gateways — Stripe is not directly available to Kenyan merchants), pricing shown in KES alongside USD, and KEBS/NCA (National Construction Authority) considerations noted for credibility.
+- **Market — CONFIRMED (owner, 2026-07-16):** **Launch from Kenya, built for the WORLD.** The product launches from Kenya but targets a worldwide market from day one — not only Kenya or Africa. Implications: dual payment stack (global card checkout via a merchant-of-record provider + M-Pesa via a Kenyan gateway for the home market), multi-currency display (USD primary, KES and others), English first with the interface built translation-ready, and the code-profile architecture (Eurocode/BS/US/KEBS) serving worldwide users from the start.
 - System architecture (services, layers, boundaries) — **owner directive (2026-07-16): integration-first architecture.** The app must be able to connect to all kinds of tools: design around an API-first core with webhooks and connector modules (MCP-style connectors, like the system's `zoho-mcp-server/` reference implementation).
 - **User accounts & authentication (NEW, owner 2026-07-16):** public product — signup/login required. Email + password baseline; social login (Google) optional later. Payment status gates access.
-- **Payments (NEW, owner 2026-07-16):** one-time $30 checkout for lifetime access → requires a payment provider (Stripe, Paddle, or Lemon Squeezy — Paddle/Lemon Squeezy act as merchant-of-record and handle sales tax globally, worth considering for a first-time seller). Provider account + keys needed at build/launch of the payment step.
-- Technology stack (frontend, backend, databases, infrastructure) — *(open)* mobile-first (crews are in the field) vs. web-first; native vs. PWA
+- **Payments (owner 2026-07-16; dual stack for worldwide + Kenya launch):** one-time $30 checkout for lifetime access via (a) a global **merchant-of-record** card provider (Paddle or Lemon Squeezy — handles worldwide sales tax/VAT) AND (b) **M-Pesa** through a Kenyan gateway (Pesapal/Flutterwave/DPO) for the home market. Provider accounts + keys needed at build/launch of the payment step.
+- **Platform & technology stack *(AI-proposed 2026-07-16)*:**
+  - **Platform:** mobile-first **Progressive Web App (PWA)** — runs on any phone/tablet/computer in the browser, installable to the home screen, one codebase, no app-store gatekeeping → worldwide reach on day one and fits mobile-heavy usage in the launch market. Native apps only later if demand justifies.
+  - **Frontend:** Next.js (React) + TypeScript; responsive UI; calculators cached offline via PWA (weak connectivity on job sites)
+  - **Backend:** Node.js/TypeScript (Next.js API routes); REST API + webhooks (integration-first)
+  - **Database & storage:** managed PostgreSQL; S3-compatible object storage for generated files (drawings, PDFs, Excel) and uploads
+  - **Output engines:** calculator rule-modules per code profile (pure TypeScript, unit-tested against worked examples validated by the owner-engineer); 2D drawings as SVG → PDF/DXF export; renders from the same geometry via three.js (R2); PDF report generator; .xlsx via spreadsheet library
+  - **Hosting & CI/CD:** low-cost scalable platform (Vercel/Railway/Fly.io — final pick at build time); deploys from GitHub
+  - **Unit economics guardrail (advisor):** serverless/low-fixed-cost hosting keeps per-user lifetime cost far below the $30 price
+- **Multi-currency & languages:** prices in USD with KES and local equivalents; English first, interface built translation-ready
+- **Free preview funnel *(AI-proposed)*:** visitors can run a sample calculation with limited output before paying; $30 unlocks full results, exports, and saved projects
 - Data model and integrations — **broad integration surface, candidates to prioritize with owner:**
   - *Accounting/Finance:* **CONFIRMED (owner, 2026-07-16, revised): Microsoft Excel ONLY — QuickBooks dropped by owner decision.** → Priority integration 1: **Excel import/export** (.xlsx) for estimates, job-cost reports, invoices, and migration of existing spreadsheets. The app itself becomes the system of record for job finances, with Excel as the in/out format. ~~QuickBooks connector~~ (superseded 2026-07-16). Payment processing optional/later.
   - *Messaging:* **CONFIRMED (owner, 2026-07-16): WhatsApp + phone calls.** → Priority integration 2: **WhatsApp** (send job updates, quotes, and reminders to clients/crews — via WhatsApp Business API, or simple wa.me share links as a no-setup first step). **Calls:** tap-to-call from every contact/job screen + optional call notes. Slack/SMS/email deprioritized.
   - *CRM:* none in use today — the app's own contact management likely suffices; external CRM connectors deferred
-  - *Productivity:* Google Workspace / Microsoft 365 — pending owner answer on photo storage & calendar
+  - *Productivity:* photo/document storage handled in-app (object storage); external Drive/365 sync deferred
   - *Field/Construction:* weather services, maps/geolocation, supplier catalogs, e-signature — later releases
-- Security model and constraints — role-based access (owner/office/supervisor/crew/client); credential management for third-party integrations must follow the system rule: secrets never committed to git
-- Deployment targets and CI/CD strategy
-- Development conventions and standards
+- **Unified project-data input model (key design artifact):** one structured entry flow — location, construction type (R1: residential), dimensions/floors/rooms, material preferences, soil type when known — feeds ALL 7 outputs so users never re-enter data as new output types ship in R2/R3.
+- **Security & compliance:** HTTPS everywhere; passwords hashed (argon2/bcrypt); secrets in environment variables, never in git; roles: user / admin (R4 adds per-project owner/supervisor/crew roles); data protection per Kenya Data Protection Act 2019 + GDPR-compatible practices (worldwide product); engineering outputs carry watermark + code-profile stamp + engineer-review disclaimer on every document.
 
 ---
 
-## Document 3: Release Plan [TEMPLATE]
+## Document 3: Release Plan [DRAFT COMPLETE — pending owner sign-off]
 
-> Not started. To be developed collaboratively after Documents 1 and 2.
+> Owner-confirmed: R1 scope = residential buildings; management features stay (R4). Story-level detail is written at PROJECT_MEMORY_INIT time.
 
 ### Release Overview
-- **Release Version:** (e.g., 0.1, 1.0, Phase 1)
-- **Codename:** (optional)
-- **Target Launch Date:** *(open — owner input needed)*
-- **Success Criteria:** *(open — owner input needed)*
+- **Release 1 (MVP "Sellable Core"):** accounts + $30 dual-stack checkout (cards worldwide + M-Pesa) + unified project data input (residential) + all three calculators (Eurocode/BS profiles) + Excel/PDF/WhatsApp outputs + product site. **Success criteria:** a stranger can sign up, pay $30, enter a residential project, and download/share a correct materials + cost + labor estimate stamped with its code profile.
+- **Release 2 ("See It"):** 2D plan drawings from entered dimensions (SVG → PDF/DXF), then renders (three.js). **Success criteria:** the same entered data produces a dimensioned 2D plan and a visual render without re-entry.
+- **Release 3 ("Engineering"):** preliminary structural drawings + geotechnical report from soil type (EN 1997 / BS 8004 first). **Gate:** owner-engineer validates rule-sets; legal disclaimers reviewed BEFORE release. **Success criteria:** outputs carry watermark, code-profile stamp, and engineer-review disclaimer on every page.
+- **Release 4 ("Run the Job"):** job tracking, crew scheduling, daily site logs with photos, per-project roles. **Success criteria:** a builder manages a real project end-to-end in the app.
+- **Target dates:** set at PROJECT_MEMORY_INIT; R1 is sized to be the fastest possible path to revenue.
 
 ### Epics (Major Work Streams)
 *(revised 2026-07-16 after full core-tool definition — sequenced by feasibility)*
@@ -189,7 +202,22 @@ The following domain-expert agents are available in this project's department fo
 **Epic 5: Drawings & Visuals** — 2D plan drawings generated from entered dimensions; renders (visualizations)
 **Epic 6: Engineering Outputs** — preliminary structural drawings; geotechnical report generated from soil type input — **both watermarked "preliminary — requires licensed engineer review"**
 **Epic 7: Product Site & Onboarding** — landing page, pricing page, first-run guidance
-**Epic 8 (pending Open Question 2):** Job tracking / scheduling / site-log management features
+**Epic 8 (CONFIRMED IN SCOPE, owner 2026-07-16):** Job tracking / crew scheduling / daily site-log management features → Release 4
+
+### Epic → Release Mapping
+| Release | Epics | Scope |
+|---|---|---|
+| R1 — Sellable Core | 1, 2, 3, 4, 7 | Accounts, payment (cards + M-Pesa), residential data input, calculators, Excel/PDF/WhatsApp outputs, product site |
+| R2 — See It | 5 | 2D drawings, then renders |
+| R3 — Engineering | 6 | Structural drawings + geotech report (Eurocode/BS rule-sets, legal gate) |
+| R4 — Run the Job | 8 | Job tracking, scheduling, site logs, per-project roles |
+
+### Risks & Mitigation
+- **Risk:** Lifetime $30 pricing vs. ongoing hosting costs. → **Mitigation:** serverless/low-fixed-cost stack; advisor guardrails (launch-offer framing, future pro tier).
+- **Risk:** Engineering outputs used without professional review. → **Mitigation:** watermarks, disclaimers, legal review gate before R3; owner-engineer validates rule-sets.
+- **Risk:** Calculator accuracy damages brand trust. → **Mitigation:** rule modules unit-tested against worked examples the owner validates; code-profile stamping; residential-only scope in R1.
+- **Risk:** Payment failures in launch market. → **Mitigation:** dual stack (M-Pesa + global cards); tested in provider sandbox before launch.
+- **Risk:** Scope creep delaying revenue. → **Mitigation:** R1 fixed to Epics 1-4 + 7; everything else phased.
 
 **Suggested release phasing (to get to market fast and de-risk the hard parts):**
 - **Release 1 (MVP):** Epics 1, 2, 3, 4, 7 — accounts, payment, calculators, exports, site. Sellable on day one.

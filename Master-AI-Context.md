@@ -40,7 +40,7 @@ The system operates at two levels:
 
 | Project | Folder | Type | Status | Description |
 |---------|--------|------|--------|-------------|
-| FatalibuildersConstructionApp | `projects/staging/FatalibuildersConstructionApp/` | Software (public product) | Staging (Document 1 nearly complete) | Public Fatalibuilders app, $30 lifetime access: project data in → material quantities, cost & labor estimates, 2D drawings, renders, preliminary structural drawings, geotech report. Excel export + WhatsApp share |
+| FatalibuildersConstructionApp | `projects/staging/FatalibuildersConstructionApp/` | Software (public product) | **Staging COMPLETE — awaiting owner sign-off for PROJECT_MEMORY_INIT** | Public Fatalibuilders app, $30 lifetime access, worldwide (launched from Kenya): project data in → 7 outputs (quantities, cost, labor, 2D drawings, renders, structural, geotech). R1 residential; management features R4 |
 
 ---
 
@@ -172,8 +172,8 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ## 9. Session History & Handover
 
-- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1026.md` — Standards baseline set (Eurocodes/BS/US/KEBS code profiles); Kenya inferred as primary market
-- **Latest Decisions:** staging project's `Key-Decisions-2026-07-16_1026.md` (code profiles, market inference, M-Pesa implications)
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1030.md` — Staging COMPLETE: all three documents done; awaiting owner sign-off for PROJECT_MEMORY_INIT
+- **Latest Decisions:** staging project's `Key-Decisions-2026-07-16_1030.md` (worldwide market, residential R1, management features R4, stack proposal)
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)

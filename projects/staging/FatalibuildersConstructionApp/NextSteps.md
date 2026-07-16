@@ -2,55 +2,45 @@
 
 **Project:** FatalibuildersConstructionApp
 **Owner:** Eng Ali Ahmed (fatalibuilders@gmail.com)
-**Current Stage:** Staging (Ideation & Preparation)
-**Last Updated:** 2026-07-16 (session 2)
+**Current Stage:** Staging — **ALL THREE DOCUMENTS COMPLETE** (Docs 2-3 pending owner sign-off)
+**Last Updated:** 2026-07-16 (1030)
 
 ---
 
 ## Staging Progress
 
 ### Document 1: Project Context
-- **Status:** [ ] Not Started [x] In Progress [ ] Nearly Complete
-- **Completed Sections:** Vision; Target Audience; Business Model ($30 lifetime + advisor guardrails); **Core tool definition (7 outputs: quantities, costs, labor, 2D drawings, renders, structural, geotech)**; Institutional Dependencies (incl. engineering-liability disclaimers)
-- **Next Action:** Final answers from owner: (1) confirm **Kenya as primary market** (inferred from the standards guidance); (2) Release-1 construction types (residential only? multi-storey?); (3) management features in or out (Epic 8). Standards baseline is now CONFIRMED (Eurocodes + BS + US + KEBS code profiles).
+- **Status:** ✅ **COMPLETE (2026-07-16)**
+- All elements owner-confirmed: public product; 7 outputs (material quantities, cost estimate, labor/time, 2D drawings, renders, structural drawings, geotech report); $30 lifetime access; **worldwide market launched from Kenya**; R1 = residential buildings; management features in scope (R4); standards baseline (Eurocode/BS/US/KEBS code profiles); engineering-liability safeguards.
 
 ### Document 2: Architecture/Design
-- **Status:** [ ] Not Started [x] In Progress [ ] Complete
-- **Completed Sections:** Integration strategy (integration-first); accounting = **Excel only** (QuickBooks dropped by owner) → Excel import/export is priority 1; messaging = **WhatsApp + calls** → WhatsApp priority 2 (wa.me links first, Business API later), tap-to-call throughout
-- **Next Action:** Collect remaining tool inventory (photo/document storage, scheduling method); decide mobile-first vs. web-first and offline support
+- **Status:** ✅ **DRAFT COMPLETE (2026-07-16) — pending owner sign-off**
+- Owner-confirmed: code profiles, integration-first, Excel + WhatsApp + tap-to-call, dual payment stack (global merchant-of-record cards + M-Pesa).
+- AI-proposed (labeled, follows from confirmed constraints): PWA platform, Next.js/TypeScript/PostgreSQL stack, SVG/three.js output engines, free-preview funnel, security/compliance model (Kenya DPA 2019 + GDPR-compatible).
+- **Next Action:** Owner approves as-is or requests changes.
 
 ### Document 3: Release Plan
-- **Status:** [x] Not Started [ ] In Progress [ ] Complete
-- **Completed Sections:** Candidate epics drafted in Master-Context.md (pending review)
-- **Next Action:** Defer until Documents 1 & 2 are complete
+- **Status:** ✅ **DRAFT COMPLETE (2026-07-16) — pending owner sign-off**
+- R1 "Sellable Core" (accounts, payments, residential input, calculators, exports, site) → R2 "See It" (2D drawings, renders) → R3 "Engineering" (structural + geotech, legal gate) → R4 "Run the Job" (job tracking, scheduling, site logs). Epic→release mapping and risk register in Master-Context.md.
+- **Next Action:** Owner approves, then: **"Initialize FatalibuildersConstructionApp via PROJECT_MEMORY_INIT.md"**.
 
 ---
 
 ## Blockers / Open Questions
 
-1. ~~**Owner confirmation needed:** vision drafts.~~ ~~**Define the core tool.**~~ **RESOLVED 2026-07-16 (1019):** Full output set confirmed: calculators + 2D drawings + renders + structural drawings + geotech report. Remaining: management features in/out (Epic 8); market/country + building codes; Release-1 construction types.
-2. ~~**Owner identity:** Full name and role title for the project owner record.~~ **RESOLVED 2026-07-16:** Eng Ali Ahmed, Owner of Fatali Builders. Contact profile created at `contacts/Eng-Ali-Ahmed.md` (root level).
-3. **Scope question:** Internal tool for Fatali Builders only, or a product to offer other contractors?
-4. ~~**Environment question:** Existing tools in use today that the app must integrate with or replace?~~ **MOSTLY RESOLVED (2026-07-16):** Accounting = **Excel only** (QuickBooks explicitly dropped — 0959 decision supersedes 0943); communication = **WhatsApp + phone calls**. Integration priorities: 1) Excel import/export, 2) WhatsApp (wa.me links first). Still open: photo/document storage, scheduling method.
-5. ~~**System setup:** Root-level `setup-AI-Memory.md` has not been run yet.~~ **RESOLVED 2026-07-16:** One-time setup completed (owner identity, fork URL, model preferences). API key registration deferred.
+1. **Owner sign-off on Documents 2 & 3** — approve the AI-proposed platform/stack and release plan, or request changes.
+2. All previously open questions are RESOLVED (see Key-Decisions.md for the trail: vision → tools → product direction → core tool → standards → market/scope/features).
 
 ---
 
-## Timeline Estimate
+## When Sign-Off Is Given
 
-- **Document 1:** 1-2 sessions
-- **Document 2:** 2-3 sessions
-- **Document 3:** 1-2 sessions
-- **Total Staging:** 4-7 sessions estimated
+Execute PROJECT_MEMORY_INIT.md to:
+1. Create the full project memory structure (`projects/FatalibuildersConstructionApp_AI_Training/`)
+2. Move the three staging documents into it and expand the release plan into granular stories with `[AI]`/`[Human]` labels
+3. Initialize project-level protocols (open/closure, release planning)
+4. Begin development of Release 1 (Sellable Core)
 
 ---
 
-## When All Documents Are Complete
-
-Once all three documents are finished, approved, and signed off, execute PROJECT_MEMORY_INIT.md to:
-1. Create the full project memory structure
-2. Initialize all protocols (open/closure, release planning, etc.)
-3. Optionally create the project in Zoho Projects
-4. Transition from "staging" to active project development
-
-Next: Owner reviews Master-Context.md, then "Continue with Document 1"
+*Resolved-question history preserved in `decisions-learnings/` and Key-Decisions.md.*

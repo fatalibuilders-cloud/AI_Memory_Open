@@ -34,8 +34,6 @@
 
 *Updated by the closure protocol.*
 
-- **PRODUCT (owner, 2026-07-16):** Public Fatalibuilders app, $30 one-time lifetime access. Users insert project data → get: material quantities, cost estimate, labor/time estimate, 2D drawings, renders, structural drawings, geotech report (from soil type). Engineering outputs carry "preliminary — licensed engineer review required" safeguards.
-- **Document 1 (Project Context):** Nearly complete. Remaining: management features in/out; market/country; Release-1 construction types.
-- **Document 2 (Architecture/Design):** In Progress — unified project-data input model feeds all 7 outputs; **standards baseline CONFIRMED: per-project code profiles (Eurocodes EN 1990-1999 + BS first, US codes later, KEBS/Kenya profile)**; every output stamps its code profile; auth + payment provider; Excel/WhatsApp/PDF outputs.
-- **Document 3 (Release Plan):** Skeleton set — R1: accounts+payment+calculators+exports+site; R2: 2D drawings, renders; R3: structural+geotech (Eurocode+BS rule-sets); R4: management features (if kept).
-- **Top blocker:** Confirm Kenya as primary market (M-Pesa payment implications); Release-1 construction types; Epic 8 in/out.
+- **PRODUCT (owner-confirmed 2026-07-16):** Public Fatalibuilders app, $30 one-time lifetime access, **worldwide market launched from Kenya**. Users insert project data once → 7 outputs: material quantities, cost estimate, labor/time estimate, 2D drawings, renders, structural drawings, geotech report. Engineering outputs carry engineer-review safeguards. R1 = residential buildings. Management features confirmed → R4.
+- **STAGING STATUS: ALL THREE DOCUMENTS COMPLETE** (Doc 1 complete; Docs 2 & 3 draft-complete pending owner sign-off). Standards: per-project code profiles (Eurocode+BS first, US later, KEBS). Stack (AI-proposed): PWA, Next.js/TypeScript/PostgreSQL, SVG/three.js engines, dual payments (global cards + M-Pesa).
+- **NEXT STEP:** Owner sign-off on Docs 2-3, then **"Initialize FatalibuildersConstructionApp via PROJECT_MEMORY_INIT.md"**.
