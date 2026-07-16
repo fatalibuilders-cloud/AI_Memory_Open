@@ -1,7 +1,7 @@
 # Next Steps — FatalibuildersConstructionApp Staging
 
 **Project:** FatalibuildersConstructionApp
-**Owner:** Fatali Builders (fatalibuilders@gmail.com)
+**Owner:** Eng Ali Ahmed (fatalibuilders@gmail.com)
 **Current Stage:** Staging (Ideation & Preparation)
 **Last Updated:** 2026-07-16 (session 2)
 
@@ -29,7 +29,7 @@
 ## Blockers / Open Questions
 
 1. **Owner confirmation needed:** The project was staged autonomously from the task name alone. The vision, category (Software), target users, and candidate epics are AI drafts — the owner must review and correct them before staging proceeds.
-2. **Owner identity:** Full name and role title for the project owner record.
+2. ~~**Owner identity:** Full name and role title for the project owner record.~~ **RESOLVED 2026-07-16:** Eng Ali Ahmed, Owner of Fatali Builders. Contact profile created at `contacts/Eng-Ali-Ahmed.md` (root level).
 3. **Scope question:** Internal tool for Fatali Builders only, or a product to offer other contractors?
 4. ~~**Environment question:** Existing tools in use today that the app must integrate with or replace?~~ **RESOLVED 2026-07-16:** Owner directed integration with all kinds of tools (integration-first architecture). Follow-up: prioritize which connectors to build first based on the tools in use today.
 5. ~~**System setup:** Root-level `setup-AI-Memory.md` has not been run yet.~~ **RESOLVED 2026-07-16:** One-time setup completed (owner identity, fork URL, model preferences). API key registration deferred.

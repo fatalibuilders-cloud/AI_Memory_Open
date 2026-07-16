@@ -4,7 +4,7 @@
 
 **Memory Design Version:** 1.1
 **Last Updated:** 2026-07-16
-**System Owner:** Fatali Builders (fatalibuilders@gmail.com) *(full name pending confirmation)*
+**System Owner:** Eng Ali Ahmed (fatalibuilders@gmail.com)
 **Organization:** Fatali Builders
 **Repository:** https://github.com/fatalibuilders-cloud/AI_Memory_Open
 
@@ -166,7 +166,7 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 **All Available Models:** Claude (Anthropic). *(Other models can be registered later by re-running the model preferences step.)*
 
-**API Keys:** Not yet registered. When ready, create a git-ignored `FataliKeys.txt` at the repo root (pattern `*Keys.txt` is already excluded by `.gitignore`) following the format in `setup-AI-Memory.md` Step 2.6.
+**API Keys:** Not yet registered. When ready, create a git-ignored `AliKeys.txt` at the repo root (pattern `*Keys.txt` is already excluded by `.gitignore`) following the format in `setup-AI-Memory.md` Step 2.6.
 
 ---
 

@@ -20,6 +20,7 @@
    - First project staging already complete (FatalibuildersConstructionApp, session 1)
 2. **Recorded owner's integration directive** in the staging project: the app must integrate with all kinds of tools → integration-first, API-first architecture with connector modules. Document 2 moved to In Progress; candidate connector list drafted (accounting, CRM, productivity, messaging, field services).
 3. Updated staging indexes, decision logs, and NextSteps; updated root indexes and this session record.
+4. **(Session continuation, ~09:40 UTC)** Owner confirmed their full name: **Eng Ali Ahmed**. Updated the System Owner field in Master-AI-Context.md, the project owner fields in the staging Master-Context.md and NextSteps.md, and created a preliminary contact profile at `contacts/Eng-Ali-Ahmed.md`. Keys-file convention updated to `AliKeys.txt`.
 
 ## Key Decisions
 
@@ -36,8 +37,8 @@
 
 ## Blockers / Pending Human Actions
 
-- Owner: supply API keys when ready (create git-ignored `FataliKeys.txt` per setup-AI-Memory.md Step 2.6)
-- Owner: confirm full name and (optionally) an enterprise OS (Zoho One has a pre-built connector)
+- Owner: supply API keys when ready (create git-ignored `AliKeys.txt` per setup-AI-Memory.md Step 2.6)
+- Owner: (optionally) choose an enterprise OS (Zoho One has a pre-built connector) — ~~confirm full name~~ done: Eng Ali Ahmed
 - Owner: review the drafted app vision; list the tools in use today so the first connectors can be prioritized
 
 ## Standards Sync Status

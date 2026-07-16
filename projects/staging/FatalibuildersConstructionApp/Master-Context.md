@@ -2,7 +2,7 @@
 
 **Project Name:** FatalibuildersConstructionApp
 **Category:** Software (web/mobile construction management app)
-**Owner:** Fatali Builders (fatalibuilders@gmail.com) — Owner/Founder *(full name and role title pending owner confirmation)*
+**Owner:** Eng Ali Ahmed (fatalibuilders@gmail.com) — Owner, Fatali Builders
 **Stage:** Staging (Ideation & Preparation)
 **Last Updated:** 2026-07-16 (session 2 — integration strategy confirmed by owner)
 

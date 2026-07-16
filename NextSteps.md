@@ -16,9 +16,8 @@
 ### Medium Priority
 
 1. **Continue FatalibuildersConstructionApp staging Documents 1 & 2** — After owner review: fill goals, success metrics, constraints; decide mobile-first vs. web-first and offline support. *(Project-level work — use the staging project's own agents/open.md.)*
-2. **Register API keys** — Owner creates a git-ignored `FataliKeys.txt` per setup-AI-Memory.md Step 2.6 when credentials are ready.
-3. **Confirm owner full name & enterprise OS** — Complete the deferred setup fields; Zoho One has a pre-built MCP connector if chosen.
-4. **Create owner contact profile** — Add a profile for the system owner in `contacts/` once name/role are confirmed.
+2. **Register API keys** — Owner creates a git-ignored `AliKeys.txt` per setup-AI-Memory.md Step 2.6 when credentials are ready.
+3. **Confirm enterprise OS** — Remaining deferred setup field; Zoho One has a pre-built MCP connector if chosen.
 
 ### Low Priority
 
@@ -33,6 +32,7 @@
 | Stage FatalibuildersConstructionApp project | 2026-07-16 | Full staging structure created per staging.md; 36 agent files distributed to 9 departments; drafts flagged for owner review |
 | Run `setup-AI-Memory.md` (one-time system setup) | 2026-07-16 | Owner, fork URL, and model preferences configured; API keys, enterprise OS, and standards customization deferred to owner |
 | Record app integration directive | 2026-07-16 | Owner: integrate with all kinds of tools → integration-first architecture; Document 2 now In Progress |
+| Owner full name confirmed; contact profile created | 2026-07-16 | Eng Ali Ahmed — owner fields updated system-wide; preliminary profile at `contacts/Eng-Ali-Ahmed.md` |
 
 ---
 
