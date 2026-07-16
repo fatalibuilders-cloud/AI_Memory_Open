@@ -1,6 +1,10 @@
-# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.11)
+# FatalibuildersTraderSuperScalpers.mq5 — Draft Expert Advisor (v1.12)
 
-**Status:** Draft, uncompiled (past the founder's own successful MetaEditor compile of an earlier revision), **backtested once — 0 trades, root cause diagnosed and fixed (2026-07-16)**. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, high-concurrency, and trailing-stop/time-limit decisions from `Master-Context.md`, not a finished product.
+**Status:** Draft, uncompiled (past the founder's own successful MetaEditor compile of an earlier revision), **backtested twice — 0 trades both times, two separate blockers found and fixed in the same function (2026-07-16, 2026-07-16b), not yet re-confirmed**. This is a structural implementation of the risk-management, dual-mode, daily-control, entry-condition-filter, short-timeframe scalping signal, more-aggressive-configuration, margin-check, plain-English-input, very-aggressive-equity-risk, symbol/session-restriction, micro-scalp-target, high-concurrency, and trailing-stop/time-limit decisions from `Master-Context.md`, not a finished product.
+
+### v1.12 — second zero-trades cause: stale-quote check unreliable in Strategy Tester (2026-07-16b)
+
+Spread fix (below) didn't resolve it — founder re-ran and still got 0 trades. `PassesDataFeedSanityCheck()` has a second check right after spread: quote staleness, via `SymbolInfoInteger(_Symbol, SYMBOL_TIME)`. That value is known to not reliably track simulated time inside MT5's Strategy Tester, which can make `TimeCurrent() - lastTick` enormous and fail the check on every tick — a second, separate full blocker sitting in the same function as the first. Fixed by skipping the staleness check entirely when `MQLInfoInteger(MQL_TESTER)` is true — it's a live-feed-health concept that doesn't apply to a deterministic backtest replay; the spread check still applies in both modes. **Not confirmed via the Journal/Experts log** (still not shared) — a reasoned fix based on known MT5 behavior, not a certainty. See `decisions-learnings/2026-07-16b_stale-quote-check-skipped-in-tester.md`.
 
 ### v1.11 — spread filter was blocking every trade in the Strategy Tester (2026-07-16)
 

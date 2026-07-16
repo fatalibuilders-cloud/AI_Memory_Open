@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| FatalibuildersTraderSuperScalpers.mq5                                |
-//| Draft v1.11 (Market tag 1.81) -- implements the risk-management,   |
+//| Draft v1.12 (Market tag 1.82) -- implements the risk-management,   |
 //| dual-mode, daily-control, and entry-filter decisions from          |
 //| Master-Context.md as of 2026-07-14, a volume-filter bug fix and    |
 //| diagnostic logging (2026-07-14s), a v2 short-timeframe scalping     |
@@ -39,7 +39,15 @@
 //| was ever checked. Raised the default to 60 -- see decisions-learnings/ |
 //| 2026-07-16_spread-filter-blocking-all-trades.md for the full           |
 //| diagnosis and why 60 is a tester-headroom number, not a validated      |
-//| real-account spread setting. See the big comment above                 |
+//| real-account spread setting. (2026-07-16b) Still 0 trades after that   |
+//| fix -- found a SECOND blocker in the same function: the stale-quote    |
+//| check used SymbolInfoInteger(_Symbol, SYMBOL_TIME), which is known     |
+//| to not reliably track simulated time inside the Strategy Tester and    |
+//| can make the check fail on every tick. Now skipped entirely when       |
+//| MQLInfoInteger(MQL_TESTER) is true -- staleness is a live-feed         |
+//| concept that doesn't apply to a deterministic historical replay. See   |
+//| decisions-learnings/2026-07-16b_stale-quote-check-skipped-in-tester.md.|
+//| See the big comment above                                              |
 //| AggressiveMode_RiskPerTrade_PercentOfEquity below for the honest       |
 //| math behind Aggressive Mode's risk before using it.                    |
 //|                                                                    |
@@ -49,7 +57,7 @@
 //| not backtested.                                                    |
 //+------------------------------------------------------------------+
 #property copyright "FatalibuildersTrader Super Scalpers"
-#property version   "1.81"
+#property version   "1.82"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -761,6 +769,17 @@ bool PassesRangeFilter()
 // "Information Feed Filter": interpreted as a data-sanity check --
 // reject trading on stale quotes or an abnormally wide spread, both
 // signs of a bad/thin data feed moment rather than a real setup.
+// (2026-07-16b) The staleness half of this check is SKIPPED inside the
+// Strategy Tester (MQLInfoInteger(MQL_TESTER)). "Is the live feed
+// frozen?" is a live-trading concept -- there is no live feed during a
+// backtest, the tester itself deterministically replays history. Worse,
+// SymbolInfoInteger(_Symbol, SYMBOL_TIME) is known to not reliably
+// track simulated time inside the tester (can return 0 or stale real
+// time depending on test mode), which would make TimeCurrent()-lastTick
+// enormous and fail this check on literally every tick -- a second,
+// separate reason a backtest could show 0 trades even after the spread
+// fix (2026-07-16). The spread check still applies in both modes; only
+// staleness is tester-exempt.
 bool PassesDataFeedSanityCheck()
 {
    if(!AvoidBadPriceData_Enabled) return true;
@@ -770,9 +789,12 @@ bool PassesDataFeedSanityCheck()
    if(spread > MaxAllowedSpread_Points)
       return false;
 
-   datetime lastTick = (datetime)SymbolInfoInteger(_Symbol, SYMBOL_TIME);
-   if(TimeCurrent() - lastTick > MaxAllowedPriceDelay_Seconds)
-      return false;
+   if(!MQLInfoInteger(MQL_TESTER))
+   {
+      datetime lastTick = (datetime)SymbolInfoInteger(_Symbol, SYMBOL_TIME);
+      if(TimeCurrent() - lastTick > MaxAllowedPriceDelay_Seconds)
+         return false;
+   }
 
    return true;
 }
