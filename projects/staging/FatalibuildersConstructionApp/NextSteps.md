@@ -12,7 +12,7 @@
 ### Document 1: Project Context
 - **Status:** [ ] Not Started [x] In Progress [ ] Nearly Complete
 - **Completed Sections:** Vision; Target Audience; Business Model ($30 lifetime + advisor guardrails); **Core tool definition (7 outputs: quantities, costs, labor, 2D drawings, renders, structural, geotech)**; Institutional Dependencies (incl. engineering-liability disclaimers)
-- **Next Action:** Final three answers from owner: (1) management features in or out (Epic 8); (2) primary market/country → building codes + payment provider; (3) Release-1 construction types (residential only? multi-storey?)
+- **Next Action:** Final answers from owner: (1) confirm **Kenya as primary market** (inferred from the standards guidance); (2) Release-1 construction types (residential only? multi-storey?); (3) management features in or out (Epic 8). Standards baseline is now CONFIRMED (Eurocodes + BS + US + KEBS code profiles).
 
 ### Document 2: Architecture/Design
 - **Status:** [ ] Not Started [x] In Progress [ ] Complete

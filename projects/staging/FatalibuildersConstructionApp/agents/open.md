@@ -36,6 +36,6 @@
 
 - **PRODUCT (owner, 2026-07-16):** Public Fatalibuilders app, $30 one-time lifetime access. Users insert project data → get: material quantities, cost estimate, labor/time estimate, 2D drawings, renders, structural drawings, geotech report (from soil type). Engineering outputs carry "preliminary — licensed engineer review required" safeguards.
 - **Document 1 (Project Context):** Nearly complete. Remaining: management features in/out; market/country; Release-1 construction types.
-- **Document 2 (Architecture/Design):** In Progress — key design artifact is the unified project-data input model that feeds all 7 outputs; auth + payment provider; Excel/WhatsApp/PDF outputs.
-- **Document 3 (Release Plan):** Skeleton set — R1: accounts+payment+calculators+exports+site; R2: 2D drawings, renders; R3: structural+geotech; R4: management features (if kept).
-- **Top blocker:** Market/country (determines building codes, payment provider, legal).
+- **Document 2 (Architecture/Design):** In Progress — unified project-data input model feeds all 7 outputs; **standards baseline CONFIRMED: per-project code profiles (Eurocodes EN 1990-1999 + BS first, US codes later, KEBS/Kenya profile)**; every output stamps its code profile; auth + payment provider; Excel/WhatsApp/PDF outputs.
+- **Document 3 (Release Plan):** Skeleton set — R1: accounts+payment+calculators+exports+site; R2: 2D drawings, renders; R3: structural+geotech (Eurocode+BS rule-sets); R4: management features (if kept).
+- **Top blocker:** Confirm Kenya as primary market (M-Pesa payment implications); Release-1 construction types; Epic 8 in/out.

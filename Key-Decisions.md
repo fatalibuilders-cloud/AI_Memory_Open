@@ -23,6 +23,7 @@ When performing any action that matches a keyword below, read the referenced det
 | Excel, QuickBooks dropped, WhatsApp | App tooling revised: Excel-only accounting, WhatsApp+calls (project-level; guide updated accordingly) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_0959.md` | 2026-07-16 |
 | public product, pricing, payments | Product redefined: public app, login, $30 lifetime access; payment provider now required (project-level; guide updated) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1007.md` | 2026-07-16 |
 | core tool, drawings, engineering outputs | Core tool defined (7 outputs); engineering-liability safeguards; 3-release phasing (project-level) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1019.md` | 2026-07-16 |
+| standards, code profiles, Kenya | Standards baseline: Eurocodes+BS+US+KEBS as per-project code profiles; Kenya inferred as market (project-level) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1026.md` | 2026-07-16 |
 | onboarding, communication | Owner is a first-time app builder — communications must be jargon-free with explicit action lists | `decisions-learnings/Key-Decisions-2026-07-16_0945.md` | 2026-07-16 |
 
 ---

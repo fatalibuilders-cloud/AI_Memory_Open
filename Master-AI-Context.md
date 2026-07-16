@@ -172,8 +172,8 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ## 9. Session History & Handover
 
-- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1019.md` — Core tool fully defined (7 outputs); engineering safeguards; release phasing set
-- **Latest Decisions:** staging project's `Key-Decisions-2026-07-16_1019.md` (core tool, engineering liability, phasing)
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1026.md` — Standards baseline set (Eurocodes/BS/US/KEBS code profiles); Kenya inferred as primary market
+- **Latest Decisions:** staging project's `Key-Decisions-2026-07-16_1026.md` (code profiles, market inference, M-Pesa implications)
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)

@@ -11,7 +11,7 @@
 ### High Priority
 
 1. ~~**Define the app's core tool.**~~ **RESOLVED (2026-07-16 1019):** 7 outputs confirmed — calculators (quantities/cost/labor), 2D drawings, renders, structural drawings, geotech report — with engineering-review safeguards and 3-release phasing.
-2. **Primary market/country (now the top blocker)** — Determines building codes/standards for the calculators and engineering rules, the payment provider, and tax/legal requirements for the $30 sale.
+2. **Confirm Kenya as primary market** — *Partially resolved: standards baseline confirmed (Eurocodes + BS + US + KEBS code profiles), and the Kenya-specific guidance implies Kenya is the market.* Owner to confirm explicitly → unlocks payment provider choice (M-Pesa via local gateway) and legal setup.
 3. **Release-1 construction types** — Owner to choose the scope of the first version (e.g., residential houses only) for accuracy and speed.
 3. ~~Tool inventory~~ *Mostly done: Excel-only accounting; WhatsApp + calls.* Photo storage/scheduling questions now only matter if Epic 5 (management features) stays.
 
