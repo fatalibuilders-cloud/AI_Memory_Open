@@ -38,7 +38,11 @@ This isn't a hack to force trades through — it's the conceptually correct fix.
 - Did not disable or weaken the spread check in tester mode — only staleness.
 - Did not confirm this via the Experts/Journal log — this is a well-reasoned fix based on known MT5 tester behavior, not a confirmed diagnosis. If trades still don't appear after this fix, the log becomes the mandatory next step rather than another guess.
 
+## Confirmed (2026-07-16, same day)
+
+Founder re-ran a backtest on GBPUSD M1 for 2026.01.01–2026.07.15 and shared the History tab: real trades now appear, with entries, stop-loss/take-profit fills, and both winning and losing outcomes visible. **Both fixes (spread filter + tester staleness skip) together resolved the zero-trades issue.** Never confirmed via the Experts/Journal log directly (the trade history itself was sufficient confirmation) — noting this in case the log is still worth checking later for filter-tuning purposes, not because the diagnosis is in doubt.
+
 ## Open items
 
-- Founder should recompile and re-run the same backtest. If trades appear now, this (combined with the spread fix) was the full explanation.
-- If trades still don't appear, the Journal/Experts log tab (bottom panel of the Strategy Tester, not the Visualization window) must be checked — `ShowDetailedLog_Enabled` is on by default and prints the exact block reason for every skipped bar via `LogBlockReason()`. That is the only way to move from reasoned hypotheses to a confirmed answer at this point.
+- Get the full backtest Report (net profit, win rate, profit factor, max drawdown, total trade count) once this run completes — a handful of visible trades in the History tab is not enough to say anything about whether the strategy has a real edge.
+- Re-run across a longer/different date range and on XAUUSD once GBPUSD looks reasonable, to avoid over-reading one short window.
