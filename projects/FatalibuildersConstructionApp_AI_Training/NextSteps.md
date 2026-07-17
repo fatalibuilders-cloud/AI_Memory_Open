@@ -55,6 +55,13 @@ The AI cannot create repositories, so this one needs you:
 
 ---
 
+## Marketing Workstream (added 2026-07-16 — owner request: automated marketing system)
+
+Plan: `Marketing/Marketing-Automation-Plan.md`. Stage A (AI content engine: brand kit, launch kit, 90-day calendar, email sequences) runs alongside R1 development; Stage B (auto-publishing on owner's Meta/email accounts) activates launch month; Stage C (in-product growth loops) ships inside R1 stories CORE-6.2/6.3/7.1/8.0.
+- [ ] MKT-1 [AI] Brand kit · MKT-2 [AI] Launch kit · MKT-3 [AI] 90-day calendar · MKT-4 [AI] email sequences · MKT-5 [AI+Human] scheduler on owner's accounts (launch month)
+
+---
+
 ## Backlog (Future Work)
 
 - Release 2.0 — See It: 2D drawings, renders
