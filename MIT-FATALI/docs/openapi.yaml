@@ -1,0 +1,86 @@
+openapi: 3.0.0
+info:
+  title: MIT-FATALI API
+  version: '0.1'
+servers:
+  - url: http://localhost:4000
+paths:
+  /auth/otp/request:
+    post:
+      summary: Request OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: OTP requested
+  /auth/otp/verify:
+    post:
+      summary: Verify OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Verified
+  /lessons:
+    get:
+      summary: List lessons
+      responses:
+        '200':
+          description: OK
+  /submissions:
+    post:
+      summary: Submit crop image + metadata
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                crop:
+                  type: string
+                symptoms:
+                  type: string
+      responses:
+        '201':
+          description: Created
+  /payments/initiate:
+    post:
+      summary: Initiate payment (mpesa/paypal/voucher)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                amount:
+                  type: number
+                provider:
+                  type: string
+                method:
+                  type: string
+      responses:
+        '200':
+          description: Payment initiated

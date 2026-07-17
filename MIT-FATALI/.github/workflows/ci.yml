@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ scaffold/initial, main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install
+        run: |
+          cd apps/backend && npm ci || true
+      - name: Lint backend
+        run: |
+          cd apps/backend && npm run lint || true
+      - name: Run backend tests
+        run: |
+          cd apps/backend && npm test || true

@@ -1,0 +1,21 @@
+<svg width="800" height="450" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="20" y="40" font-size="20" font-family="Arial" fill="#111">MIT-FATALI — Architecture Diagram (simplified)</text>
+  <rect x="20" y="60" width="220" height="60" rx="6" fill="#f0f4ff" stroke="#3b82f6"/>
+  <text x="40" y="95" font-size="12" font-family="Arial">Frontend: React PWA (Vite + TS)</text>
+
+  <rect x="300" y="60" width="220" height="60" rx="6" fill="#f0fff4" stroke="#16a34a"/>
+  <text x="320" y="95" font-size="12" font-family="Arial">Backend: Fastify + TypeScript</text>
+
+  <rect x="160" y="160" width="220" height="60" rx="6" fill="#fff7ed" stroke="#f97316"/>
+  <text x="180" y="195" font-size="12" font-family="Arial">Postgres (Data) + S3 (Images/Audio)</text>
+
+  <rect x="540" y="160" width="220" height="60" rx="6" fill="#f8fafc" stroke="#64748b"/>
+  <text x="560" y="195" font-size="12" font-family="Arial">Integrations: AfricasTalking, M-Pesa Daraja, PayPal</text>
+
+  <line x1="240" y1="90" x2="300" y2="90" stroke="#666" stroke-width="1"/>
+  <line x1="260" y1="190" x2="300" y2="190" stroke="#666" stroke-width="1"/>
+  <line x1="420" y1="120" x2="540" y2="180" stroke="#666" stroke-width="1"/>
+
+  <text x="20" y="240" font-size="11" font-family="Arial">Notes: background workers (Redis + BullMQ) handle webhooks, SMS queue, ML jobs. Admin UI for triage &amp; voucher management.</text>
+</svg>
