@@ -1,0 +1,25 @@
+{
+  "name": "apps-backend",
+  "private": true,
+  "version": "0.1.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint . --ext .ts,.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "fastify": "^4.23.0",
+    "@fastify/cors": "^8.2.0",
+    "@fastify/formbody": "^7.0.0",
+    "pg": "^8.8.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0"
+  }
+}

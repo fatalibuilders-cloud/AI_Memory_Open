@@ -1,0 +1,12 @@
+<svg width="800" height="450" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="20" y="40" font-size="18" font-family="Arial" fill="#111">MIT-FATALI — ER Diagram (simplified)</text>
+  <text x="40" y="90" font-size="12" font-family="Arial">users (id, phone, name)</text>
+  <text x="40" y="120" font-size="12" font-family="Arial">lessons (id, title, content_md)</text>
+  <text x="40" y="150" font-size="12" font-family="Arial">lesson_progress (user_id, lesson_id, status)</text>
+  <text x="40" y="180" font-size="12" font-family="Arial">goals (id, user_id, target_amount)</text>
+  <text x="40" y="210" font-size="12" font-family="Arial">submissions (id, user_id, image_url, status)</text>
+  <text x="40" y="240" font-size="12" font-family="Arial">triage_responses (id, submission_id, expert_id, advice)</text>
+  <text x="40" y="270" font-size="12" font-family="Arial">payments (id, provider_ref, status)</text>
+  <text x="40" y="300" font-size="12" font-family="Arial">vouchers (id, code, status)</text>
+</svg>

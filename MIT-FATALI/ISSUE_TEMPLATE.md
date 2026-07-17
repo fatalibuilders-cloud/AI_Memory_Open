@@ -1,0 +1,5 @@
+- good-first-issue: Setup backend linting and CI
+- good-first-issue: Add sample lesson content and audio file
+- good-first-issue: Implement mock payment flow for local dev
+- help-wanted: Design triage admin UI mockup
+- help-wanted: Write SMS templates and localization for Kiswahili
