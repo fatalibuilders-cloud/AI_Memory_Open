@@ -1,4 +1,26 @@
-# Deploying the FMS bot on a free Windows VPS
+# Deploying the FMS bot on a free VPS
+
+## Option A — OANDA mode on Linux (free forever, simplest)
+
+No Windows, no MT5. Create the Oracle Cloud Always-Free Ubuntu VM exactly as
+described in `pocket-option-bot/deploy/DEPLOY.md` (section 1), then:
+
+```bash
+ssh -i /path/to/key ubuntu@<PUBLIC_IP>
+sudo apt-get install -y git
+git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git
+cd AI_Memory_Open/fms-trading-bot
+bash deploy/setup-vps.sh
+nano .env      # TG_BOT_TOKEN, TG_PASSWORD, OANDA_* — keep OANDA_ENV=practice
+.venv/bin/python main.py            # foreground test; /login from your phone
+sudo systemctl start fms-bot
+journalctl -u fms-bot -f            # live logs
+```
+
+Both bots (this one and pocket-option-bot) fit comfortably on one free VM.
+Limitation: OANDA has forex + metals but no stocks — for stocks use Option B.
+
+## Option B — MT5 mode on a free Windows VPS
 
 The MetaTrader 5 Python API only runs on Windows, next to an installed MT5
 terminal. Two free routes:

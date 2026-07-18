@@ -17,8 +17,17 @@ import signal
 import sys
 
 from fmsbot.bot import TradingBot
-from fmsbot.broker.mt5 import MT5Broker
 from fmsbot.config import Settings
+
+
+def build_broker(settings: Settings):
+    if settings.broker == "oanda":
+        from fmsbot.broker.oanda import OandaBroker
+        return OandaBroker(settings.oanda_token, settings.oanda_account,
+                           settings.oanda_env)
+    from fmsbot.broker.mt5 import MT5Broker
+    return MT5Broker(settings.mt5_login, settings.mt5_password,
+                     settings.mt5_server, settings.mt5_path)
 
 
 def main() -> int:
@@ -35,9 +44,7 @@ def main() -> int:
             print(f"CONFIG ERROR: {p}", file=sys.stderr)
         return 2
 
-    broker = MT5Broker(settings.mt5_login, settings.mt5_password,
-                       settings.mt5_server, settings.mt5_path)
-    bot = TradingBot(settings, broker)
+    bot = TradingBot(settings, build_broker(settings))
 
     def _shutdown(signum, frame):  # noqa: ARG001
         bot.stop()
