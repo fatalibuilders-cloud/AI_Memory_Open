@@ -20,9 +20,12 @@ The AI cannot create repositories, so this one needs you:
 ### 2. Next build session
 - [x] ~~CORE-1.0 scaffold~~ **BUILT & VERIFIED 2026-07-16** (8/8 tests, lint, build, health check ✅) — [DONE] after repo migration
 - [x] ~~CORE-1.3 base app shell~~ **[DONE] 2026-07-16** (header/footer/pricing placeholder/error/loading/404, all routes verified live)
-- [ ] **CORE-2.0** — signup & login (pure [AI]; local dev DB, wired to hosted DB at CORE-1.2)
-- [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account (plain-language steps at that point)
-- [ ] **CORE-4.0/4.1** — project data model + input wizard (pure [AI])
+- [x] ~~CORE-2.0 signup & login~~ **[DONE] 2026-07-16** (argon2 + sessions + pages; 16/16 tests; live smoke test ✅; prod wiring at CORE-1.2)
+- [ ] **CORE-4.0/4.1** — project data model + input wizard (pure [AI]) — the heart of the product
+- [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
+- [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account
+- [ ] **MKT-1/MKT-2** — brand kit (from saved banner) + launch kit
+- [ ] Design task: align app theme to the navy brand banner (currently amber placeholder)
 
 ### Release 1.0 — Sellable Core (0%)
 **File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`

@@ -21,7 +21,7 @@
 | Epic | Name | Stories | Status |
 |:---:|:---|:---:|:---:|
 | 1 | Foundation & Infrastructure | 4 | In Progress (CORE-1.0 built & verified) |
-| 2 | Accounts & Access | 3 | Pending |
+| 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | Pending |
 | 5 | Calculators | 4 | Pending |
@@ -55,9 +55,10 @@ Mobile-first layout, navigation, theme (Fatalibuilders branding placeholder), er
 
 ## Epic 2: Accounts & Access
 
-**CORE-2.0 [AI] — Signup & login**
+**CORE-2.0 [AI] — Signup & login** `[DONE 2026-07-16 — prod wiring at CORE-1.2]`
 Email + password auth: argon2 hashing, secure httpOnly sessions, signup/login/logout flows, basic profile.
 *Acceptance:* full auth round-trip works in production; passwords never logged; auth unit tests pass.
+*Status note (2026-07-16):* Implemented with argon2id hashing, DB-backed sessions (30-day httpOnly cookies), zod validation, users+sessions schema with idempotent bootstrap DDL. DB layer auto-selects: DATABASE_URL → managed Postgres (prod), else embedded PGlite (dev/tests — real Postgres dialect). Routes: signup/login/logout/me. Pages: /signup, /login, /account (session-gated, shows entitlement + upgrade link). Verified: 16/16 tests (8 auth), lint, build, and live smoke test (signup→session→me→duplicate 409→wrong password 401→login→account gating). "Works in production" criterion completes when CORE-1.2 provisions the hosted DB.
 
 **CORE-2.1 [AI+Human] — Email verification & password reset**
 Transactional email provider (Resend or similar — free tier): `[Human]` owner creates the account and pastes the API key into hosting env vars per instructions; AI builds verify + reset flows.

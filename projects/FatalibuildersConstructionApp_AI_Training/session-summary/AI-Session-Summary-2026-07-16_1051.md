@@ -20,11 +20,15 @@
 
 - **(Continuation ~11:2x UTC)** Owner requested an automated marketing system. Consulted Marketing AGENT + Growth-n-Revenue advisor; created `Marketing/Marketing-Automation-Plan.md` (3-layer design: AI content engine now / distribution automation on owner accounts at launch / in-product growth loops inside R1 stories). MKT-1..5 queued in NextSteps. Owner also shared a brand banner (navy identity, "Build Better. Manage Smarter.") — the asset upload to the memory repo was declined by the owner at permission prompt; brand direction noted for the Brand Kit regardless.
 
+- **(Continuation ~13:22 UTC)** Owner approved saving the brand banner → stored at `assets/content-images/designandcontent/brand-banner-2026-07-16.png` (official design asset; navy identity, "Build Better. Manage Smarter." — theme alignment queued as design task).
+- **CORE-2.0 executed:** full auth — argon2id password hashing, DB-backed 30-day httpOnly sessions, zod validation; users+sessions schema with idempotent bootstrap DDL; dual-driver DB layer (DATABASE_URL→pg / else embedded PGlite, same Postgres dialect); API routes signup/login/logout/me; pages /signup, /login, /account (gated, shows entitlement). Fixed vitest `@/` alias. Verified: 16/16 tests, lint, build, live smoke test of every flow incl. duplicate-email 409, wrong-password 401, and anonymous redirect on /account.
+
 ## Stories Completed This Session
 | Story ID | Name | Status |
 |----------|------|--------|
 | CORE-1.0 | Scaffold the app repository | [IN-PROGRESS] — built & verified; awaiting repo migration |
 | CORE-1.3 | Base app shell | [DONE] |
+| CORE-2.0 | Signup & login | [DONE] — prod wiring completes at CORE-1.2 |
 
 ## Key Decisions
 | Decision | Rationale |

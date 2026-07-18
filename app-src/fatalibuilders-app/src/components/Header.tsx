@@ -13,6 +13,9 @@ export function Header() {
           <Link href="/pricing" className="text-stone-600 hover:text-stone-900">
             Pricing
           </Link>
+          <Link href="/account" className="text-stone-600 hover:text-stone-900">
+            Account
+          </Link>
           <Link
             href="/pricing"
             className="rounded-lg bg-amber-700 px-3 py-1.5 font-medium text-white hover:bg-amber-800"
