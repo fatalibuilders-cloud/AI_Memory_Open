@@ -1,14 +1,21 @@
 # FMS Trading Bot — Forex, Metals & Stocks with a Phone Remote
 
-An auto-trading bot for **Forex pairs, gold/silver, and stock CFDs** through
-**MetaTrader 5**, controlled entirely **from your phone** via a private
-Telegram bot: log in with a password, then start/stop trading, watch balance
-and positions, close trades, and get instant push notifications for every
-trade the bot opens or closes.
+An auto-trading bot for **Forex pairs, gold/silver, and stock CFDs**,
+controlled entirely **from your phone** via a private Telegram bot: log in
+with a password, then start/stop trading, watch balance and positions, close
+trades, and get instant push notifications for every trade the bot opens or
+closes.
 
 ```
- your phone (Telegram) ⇄ Telegram Bot API ⇄ this bot ⇄ MetaTrader 5 ⇄ your broker
+ your phone (Telegram) ⇄ Telegram Bot API ⇄ this bot ⇄ broker (MT5 or OANDA)
 ```
+
+Two interchangeable broker backends (`BROKER=` in `.env`):
+
+| Backend | Runs on | Markets |
+|---|---|---|
+| `mt5` (MetaTrader 5) | Windows only | forex, metals, stock CFDs |
+| `oanda` (REST API) | Linux / Mac / Windows | forex, metals |
 
 ## Why the bot doesn't literally run *on* the phone
 
@@ -36,7 +43,18 @@ control** with full authority over it. Same convenience, none of the fragility.
 
 ## Setup (once, ~20 minutes)
 
-### 1. Get an MT5 account
+Pick your broker backend first:
+
+- **Windows machine available, or you want stocks** → follow the MT5 path below.
+- **Linux/Mac (or a free Linux VPS)** → use OANDA: open a free practice
+  account at oanda.com, then in the account portal → *Manage API Access* →
+  generate a token. Put in `.env`: `BROKER=oanda`, `OANDA_API_TOKEN`,
+  `OANDA_ACCOUNT_ID` (looks like `101-001-1234567-001`), `OANDA_ENV=practice`,
+  and OANDA-style symbols such as `SYMBOLS=EUR_USD,XAU_USD`. Then skip
+  straight to step 2 (Telegram) — no MT5 needed, and on Linux
+  `deploy/setup-vps.sh` does the install + systemd service in one command.
+
+### 1. Get an MT5 account (MT5 path)
 
 Install [MetaTrader 5](https://www.metatrader5.com/) on a Windows PC/VPS and
 open a **demo account** with any MT5 broker (or use your existing broker if
@@ -121,15 +139,19 @@ fms-trading-bot/
     ├── telegram.py        # phone remote (stdlib, long-polling)
     ├── bot.py             # orchestrator
     └── broker/
-        ├── base.py        # Broker interface (add OANDA/Alpaca here later)
-        └── mt5.py         # MetaTrader 5 adapter
+        ├── base.py        # Broker interface
+        ├── mt5.py         # MetaTrader 5 adapter (Windows)
+        └── oanda.py       # OANDA v20 REST adapter (any OS)
 ```
 
 ## Running it 24/7 for free
 
-See [deploy/DEPLOY.md](deploy/DEPLOY.md) — AWS free-tier Windows (12 months)
-or your broker's free VPS, with `deploy/setup-windows.ps1` handling install,
-auto-start-on-boot and auto-restart-on-crash.
+See [deploy/DEPLOY.md](deploy/DEPLOY.md):
+
+- **MT5 mode** — AWS free-tier Windows (12 months) or your broker's free VPS;
+  `deploy/setup-windows.ps1` handles install, auto-start and crash-restart.
+- **OANDA mode** — Oracle Cloud Always-Free Linux VM (free forever);
+  `deploy/setup-vps.sh` does the same via systemd.
 
 ## Troubleshooting
 

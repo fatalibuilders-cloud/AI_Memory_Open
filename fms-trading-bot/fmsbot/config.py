@@ -43,11 +43,20 @@ class Settings:
     tg_password: str = ""             # password you type as /login <password>
     tg_state_file: str = "tg_state.json"  # persisted authorized chat ids
 
+    # --- Broker selection -------------------------------------------------
+    broker: str = "mt5"               # "mt5" (Windows; forex+metals+stocks)
+                                      # or "oanda" (any OS; forex+metals)
+
     # --- MetaTrader 5 ----------------------------------------------------
     mt5_login: int = 0
     mt5_password: str = ""
     mt5_server: str = ""
     mt5_path: str = ""                # optional path to terminal64.exe
+
+    # --- OANDA -------------------------------------------------------------
+    oanda_token: str = ""
+    oanda_account: str = ""
+    oanda_env: str = "practice"       # practice | live
 
     # --- Trading -----------------------------------------------------------
     symbols: list[str] = field(default_factory=lambda: ["EURUSD", "XAUUSD"])
@@ -83,10 +92,14 @@ class Settings:
             tg_token=os.environ.get("TG_BOT_TOKEN", "").strip(),
             tg_password=os.environ.get("TG_PASSWORD", "").strip(),
             tg_state_file=os.environ.get("TG_STATE_FILE", "tg_state.json").strip(),
+            broker=os.environ.get("BROKER", "mt5").strip().lower(),
             mt5_login=_i("MT5_LOGIN", 0),
             mt5_password=os.environ.get("MT5_PASSWORD", ""),
             mt5_server=os.environ.get("MT5_SERVER", "").strip(),
             mt5_path=os.environ.get("MT5_PATH", "").strip(),
+            oanda_token=os.environ.get("OANDA_API_TOKEN", "").strip(),
+            oanda_account=os.environ.get("OANDA_ACCOUNT_ID", "").strip(),
+            oanda_env=os.environ.get("OANDA_ENV", "practice").strip().lower(),
             symbols=symbols,
             timeframe=os.environ.get("TIMEFRAME", "M5").strip().upper(),
             history_bars=_i("HISTORY_BARS", 300),
@@ -114,8 +127,16 @@ class Settings:
             problems.append("TG_BOT_TOKEN missing — create a bot with @BotFather and paste its token.")
         if not self.tg_password or len(self.tg_password) < 6:
             problems.append("TG_PASSWORD missing/too short (min 6 chars) — this is your phone login password.")
-        if not self.mt5_login or not self.mt5_password or not self.mt5_server:
-            problems.append("MT5_LOGIN / MT5_PASSWORD / MT5_SERVER missing — use your MT5 account credentials.")
+        if self.broker == "mt5":
+            if not self.mt5_login or not self.mt5_password or not self.mt5_server:
+                problems.append("MT5_LOGIN / MT5_PASSWORD / MT5_SERVER missing — use your MT5 account credentials.")
+        elif self.broker == "oanda":
+            if not self.oanda_token or not self.oanda_account:
+                problems.append("OANDA_API_TOKEN / OANDA_ACCOUNT_ID missing — generate them in the OANDA portal.")
+            if self.oanda_env not in ("practice", "live"):
+                problems.append("OANDA_ENV must be 'practice' or 'live'.")
+        else:
+            problems.append(f"BROKER must be 'mt5' or 'oanda', got '{self.broker}'.")
         if not self.symbols:
             problems.append("SYMBOLS is empty.")
         if self.risk_pct <= 0 or self.risk_pct > 5:
