@@ -2,7 +2,7 @@
 
 > **SCOPE:** This file indexes sessions that modified the **AI Memory system itself** — its structure, standards, policies, shared resources, and cross-project infrastructure. This is NOT a project-level file. Project-specific sessions live in each project's own `Sessions.md`.
 
-**Last Updated:** —
+**Last Updated:** 2026-07-16
 
 ---
 
@@ -16,7 +16,15 @@ Before performing any root-level action (modifying standards, creating new proje
 
 | Session File | Date | Keywords |
 |-------------|------|----------|
-| *(populated during sessions)* | | |
+| `session-summary/AI-Session-Summary-2026-07-16_0728.md` | 2026-07-16 | staging, FatalibuildersConstructionApp, construction, software, project creation, agent distribution, autonomous, first session, vision draft, owner review |
+| `session-summary/AI-Session-Summary-2026-07-16_0908.md` | 2026-07-16 | setup, system configuration, owner, repository, fork, model preferences, keys deferred, standards, integrations, connectors |
+| `session-summary/AI-Session-Summary-2026-07-16_0945.md` | 2026-07-16 | API keys, guide, QuickBooks, security, first-time builder, onboarding, AliKeys.txt, roadmap |
+| `session-summary/AI-Session-Summary-2026-07-16_0959.md` | 2026-07-16 | Excel only, QuickBooks dropped, WhatsApp, calls, integration priorities, keys guide revision, no keys needed |
+| `session-summary/AI-Session-Summary-2026-07-16_1007.md` | 2026-07-16 | public product, pricing, lifetime access, login, payments, vision revision, advisor consultation, epics restructured |
+| `session-summary/AI-Session-Summary-2026-07-16_1019.md` | 2026-07-16 | core tool, calculators, 2D drawings, renders, structural, geotechnical, engineering liability, release phasing |
+| `session-summary/AI-Session-Summary-2026-07-16_1026.md` | 2026-07-16 | standards, Eurocodes, British Standards, US codes, KEBS, Kenya, code profiles, M-Pesa, geotechnical |
+| `session-summary/AI-Session-Summary-2026-07-16_1030.md` | 2026-07-16 | staging complete, worldwide market, residential, management features, PWA, tech stack, release plan, sign-off |
+| `session-summary/AI-Session-Summary-2026-07-16_1044.md` | 2026-07-16 | PROJECT_MEMORY_INIT, initialization, promotion, Release 1.0, Sellable Core, 29 stories, project workspace, staging archived |
 
 ---
 

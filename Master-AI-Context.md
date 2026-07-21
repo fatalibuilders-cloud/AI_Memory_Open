@@ -3,9 +3,10 @@
 **Document Purpose:** This is the primary operational context file for any AI assistant working on the **AI Memory system itself** — its structure, standards, policies, shared resources, cross-project coordination, and infrastructure. This is NOT a project-level context file. Each project has its own `Master-AI-Context.md` inside its `{ProjectName}_AI_Training/` folder.
 
 **Memory Design Version:** 1.1
-**Last Updated:** —
-**System Owner:** [Your Name] ([your@email.com])
-**Repository:** [Your forked repo URL — configured during setup]
+**Last Updated:** 2026-07-16
+**System Owner:** Eng Ali Ahmed (fatalibuilders@gmail.com)
+**Organization:** Fatali Builders
+**Repository:** https://github.com/fatalibuilders-cloud/AI_Memory_Open
 
 ---
 
@@ -39,7 +40,7 @@ The system operates at two levels:
 
 | Project | Folder | Type | Status | Description |
 |---------|--------|------|--------|-------------|
-| *(Your projects will appear here after staging and initialization)* | | | | |
+| FatalibuildersConstructionApp | `projects/FatalibuildersConstructionApp_AI_Training/` | Software (public product) | **ACTIVE — Release 1.0 "Sellable Core" (0%, 29 stories)** | Public Fatalibuilders app, $30 lifetime access, worldwide (launched from Kenya): project data in → 7 outputs (quantities, cost, labor, 2D drawings, renders, structural, geotech). Staging archive: `projects/staging/FatalibuildersConstructionApp/` |
 
 ---
 
@@ -154,17 +155,32 @@ CRM integration is configured during setup (`setup-AI-Memory.md`).
 
 ---
 
-## 8. Session History & Handover
+## 8. AI Model Preferences
 
-- **Latest Session:** *(populated after first session)*
-- **Latest Decisions:** *(populated after first session)*
+| Purpose | Model | Notes |
+|---------|-------|-------|
+| Primary | Claude (Anthropic) | Default for most tasks — used via Claude Code sessions on this repository |
+| Code Generation | Claude (Anthropic) | Used for software development sessions |
+| Writing & Communication | Claude (Anthropic) | Used for content, messaging, documentation |
+| Analysis & Research | Claude (Anthropic) | Used for research, data analysis, decision support |
+
+**All Available Models:** Claude (Anthropic). *(Other models can be registered later by re-running the model preferences step.)*
+
+**API Keys:** Not yet registered. Owner follows **`API-Keys-Guide.md`** (beginner-friendly, at repo root) to create keys when the build phase needs them, storing them in a local git-ignored `AliKeys.txt` (pattern `*Keys.txt` is already excluded by `.gitignore`).
+
+---
+
+## 9. Session History & Handover
+
+- **Latest Session:** `session-summary/AI-Session-Summary-2026-07-16_1044.md` — PROJECT_MEMORY_INIT executed; FatalibuildersConstructionApp promoted to full project with Release 1.0 planned (29 stories)
+- **Latest Decisions:** captured in the 1044 session summary (init decisions) and the project's own Key-Decisions.md going forward
 - **Master Indexes:** [Key-Decisions.md](Key-Decisions.md), [Sessions.md](Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](NextSteps.md)
 
 ---
 
-## 9. Key Operational Rules
+## 10. Key Operational Rules
 
 1. **Root copies of standards are authoritative.** When a standard is updated, the root copy is updated first, then propagated to all project `Standards and Policy/` folders.
 

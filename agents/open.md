@@ -14,9 +14,9 @@
 >    cd <path-to-AI_Memory>
 >    git pull origin main
 >    ```
->    - The canonical repo is **https://github.com/Qosil/AI_Memory_Open**
+>    - The canonical repo is **https://github.com/fatalibuilders-cloud/AI_Memory_Open** (this system's fork; upstream template is Qosil/AI_Memory_Open — never push there)
 >    - If you are in Cowork, the folder is already mounted — just confirm files are current.
->    - If the repo has not been cloned yet: `git clone https://github.com/Qosil/AI_Memory_Open.git`
+>    - If the repo has not been cloned yet: `git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git`
 >
 > 1. **Read Core Context Files:** Read these files to understand the system:
 >    - `AI_Memory_Open/Master-AI-Context.md` — System overview, project portfolio, folder structure, operational standards, shared resources, and session infrastructure
@@ -137,11 +137,11 @@ This protocol should be executed when the user says any of the following:
 
 ### Recent Projects (Last 5)
 *Updated during closure protocol based on last-modified date.*
-*(none yet — populated after project initialization)*
+1. `projects/FatalibuildersConstructionApp_AI_Training/` — **ACTIVE.** Public Fatalibuilders app ($30 lifetime, worldwide/Kenya). Initialized 2026-07-16; Release 1.0 "Sellable Core" planned (29 stories, 0%). Sessions use its own `agents/open.md`.
 
 ### Staging Projects (Last 5)
 *Updated during closure protocol based on last-modified date of folders inside `staging/`.*
-*(none yet — populated after project staging)*
+1. `projects/staging/FatalibuildersConstructionApp/` — **PROMOTED 2026-07-16** → see Recent Projects. Preserved as ideation archive.
 
 ### Main Folder Structure
 
@@ -179,6 +179,9 @@ This protocol should be executed when the user says any of the following:
 - `NextSteps.md`: System-level priority queue
 
 **Tools & Templates (3-Step Project Lifecycle):**
-- `setup-AI-Memory.md`: One-time first-run initialization protocol (Step 1)
+- `setup-AI-Memory.md`: One-time first-run initialization protocol (Step 1) — completed 2026-07-16
 - `staging.md`: Per-project ideation and planning protocol (Step 2)
 - `PROJECT_MEMORY_INIT.md`: Per-project full build protocol (Step 3)
+
+**Owner Guides:**
+- `API-Keys-Guide.md`: Beginner-friendly guide for creating and safely storing API keys (owner is a first-time app builder — keep guidance jargon-free)
