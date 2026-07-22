@@ -7,6 +7,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+def _clean_value(raw: str) -> str:
+    value = raw.strip()
+    if value[:1] in ('"', "'"):
+        return value.strip('"').strip("'")
+    # unquoted: drop inline comments ("0.5   # percent" -> "0.5");
+    # a '#' with no whitespace before it is kept (e.g. inside passwords)
+    for i in range(1, len(value)):
+        if value[i] == "#" and value[i - 1] in " \t":
+            return value[:i].strip()
+    return value
+
+
 def _load_dotenv(path: str | Path = ".env") -> None:
     p = Path(path)
     if not p.is_file():
@@ -16,7 +28,7 @@ def _load_dotenv(path: str | Path = ".env") -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        os.environ.setdefault(key.strip(), _clean_value(value))
 
 
 def _f(name: str, default: float) -> float:
