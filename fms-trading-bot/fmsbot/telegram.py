@@ -111,6 +111,10 @@ class TelegramRemote:
                     except Exception:
                         log.exception("Error handling %r", text)
             except Exception as exc:
+                if "timed out" in str(exc).lower():
+                    # routine long-poll timeout on a slow network — just re-poll
+                    log.debug("Long-poll timed out, re-polling.")
+                    continue
                 log.warning("Polling error (%s), retrying in 5s...", exc)
                 time.sleep(5)
 
