@@ -13,3 +13,6 @@ keys.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Node (tooling caches at repo root)
+node_modules/
