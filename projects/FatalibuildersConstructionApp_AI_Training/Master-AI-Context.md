@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~41% (12/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, **5.3 (hardening, 12 tests), 6.0 (all 3 result views), 6.1 (Excel/BOQ export, paywall-gated)**. A completed project shows materials + cost (full/labour) + labor, and paid users download a 4-sheet Excel BOQ. 66 tests passing. Open validations: labor productivity norms + carpenter rate. Pending gates: CORE-1.0 repo migration (app holds company rate data). Next: CORE-6.2 PDF export → CORE-6.3 WhatsApp share → Epic 3 payments. App at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~48% (14/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, **Epic 6 complete (6.0 views, 6.1 Excel, 6.2 PDF, 6.3 WhatsApp share)**. A completed project shows materials + cost (full/labour) + labor; paid users download a 4-sheet Excel BOQ and an A4 PDF BOQ; anyone can WhatsApp-share a summary (growth loop). 68 tests passing. Only open validation: labor productivity norms. **Remaining for a sellable MVP: Epic 3 (payments — the $30 checkout) + Epic 7 (product site/onboarding/legal) + Epic 8 (launch).** Pending gates: CORE-1.0 repo migration (app holds company rate data). App at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

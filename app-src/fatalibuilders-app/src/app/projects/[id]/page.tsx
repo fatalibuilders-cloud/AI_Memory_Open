@@ -6,7 +6,7 @@ import { readSessionCookie } from "@/lib/session-cookie";
 import { getProject } from "@/lib/projects";
 import { projectDataSchema, ROOF_TYPES, SOIL_TYPES, WALL_TYPES } from "@/lib/project-schema";
 import { computeMaterials } from "@/engines/materials/residential";
-import { computeCost } from "@/engines/cost";
+import { computeCost, formatKES } from "@/engines/cost";
 import { computeLabor } from "@/engines/labor";
 import { ResultsView } from "@/components/ResultsView";
 import { CostView } from "@/components/CostView";
@@ -58,7 +58,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </p>
       </div>
 
-      <ExportBar projectId={project.id} hasAccess={user.lifetimeAccess} />
+      {(() => {
+        const parsedForShare = projectDataSchema.safeParse(d);
+        const shareText = parsedForShare.success
+          ? `*${project.name}* — construction estimate\n` +
+            `${d.footprintLengthM}×${d.footprintWidthM}m, ${d.floors} floor(s)\n` +
+            `Estimated cost (full contract): ${formatKES(computeCost(parsedForShare.data).grandTotalFull)}\n\n` +
+            `Prepared with the Fatalibuilders Construction App — enter your project, get materials, costs & a build schedule. https://fatalibuilders.app`
+          : `Check out the Fatalibuilders Construction App — instant material, cost & labour estimates. https://fatalibuilders.app`;
+        return (
+          <ExportBar
+            projectId={project.id}
+            hasAccess={user.lifetimeAccess}
+            shareText={shareText}
+          />
+        );
+      })()}
 
       {(() => {
         const parsed = projectDataSchema.safeParse(d);

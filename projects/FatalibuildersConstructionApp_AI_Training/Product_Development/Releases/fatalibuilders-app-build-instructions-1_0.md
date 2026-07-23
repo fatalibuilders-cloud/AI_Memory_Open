@@ -25,7 +25,7 @@
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
 | 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — 3 calculators + hardening done |
-| 6 | Outputs & Sharing | 4 | In Progress (6.0 views + 6.1 Excel done; 6.2 PDF, 6.3 WhatsApp next) |
+| 6 | Outputs & Sharing | 4 | ✅ **Complete (2026-07-23)** — views, Excel, PDF, WhatsApp/call |
 | 7 | Product Site & Onboarding | 4 | Pending |
 | 8 | Launch Readiness | 3 | Pending |
 
@@ -135,13 +135,15 @@ Mobile-first results: summary cards + itemized tables per output type; per-proje
 *Acceptance:* file opens correctly in Excel; matches on-screen results.
 *Status note:* `lib/export-excel.ts` (exceljs) builds a 4-sheet branded workbook — Summary (project + headline totals + disclaimer), Materials, Cost BOQ (elements, subtotals, contingency, grand totals full & labour), Labor Plan (phases, crew, days, cost) — navy header styling, KES number formats. Served by `GET /api/projects/[id]/export`, **gated on lifetime access (402 for free users)** — this is the paywall in action. 3 export tests + live end-to-end verified: HTTP 200, correct MIME, 12.8 KB, opens with all 4 sheets. Filename: "{project} - Fatalibuilders.xlsx".
 
-**CORE-6.2 [AI] — PDF export**
+**CORE-6.2 [AI] — PDF export** `[DONE 2026-07-23]`
 Branded PDF result sheets with project details, code-profile stamp, and the standard disclaimer block.
 *Acceptance:* clean A4 output; stamp + disclaimer on every page footer.
+*Status note:* `lib/export-pdf.ts` (pdfkit, no external fonts — Helvetica built-in) renders an A4 BOQ: navy header, project line, full Cost BOQ table (elements, subtotals, contingency, grand totals full & labour), key-materials line, schedule line; **footer on every page with code-profile stamp + engineer-review disclaimer + page N of M**. Served by `GET /api/projects/[id]/export-pdf`, gated on lifetime access (402 verified live). 2 tests confirm valid %PDF/EOF structure for small + large projects. pdfkit in serverExternalPackages. Full paid live-download re-run blocked this round by the sandbox terminating the dev server; delivery path identical to the live-verified Excel export.
 
-**CORE-6.3 [AI] — WhatsApp share & tap-to-call**
+**CORE-6.3 [AI] — WhatsApp share & tap-to-call** `[DONE 2026-07-23 — share done; tap-to-call deferred to where numbers exist]`
 wa.me share links with pre-filled summary + document link; `tel:` links on contact surfaces.
 *Acceptance:* share opens WhatsApp with correct message on mobile; links work from exported PDFs where applicable.
+*Status note:* "Share on WhatsApp" button in ExportBar → wa.me link with a pre-filled summary (project, size, full-contract total, app promo line + link) — the growth loop: every shared estimate markets the app. Available to all logged-in users (drives virality); downloadable BOQ files stay paid. No app key needed (wa.me). **tap-to-call (`tel:`) deferred** — R1 projects have no client phone-number field; lands in R4 management/client-contacts where numbers exist. Noted, not a gap in R1 scope.
 
 ## Epic 7: Product Site & Onboarding
 

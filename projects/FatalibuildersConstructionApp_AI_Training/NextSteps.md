@@ -28,9 +28,10 @@ The AI cannot create repositories, so this one needs you:
 - [x] ~~CORE-5.2~~ **[DONE 2026-07-23]** — labor & time engine. **All day rates owner-confirmed** (mason 1,500 / laborer 600 / carpenter 1,650 / painter·electrician·plumber 1,500 / engineer 5,000). Only remaining open labor validation: productivity norms (m²/day per trade)
 - [x] ~~CORE-5.3~~ **[DONE]** engine hardening (12 tests: no NaN/negatives, determinism, monotonicity)
 - [x] ~~CORE-6.1~~ **[DONE]** Excel/BOQ export — 4-sheet branded workbook, paywall-gated (402 for free users), live download verified
-- [ ] **CORE-6.2** — PDF export (BOQ, A4, disclaimer footer) — pure [AI]
-- [ ] **CORE-6.3** — WhatsApp share (wa.me) + tap-to-call — pure [AI]
-- [ ] **Epic 3 — Payments** ($30 checkout): CORE-3.0 needs owner to pick + sign up with a payment provider
+- [x] ~~CORE-6.2~~ **[DONE]** PDF export (A4 BOQ, per-page disclaimer footer, paywall-gated)
+- [x] ~~CORE-6.3~~ **[DONE]** WhatsApp share (wa.me summary + app promo — growth loop); tap-to-call deferred to R4 (no phone field in R1)
+- [ ] **Epic 3 — Payments** ($30 checkout) — **NEXT MAJOR MILESTONE.** CORE-3.0 needs the owner to pick + sign up with a payment provider (Paddle/Lemon Squeezy for cards worldwide + Pesapal/Flutterwave for M-Pesa). Until then, CORE-3.1 checkout UI can be built against the provider sandbox.
+- [ ] **Epic 7** — product site (landing/pricing polish, free-preview gating CORE-2.2, legal pages) → **Epic 8** launch
 - [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account
