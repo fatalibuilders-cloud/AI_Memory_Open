@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~19% (5.5/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2; CORE-1.0 built & verified (awaiting repo migration). **Epic 4 (Project Data Input) complete 2026-07-23** — the wizard works end-to-end. App at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~24% (7/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2. Built, pending gates: CORE-1.0 (repo migration), CORE-5.0 (owner-engineer validation of assumptions + worked examples), CORE-6.0 (cost/labor views pending). **The app now computes and displays real material quantities end-to-end (2026-07-23).** App at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

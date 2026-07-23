@@ -13,12 +13,17 @@
 3. **CORE-4.2 [DONE] — Code profile selection.** Profile picker (Eurocode default / BS / KEBS) with plain-language explanation, persisted per project; engines consume it at CORE-5.
 4. **Verified:** 25/25 tests (9 new project/schema tests incl. ownership, draft merge, completion gate), lint clean, production build, live end-to-end flow (signup → create → autosave → complete → summary page → list badge).
 
+5. **CORE-5.0 built (awaiting owner validation):** full residential materials engine v0.2.0 — substructure, ground slab+BRC, walling (60% internal factor, openings deducted), ring beam/columns, suspended slabs, pitched/flat roofs, finishes. ~30 named ASSUMPTIONS constants; 9 worked-example tests (12×9 bungalow hand-verified + 4 variants).
+6. **CORE-6.0 materials view:** results render on the project page (totals cards, collapsible element tables, code-profile stamp, disclaimer). Live verified: completed project shows correct quantities (2170 blocks match hand calc).
+
 ## Stories Completed This Session
 | Story ID | Name | Status |
 |----------|------|--------|
 | CORE-4.0 | Unified project data model | [DONE] |
 | CORE-4.1 | Input wizard UI | [DONE] |
 | CORE-4.2 | Code profile selection | [DONE] (engine wiring lands with CORE-5) |
+| CORE-5.0 | Materials quantities engine | [IN-PROGRESS] — built + tested; owner-engineer validation pending |
+| CORE-6.0 | Results screens | [IN-PROGRESS] — materials view done |
 
 ## Key Decisions
 | Decision | Rationale |

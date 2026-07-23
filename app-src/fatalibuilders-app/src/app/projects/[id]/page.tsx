@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { AuthError, getUserBySession } from "@/lib/auth";
 import { readSessionCookie } from "@/lib/session-cookie";
 import { getProject } from "@/lib/projects";
-import { ROOF_TYPES, SOIL_TYPES, WALL_TYPES } from "@/lib/project-schema";
+import { projectDataSchema, ROOF_TYPES, SOIL_TYPES, WALL_TYPES } from "@/lib/project-schema";
+import { computeMaterials } from "@/engines/materials/residential";
+import { ResultsView } from "@/components/ResultsView";
 
 export const metadata: Metadata = { title: "Project — Fatalibuilders" };
 export const dynamic = "force-dynamic";
@@ -51,13 +53,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </p>
       </div>
 
-      <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-6 text-center">
-        <p className="font-semibold text-amber-900">Results are on the way</p>
-        <p className="mt-1 text-sm text-amber-800">
-          Material quantities, cost estimate and labor plan for this project arrive with the
-          calculators (next build phase). Your entered data is saved and will feed them directly —
-          nothing to re-enter.
-        </p>
+      {(() => {
+        const parsed = projectDataSchema.safeParse(d);
+        if (!parsed.success) {
+          return (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-6 text-center text-sm text-amber-800">
+              Some project details are missing — edit the project to complete them.
+            </div>
+          );
+        }
+        return (
+          <ResultsView result={computeMaterials(parsed.data)} codeProfile={parsed.data.codeProfile} />
+        );
+      })()}
+
+      <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-center text-sm text-stone-600">
+        Cost estimate and labor plan arrive next — they will use this same data automatically.
       </div>
     </main>
   );
