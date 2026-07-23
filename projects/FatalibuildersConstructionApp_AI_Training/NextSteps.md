@@ -25,7 +25,7 @@ The AI cannot create repositories, so this one needs you:
 - [x] ~~CORE-5.0~~ **[DONE — OWNER-VALIDATED 2026-07-23]** (corrections applied: foundation 1.5 m, plaster 15-20 mm; engine v0.2.1)
 - [~] **CORE-6.0** — materials results view done; cost/labor views land with CORE-5.1/5.2
 - [x] ~~CORE-5.1~~ **[DONE 2026-07-23]** — cost engine on the owner's 2026 rate card; BOQ format (Thika BOQ features retained); dual pricing full/labour-only; live in app
-- [x] ~~CORE-5.2~~ **[DONE 2026-07-23]** — labor & time engine. Day rates owner-updated 2026-07-23 (laborer 600, painter/electrician/plumber 1,500, consultation 5,000; electrician/plumber added for future services phases). **Remaining open validation: productivity norms + carpenter rate**
+- [x] ~~CORE-5.2~~ **[DONE 2026-07-23]** — labor & time engine. **All day rates owner-confirmed** (mason 1,500 / laborer 600 / carpenter 1,650 / painter·electrician·plumber 1,500 / engineer 5,000). Only remaining open labor validation: productivity norms (m²/day per trade)
 - [x] ~~CORE-5.3~~ **[DONE]** engine hardening (12 tests: no NaN/negatives, determinism, monotonicity)
 - [x] ~~CORE-6.1~~ **[DONE]** Excel/BOQ export — 4-sheet branded workbook, paywall-gated (402 for free users), live download verified
 - [ ] **CORE-6.2** — PDF export (BOQ, A4, disclaimer footer) — pure [AI]

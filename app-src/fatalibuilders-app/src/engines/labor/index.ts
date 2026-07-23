@@ -15,15 +15,15 @@ import { computeMaterials, type Measures } from "../materials/residential";
 export const LABOR_ENGINE_VERSION = "0.1.0";
 
 /**
- * KES per day — owner-confirmed 2026-07-23 (work log + rate update).
+ * KES per day — all owner-confirmed 2026-07-23 (work log + rate updates).
  * mason, engineer(consultation): from the AP Mosque work log.
- * laborer 600, painter 1,500, electrician 1,500, plumber 1,500: owner update.
- * carpenter: assumed = mason rate, pending owner confirmation.
+ * laborer 600, painter/electrician/plumber 1,500, carpenter 1,500-1,800
+ * (midpoint 1,650): owner updates.
  */
 export const DAY_RATES_KES = {
   mason: 1500,
   laborer: 600,
-  carpenter: 1500, // assumed = mason rate, pending owner confirmation
+  carpenter: 1650, // owner range 1,500-1,800; midpoint used
   painter: 1500,
   electrician: 1500,
   plumber: 1500,
