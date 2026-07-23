@@ -24,7 +24,7 @@
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
-| 5 | Calculators | 4 | In Progress (5.0 ✅ validated; 5.1 ✅ done; 5.2 next) |
+| 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — all 3 calculators + hardening pending |
 | 6 | Outputs & Sharing | 4 | In Progress (6.0 materials view done) |
 | 7 | Product Site & Onboarding | 4 | Pending |
 | 8 | Launch Readiness | 3 | Pending |
@@ -113,9 +113,10 @@ Itemized costs = quantities × unit rates; editable price tables (default Kenyan
 *Acceptance:* client-ready itemized estimate; owner confirms baseline rates realistic; totals reconcile with quantities.
 *Status note:* Owner supplied the **Fatali Builders Construction Rates 2026** card (120 work items, labour-only + labour+material KES) — 28 relevant rates embedded as the baseline (`engines/cost/index.ts`), source-cited. BOQ-format output modeled on the owner's Thika Mosque BOQ (elements → Item/Qty/Unit/Rate/Amount → collections → grand summary + 5% contingency). **Dual pricing modes: full contract vs labour-only.** 10 worked-example tests hand-checked (excavation 30,240; slab 183,600; walling 330,600). 12×9 bungalow: KES 2,727,077 full / 972,497 labour-only. Per-project editable rates deferred to a later story. Raw company files NOT stored (owner decision) — data extracted only.
 
-**CORE-5.2 [AI+Human] — Labor & time engine**
+**CORE-5.2 [AI+Human] — Labor & time engine** `[DONE 2026-07-23 — day rates from owner's work log; norms AWAITING OWNER VALIDATION]`
 Crew composition and duration estimates from productivity rates per trade; `[Human]` owner validates rates and a worked example.
 *Acceptance:* outputs crew size + duration per phase; owner-validated example passes.
+*Status note:* `engines/labor/` computes crew, duration and labor cost per phase (excavation, foundation/slab, walling, concrete frame, roofing, plaster/screed, painting) + weekly engineer supervision. **DAY_RATES_KES from the owner's AP Mosque work log: mason 1,500 / laborer 1,200 / engineer 5,000** (carpenter/painter assumed = 1,500/1,300, pending owner confirmation). LABOR_ASSUMPTIONS = named productivity norms (m²/mason-day etc.) exposed for owner review. 7 worked-example tests (12×9 bungalow: walling 10 days @ 54,000; excavation 5 days; ≈calendar weeks). LaborView on project page (duration/peak-crew/cost cards + phase table). **Open validation: confirm productivity norms + carpenter/painter day rates.**
 
 **CORE-5.3 [AI] — Engine hardening**
 Edge-case tests (tiny/large inputs, missing optionals), input bounds with friendly validation messages, deterministic outputs, engine versioning (results record engine + profile version).

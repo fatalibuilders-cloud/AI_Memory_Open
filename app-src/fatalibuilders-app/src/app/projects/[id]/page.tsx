@@ -7,8 +7,10 @@ import { getProject } from "@/lib/projects";
 import { projectDataSchema, ROOF_TYPES, SOIL_TYPES, WALL_TYPES } from "@/lib/project-schema";
 import { computeMaterials } from "@/engines/materials/residential";
 import { computeCost } from "@/engines/cost";
+import { computeLabor } from "@/engines/labor";
 import { ResultsView } from "@/components/ResultsView";
 import { CostView } from "@/components/CostView";
+import { LaborView } from "@/components/LaborView";
 
 export const metadata: Metadata = { title: "Project — Fatalibuilders" };
 export const dynamic = "force-dynamic";
@@ -71,13 +73,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               codeProfile={parsed.data.codeProfile}
             />
             <CostView result={computeCost(parsed.data)} />
+            <LaborView result={computeLabor(parsed.data)} />
           </>
         );
       })()}
-
-      <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-center text-sm text-stone-600">
-        Labor & time plan arrives next — it will use this same data automatically.
-      </div>
     </main>
   );
 }

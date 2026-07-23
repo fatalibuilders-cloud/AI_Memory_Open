@@ -20,6 +20,7 @@
 |------|----------|
 | `AI-Session-Summary-2026-07-16_1051.md` | CORE-1.0, scaffold, Next.js, PWA, materials engine, code profiles, tests, temporary location, repo migration, health endpoint |
 | `AI-Session-Summary-2026-07-23_1310.md` | CORE-4, data model, wizard, JSONB, zod, autosave, code profile picker, projects list, ownership, Epic 4 complete |
+| `AI-Session-Summary-2026-07-23_1310.md` (cont.) | CORE-5.0/5.1/5.2 calculators, materials engine, owner rate card, BOQ, cost engine, labor engine, day rates, results views, owner validation |
 | *(staging-phase sessions are indexed in `projects/staging/FatalibuildersConstructionApp/Sessions.md`)* | |
 
 ---

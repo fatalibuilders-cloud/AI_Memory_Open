@@ -25,7 +25,9 @@ The AI cannot create repositories, so this one needs you:
 - [x] ~~CORE-5.0~~ **[DONE — OWNER-VALIDATED 2026-07-23]** (corrections applied: foundation 1.5 m, plaster 15-20 mm; engine v0.2.1)
 - [~] **CORE-6.0** — materials results view done; cost/labor views land with CORE-5.1/5.2
 - [x] ~~CORE-5.1~~ **[DONE 2026-07-23]** — cost engine on the owner's 2026 rate card; BOQ format (Thika BOQ features retained); dual pricing full/labour-only; live in app
-- [ ] **CORE-5.2** — labor & time engine (day rates captured from the owner's work log: mason 1,500 / laborer 1,200 / structural engineer 5,000 KES/day)
+- [x] ~~CORE-5.2~~ **[DONE 2026-07-23]** — labor & time engine (crew/duration/cost per phase + supervision); day rates from owner's work log. **Open owner validation: productivity norms + carpenter/painter day rates**
+- [ ] **CORE-5.3** — engine hardening (edge cases, bounds, reproducibility) — pure [AI]
+- [ ] **CORE-6.1 / 6.2** — Excel + PDF export (BOQ format from the Thika template) — pure [AI]
 - [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account
