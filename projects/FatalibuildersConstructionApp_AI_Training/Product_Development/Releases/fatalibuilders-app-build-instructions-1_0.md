@@ -24,7 +24,7 @@
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
-| 5 | Calculators | 4 | In Progress (5.0 built, awaiting owner validation) |
+| 5 | Calculators | 4 | In Progress (5.0 ✅ owner-validated; 5.1 next) |
 | 6 | Outputs & Sharing | 4 | In Progress (6.0 materials view done) |
 | 7 | Product Site & Onboarding | 4 | Pending |
 | 8 | Launch Readiness | 3 | Pending |
@@ -102,7 +102,8 @@ Profile picker (Eurocode / BS / US / KEBS-Kenya) with plain-language description
 
 ## Epic 5: Calculators
 
-**CORE-5.0 [AI+Human] — Material quantities engine** `[IN-PROGRESS — built 2026-07-23; AWAITING OWNER-ENGINEER VALIDATION]`
+**CORE-5.0 [AI+Human] — Material quantities engine** `[DONE — OWNER-VALIDATED 2026-07-23]`
+*Validation record:* Owner-engineer corrections applied (foundation depth 1.5 m; plaster 15-20 mm → 17.5 mm midpoint); engine v0.2.1; tests updated (excavation 37.8 m³, foundation walling 717 blocks) — see `decisions-learnings/Key-Decisions-2026-07-23_1355.md`.
 *Status note:* Full residential rule-set implemented (`engines/materials/residential.ts`, engine v0.2.0): substructure (strip foundation, hardcore, DPM), ground slab + BRC, walling (external + 60% internal factor, openings deducted), ring beam + columns, suspended slabs (multi-storey), pitched (timber + cover) and flat concrete roofs, plaster/paint/screed/tiles, doors/windows. ~30 named ASSUMPTIONS constants exposed for review. 9 worked-example tests pass (12×9 bungalow hand-calculated: excavation 22.68 m³, footing 5.04 m³, slab 10.8 m³, net walls 165.3 m², 2170 blocks, roof 124.2 m²/684 m timber; two-storey, flat-roof, tiles, no-plaster variants). **Gate: owner validates ASSUMPTIONS + worked example → then [DONE].**
 TypeScript rule module: concrete (foundations/slabs/columns/beams), masonry blocks/bricks, steel reinforcement estimates, mortar/plaster, sand/ballast, paint, roofing — residential rules per Eurocode/BS conventions. `[Human]` owner-engineer validates worked examples (sample house → expected quantities) before sign-off.
 *Acceptance:* unit tests pass against ≥3 owner-validated worked examples; results itemized per element.

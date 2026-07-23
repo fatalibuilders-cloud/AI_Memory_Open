@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~24% (7/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2. Built, pending gates: CORE-1.0 (repo migration), CORE-5.0 (owner-engineer validation of assumptions + worked examples), CORE-6.0 (cost/labor views pending). **The app now computes and displays real material quantities end-to-end (2026-07-23).** App at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~26% (7.5/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2, **5.0 (owner-validated 2026-07-23, engine v0.2.1)**. Pending gates: CORE-1.0 (repo migration), CORE-6.0 (cost/labor views). Next: CORE-5.1 cost engine (needs owner's baseline Kenyan unit rates). App at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

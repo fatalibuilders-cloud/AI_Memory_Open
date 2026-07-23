@@ -13,11 +13,11 @@
 import type { ProjectData } from "@/lib/project-schema";
 import { concreteMaterials } from "./index";
 
-export const ENGINE_VERSION = "0.2.0";
+export const ENGINE_VERSION = "0.2.1";
 
 export const ASSUMPTIONS = {
   // Substructure
-  FOUNDATION_DEPTH_M: 0.9, // strip foundation depth below ground
+  FOUNDATION_DEPTH_M: 1.5, // strip foundation depth — owner-engineer correction 2026-07-23 (was 0.9)
   FOOTING_WIDTH_M: 0.6,
   FOOTING_THICKNESS_M: 0.2, // mass concrete strip footing (1:3:6)
   HARDCORE_THICKNESS_M: 0.15,
@@ -46,7 +46,7 @@ export const ASSUMPTIONS = {
   ROOF_TIMBER_M_PER_M2: 5.5, // running metres of timber per m² pitched roof
   FLAT_ROOF_SCREED_THICKNESS_M: 0.032,
   // Finishes
-  PLASTER_THICKNESS_M: 0.012, // 12 mm per face, 1:4 mortar
+  PLASTER_THICKNESS_M: 0.0175, // owner-engineer spec 2026-07-23: 15-20 mm per face (midpoint used), 1:4 mortar
   PAINT_L_PER_M2: 0.35, // two coats
   SCREED_THICKNESS_M: 0.032, // 1:3 floor screed
   TILE_ADHESIVE_KG_PER_M2: 5,

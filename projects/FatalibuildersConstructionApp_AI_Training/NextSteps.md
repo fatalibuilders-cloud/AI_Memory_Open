@@ -22,7 +22,7 @@ The AI cannot create repositories, so this one needs you:
 - [x] ~~CORE-1.3 base app shell~~ **[DONE] 2026-07-16** (header/footer/pricing placeholder/error/loading/404, all routes verified live)
 - [x] ~~CORE-2.0 signup & login~~ **[DONE] 2026-07-16** (argon2 + sessions + pages; 16/16 tests; live smoke test ✅; prod wiring at CORE-1.2)
 - [x] ~~CORE-4.0/4.1/4.2~~ **[DONE] 2026-07-23 — Epic 4 complete.** Data model + 6-step wizard + code profiles; 25/25 tests; live end-to-end verified
-- [~] **CORE-5.0 built 2026-07-23 — OWNER VALIDATION NEEDED:** review the ASSUMPTIONS table (engines/materials/residential.ts) and the 12×9 bungalow worked example; confirm or correct → story [DONE]
+- [x] ~~CORE-5.0~~ **[DONE — OWNER-VALIDATED 2026-07-23]** (corrections applied: foundation 1.5 m, plaster 15-20 mm; engine v0.2.1)
 - [~] **CORE-6.0** — materials results view done; cost/labor views land with CORE-5.1/5.2
 - [ ] **CORE-5.1** — cost estimation engine (needs owner-approved baseline Kenyan unit rates)
 - [ ] **CORE-5.2** — labor & time engine

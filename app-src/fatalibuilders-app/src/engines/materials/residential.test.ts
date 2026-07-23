@@ -3,10 +3,12 @@ import type { ProjectData } from "@/lib/project-schema";
 import { computeMaterials } from "./residential";
 
 /**
- * WORKED EXAMPLE 1 — 12 × 9 m bungalow (pending owner-engineer sign-off).
+ * WORKED EXAMPLE 1 — 12 × 9 m bungalow.
+ * Owner-engineer review 2026-07-23: foundation depth corrected to 1.5 m,
+ * plaster set to 15-20 mm (midpoint 17.5 mm used).
  * Hand calculations:
  *   perimeter = 2(12+9) = 42 m ; footprint = 108 m²
- *   excavation = 42 × 0.6 × 0.9 = 22.68 m³
+ *   excavation = 42 × 0.6 × 1.5 = 37.8 m³
  *   footing concrete = 42 × 0.6 × 0.2 = 5.04 m³
  *   ground slab = 108 × 0.1 = 10.8 m³
  *   external walls gross = 42 × 2.8 = 117.6 m² ; internal = 70.56 m²
@@ -41,9 +43,11 @@ describe("residential materials engine — 12×9 bungalow worked example", () =>
   const item = (sec: string, label: string) =>
     byTitle(sec).items.find((i) => i.label === label)!.quantity;
 
-  it("computes substructure quantities", () => {
-    expect(item("Substructure", "Excavation")).toBeCloseTo(22.7, 1);
+  it("computes substructure quantities (1.5 m foundation)", () => {
+    expect(item("Substructure", "Excavation")).toBeCloseTo(37.8, 1);
     expect(item("Substructure", "Footing concrete (1:3:6)")).toBeCloseTo(5, 1);
+    // foundation walling: 42 m × (1.5 − 0.2) m = 54.6 m² → ceil(54.6 × 12.5 × 1.05) = 717 blocks
+    expect(item("Substructure", "Foundation walling blocks")).toBe(717);
   });
 
   it("computes the ground slab", () => {
