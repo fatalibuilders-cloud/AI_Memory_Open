@@ -10,6 +10,7 @@ free DEMO account: test there first.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
 
 from .base import Bar, Broker, BrokerError, OrderReceipt, Position
@@ -51,6 +52,14 @@ class MT5Broker(Broker):
         if info is None:
             raise BrokerError(f"MT5 login failed: {mt5.last_error()}")
         self.mt5 = mt5
+        # wait until the terminal is actually connected to the trade server —
+        # market-data calls fail with 'Terminal: Call failed' before that
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            ti = mt5.terminal_info()
+            if ti is not None and ti.connected:
+                break
+            time.sleep(0.5)
         log.info("MT5 connected: account %s (%s), balance %.2f %s, leverage 1:%s%s",
                  info.login, self.server, info.balance, info.currency, info.leverage,
                  " [DEMO]" if getattr(info, "trade_mode", 1) == 0 else "")
@@ -86,12 +95,32 @@ class MT5Broker(Broker):
         tf = _TIMEFRAMES.get(timeframe)
         if tf is None:
             raise BrokerError(f"Unsupported timeframe {timeframe}")
-        mt5.symbol_select(symbol, True)
+        if not mt5.symbol_select(symbol, True):
+            raise BrokerError(
+                f"Symbol {symbol} does not exist on this account.{self._suggest(symbol)}")
         rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
         if rates is None or len(rates) == 0:
-            raise BrokerError(f"No bars for {symbol}: {mt5.last_error()}")
+            # right after (re)connect the terminal may still be syncing history
+            time.sleep(3)
+            rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
+        if rates is None or len(rates) == 0:
+            raise BrokerError(
+                f"No bars for {symbol}: {mt5.last_error()}.{self._suggest(symbol)}")
         return [Bar(int(r["time"]), float(r["open"]), float(r["high"]),
                     float(r["low"]), float(r["close"])) for r in rates]
+
+    def _suggest(self, symbol: str) -> str:
+        """Name near-miss symbols (brokers often add suffixes, e.g. EURUSDm)."""
+        try:
+            base = symbol[:6]
+            matches = [s.name for s in (self.mt5.symbols_get(f"*{base}*") or [])]
+        except Exception:
+            return ""
+        matches = [m for m in matches if m != symbol][:6]
+        if matches:
+            return (f" This broker offers similar symbols: {', '.join(matches)} — "
+                    f"update SYMBOLS in .env accordingly.")
+        return ""
 
     # -- trading ----------------------------------------------------------------
 
