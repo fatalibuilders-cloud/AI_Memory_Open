@@ -14,13 +14,20 @@ import { computeMaterials, type Measures } from "../materials/residential";
 
 export const LABOR_ENGINE_VERSION = "0.1.0";
 
-/** KES per day. Mason/laborer/engineer from the owner's work log; carpenter/painter pending owner confirmation. */
+/**
+ * KES per day — owner-confirmed 2026-07-23 (work log + rate update).
+ * mason, engineer(consultation): from the AP Mosque work log.
+ * laborer 600, painter 1,500, electrician 1,500, plumber 1,500: owner update.
+ * carpenter: assumed = mason rate, pending owner confirmation.
+ */
 export const DAY_RATES_KES = {
   mason: 1500,
-  laborer: 1200,
+  laborer: 600,
   carpenter: 1500, // assumed = mason rate, pending owner confirmation
-  painter: 1300, // assumed, pending owner confirmation
-  engineer: 5000,
+  painter: 1500,
+  electrician: 1500,
+  plumber: 1500,
+  engineer: 5000, // "consultation" per owner
 } as const;
 
 export type Role = keyof typeof DAY_RATES_KES;

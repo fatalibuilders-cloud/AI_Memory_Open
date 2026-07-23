@@ -6,7 +6,7 @@ import { computeLabor } from "./index";
  * Worked example — same 12 × 9 m bungalow.
  * Hand checks:
  *   Walling: 165.3 m² ÷ (9 m²/mason-day × 2 masons) = 9.18 → 10 days
- *     crew cost/day = 2×1500 + 2×1200 = 5,400 → phase cost 54,000
+ *     crew cost/day = 2×1500 + 2×600 = 4,200 → phase cost 42,000 (laborer 600)
  *   Excavation: 37.8 m³ ÷ (2 m³/day × 4 laborers) = 4.72 → 5 days
  *   Painting: (both faces of 165.3 m² net) ÷ (40 × 2) → 331 m²/80 = 4.13 → 5 days
  */
@@ -38,7 +38,7 @@ describe("labor engine — 12×9 bungalow worked example", () => {
   it("computes walling duration and cost from day rates", () => {
     const walling = get(result, "Walling");
     expect(walling.durationDays).toBe(10);
-    expect(walling.laborCostKES).toBe(10 * (2 * 1500 + 2 * 1200)); // 54,000
+    expect(walling.laborCostKES).toBe(10 * (2 * 1500 + 2 * 600)); // 42,000 (laborer 600)
   });
 
   it("computes excavation duration", () => {
