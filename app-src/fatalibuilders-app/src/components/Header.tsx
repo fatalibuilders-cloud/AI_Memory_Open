@@ -10,6 +10,9 @@ export function Header() {
           <span>Fatalibuilders</span>
         </Link>
         <nav className="flex items-center gap-4 text-sm">
+          <Link href="/projects" className="text-stone-600 hover:text-stone-900">
+            Projects
+          </Link>
           <Link href="/pricing" className="text-stone-600 hover:text-stone-900">
             Pricing
           </Link>

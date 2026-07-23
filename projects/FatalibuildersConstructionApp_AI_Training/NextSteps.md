@@ -21,7 +21,9 @@ The AI cannot create repositories, so this one needs you:
 - [x] ~~CORE-1.0 scaffold~~ **BUILT & VERIFIED 2026-07-16** (8/8 tests, lint, build, health check ✅) — [DONE] after repo migration
 - [x] ~~CORE-1.3 base app shell~~ **[DONE] 2026-07-16** (header/footer/pricing placeholder/error/loading/404, all routes verified live)
 - [x] ~~CORE-2.0 signup & login~~ **[DONE] 2026-07-16** (argon2 + sessions + pages; 16/16 tests; live smoke test ✅; prod wiring at CORE-1.2)
-- [ ] **CORE-4.0/4.1** — project data model + input wizard (pure [AI]) — the heart of the product
+- [x] ~~CORE-4.0/4.1/4.2~~ **[DONE] 2026-07-23 — Epic 4 complete.** Data model + 6-step wizard + code profiles; 25/25 tests; live end-to-end verified
+- [ ] **CORE-5.0** — materials quantities engine (full residential rule-set) — [AI+Human]: owner-engineer validates worked examples before sign-off
+- [ ] **CORE-6.0** — results screens (can land with CORE-5.0 to make results visible)
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account
 - [ ] **MKT-1/MKT-2** — brand kit (from saved banner) + launch kit

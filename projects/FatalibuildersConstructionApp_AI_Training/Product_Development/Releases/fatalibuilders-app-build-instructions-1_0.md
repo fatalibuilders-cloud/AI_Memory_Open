@@ -23,7 +23,7 @@
 | 1 | Foundation & Infrastructure | 4 | In Progress (CORE-1.0 built & verified) |
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
-| 4 | Project Data Input (Residential) | 3 | Pending |
+| 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
 | 5 | Calculators | 4 | Pending |
 | 6 | Outputs & Sharing | 4 | Pending |
 | 7 | Product Site & Onboarding | 4 | Pending |
@@ -88,15 +88,15 @@ USD $30 with KES equivalent (and provider-localized prices where supported); pos
 
 ## Epic 4: Project Data Input (Residential)
 
-**CORE-4.0 [AI] — Unified project data model**
+**CORE-4.0 [AI] — Unified project data model** `[DONE 2026-07-23]`
 DB schema + TypeScript types for the residential input model: location, code profile, plot/building dimensions, floors, rooms (type + dimensions), wall/finish/roof material preferences, soil type (optional). Designed to feed ALL seven outputs (R2/R3 fields included but optional).
 *Acceptance:* schema migrated; model validated with zod (or equivalent); documented in module-map.md.
 
-**CORE-4.1 [AI] — Input wizard UI**
+**CORE-4.1 [AI] — Input wizard UI** `[DONE 2026-07-23]`
 Mobile-first step-by-step wizard (project basics → dimensions → floors/rooms → materials → review); draft autosave; edit any step later.
 *Acceptance:* a full residential project can be entered on a phone in under 10 minutes; drafts persist across sessions.
 
-**CORE-4.2 [AI] — Code profile selection**
+**CORE-4.2 [AI] — Code profile selection** `[DONE 2026-07-23 — engines consume the stored profile at CORE-5]`
 Profile picker (Eurocode / BS / US / KEBS-Kenya) with plain-language descriptions; default suggested from country; stored per project; stamped through to every output.
 *Acceptance:* profile selectable and persisted; downstream engines receive it; UI explains what a code profile is.
 

@@ -132,8 +132,8 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ## 9. Session History & Handover
 
-- **Latest Summary:** `session-summary/AI-Session-Summary-2026-07-16_1051.md` — first build session: CORE-1.0 scaffolded & verified
-- **Latest Decisions:** `decisions-learnings/Key-Decisions-2026-07-16_1051.md` — temporary in-repo scaffold; engine baseline conventions pending owner validation
+- **Latest Summary:** `session-summary/AI-Session-Summary-2026-07-23_1310.md` — Epic 4 complete: data model + wizard + code profiles
+- **Latest Decisions:** in the 2026-07-23 summary (JSONB+zod model, footprint-only-required defaults) and `decisions-learnings/Key-Decisions-2026-07-16_1051.md`
 - **Master Indexes:** [Key-Decisions.md](./Key-Decisions.md), [Sessions.md](./Sessions.md)
 - **Risk Registry:** [Risk-Registry.md](./Risk-Registry.md)
 - **Next Steps:** [NextSteps.md](./NextSteps.md)
@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~10% (3/29) — CORE-1.0 built & verified (awaiting repo migration); CORE-1.3 app shell [DONE]; CORE-2.0 signup & login [DONE] 2026-07-16. App at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~19% (5.5/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2; CORE-1.0 built & verified (awaiting repo migration). **Epic 4 (Project Data Input) complete 2026-07-23** — the wizard works end-to-end. App at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

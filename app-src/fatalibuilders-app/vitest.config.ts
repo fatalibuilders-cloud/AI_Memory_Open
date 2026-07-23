@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    // Each test gets a fresh embedded PGlite database and argon2 hashing is
+    // deliberately slow — allow generous time per test.
+    testTimeout: 30000,
   },
 });
