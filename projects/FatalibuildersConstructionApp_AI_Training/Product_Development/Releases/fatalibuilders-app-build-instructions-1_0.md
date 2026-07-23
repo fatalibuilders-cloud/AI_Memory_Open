@@ -24,7 +24,7 @@
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
-| 5 | Calculators | 4 | In Progress (5.0 ✅ owner-validated; 5.1 next) |
+| 5 | Calculators | 4 | In Progress (5.0 ✅ validated; 5.1 ✅ done; 5.2 next) |
 | 6 | Outputs & Sharing | 4 | In Progress (6.0 materials view done) |
 | 7 | Product Site & Onboarding | 4 | Pending |
 | 8 | Launch Readiness | 3 | Pending |
@@ -108,9 +108,10 @@ Profile picker (Eurocode / BS / US / KEBS-Kenya) with plain-language description
 TypeScript rule module: concrete (foundations/slabs/columns/beams), masonry blocks/bricks, steel reinforcement estimates, mortar/plaster, sand/ballast, paint, roofing — residential rules per Eurocode/BS conventions. `[Human]` owner-engineer validates worked examples (sample house → expected quantities) before sign-off.
 *Acceptance:* unit tests pass against ≥3 owner-validated worked examples; results itemized per element.
 
-**CORE-5.1 [AI+Human] — Cost estimation engine**
+**CORE-5.1 [AI+Human] — Cost estimation engine** `[DONE 2026-07-23 — built on the owner's 2026 rate card]`
 Itemized costs = quantities × unit rates; editable price tables (default Kenyan baseline `[Human]` owner provides/approves; user-adjustable rates per project); currency display.
 *Acceptance:* client-ready itemized estimate; owner confirms baseline rates realistic; totals reconcile with quantities.
+*Status note:* Owner supplied the **Fatali Builders Construction Rates 2026** card (120 work items, labour-only + labour+material KES) — 28 relevant rates embedded as the baseline (`engines/cost/index.ts`), source-cited. BOQ-format output modeled on the owner's Thika Mosque BOQ (elements → Item/Qty/Unit/Rate/Amount → collections → grand summary + 5% contingency). **Dual pricing modes: full contract vs labour-only.** 10 worked-example tests hand-checked (excavation 30,240; slab 183,600; walling 330,600). 12×9 bungalow: KES 2,727,077 full / 972,497 labour-only. Per-project editable rates deferred to a later story. Raw company files NOT stored (owner decision) — data extracted only.
 
 **CORE-5.2 [AI+Human] — Labor & time engine**
 Crew composition and duration estimates from productivity rates per trade; `[Human]` owner validates rates and a worked example.

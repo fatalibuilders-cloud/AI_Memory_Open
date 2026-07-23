@@ -24,8 +24,9 @@ The AI cannot create repositories, so this one needs you:
 - [x] ~~CORE-4.0/4.1/4.2~~ **[DONE] 2026-07-23 — Epic 4 complete.** Data model + 6-step wizard + code profiles; 25/25 tests; live end-to-end verified
 - [x] ~~CORE-5.0~~ **[DONE — OWNER-VALIDATED 2026-07-23]** (corrections applied: foundation 1.5 m, plaster 15-20 mm; engine v0.2.1)
 - [~] **CORE-6.0** — materials results view done; cost/labor views land with CORE-5.1/5.2
-- [ ] **CORE-5.1** — cost estimation engine (needs owner-approved baseline Kenyan unit rates)
-- [ ] **CORE-5.2** — labor & time engine
+- [x] ~~CORE-5.1~~ **[DONE 2026-07-23]** — cost engine on the owner's 2026 rate card; BOQ format (Thika BOQ features retained); dual pricing full/labour-only; live in app
+- [ ] **CORE-5.2** — labor & time engine (day rates captured from the owner's work log: mason 1,500 / laborer 1,200 / structural engineer 5,000 KES/day)
+- [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account
 - [ ] **MKT-1/MKT-2** — brand kit (from saved banner) + launch kit

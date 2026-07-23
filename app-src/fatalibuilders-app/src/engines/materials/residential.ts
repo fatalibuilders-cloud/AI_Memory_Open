@@ -80,10 +80,46 @@ export interface MaterialsTotals {
   paintLitres: number;
 }
 
+/** Machine-readable measured quantities — consumed by the cost engine. */
+export interface Measures {
+  footprintM2: number;
+  perimeterM: number;
+  excavationM3: number;
+  backfillM3: number;
+  footingConcreteM3: number;
+  foundationWallM2: number;
+  hardcoreM2: number;
+  blindingM2: number;
+  dpmM2: number;
+  groundSlabM3: number;
+  suspendedSlabM3: number;
+  slabFormworkM2: number;
+  ringBeamM3: number;
+  columnConcreteM3: number;
+  steelKg: number;
+  wallNetM2: number;
+  wallThicknessMm: number;
+  wallIsStone: boolean;
+  lintelM: number;
+  pitchedRoofM2: number;
+  roofCoverM2: number;
+  flatRoofM3: number;
+  flatRoofWaterproofM2: number;
+  plasterExtM2: number;
+  plasterIntM2: number;
+  paintExtM2: number;
+  paintIntM2: number;
+  screedM2: number;
+  tilesM2: number;
+  doorsNo: number;
+  windowsM2: number;
+}
+
 export interface MaterialsResult {
   engineVersion: string;
   sections: MaterialsSection[];
   totals: MaterialsTotals;
+  measures: Measures;
   assumptions: typeof ASSUMPTIONS;
 }
 
@@ -331,5 +367,46 @@ export function computeMaterials(d: ProjectData): MaterialsResult {
   totals.roofCoverM2 = r1(totals.roofCoverM2);
   totals.paintLitres = Math.ceil(totals.paintLitres);
 
-  return { engineVersion: ENGINE_VERSION, sections, totals, assumptions: A };
+  // Machine-readable measures for the cost engine.
+  const upperSlabVolTotal = d.floors > 1 ? footprint * A.UPPER_SLAB_THICKNESS_M * (d.floors - 1) : 0;
+  const externalFaceArea = Math.max(externalGross - openings / 2, 0); // openings shared between faces
+  const plasterExt = d.plasterBothSides ? externalFaceArea : 0;
+  const plasterInt = d.plasterBothSides ? Math.max(netWallArea * 2 - externalFaceArea, 0) : 0;
+  const paintableExt = externalFaceArea;
+  const paintableInt = Math.max((d.plasterBothSides ? netWallArea * 2 : netWallArea) - externalFaceArea, 0);
+  const measures: Measures = {
+    footprintM2: footprint,
+    perimeterM: perimeter,
+    excavationM3: excavation,
+    backfillM3: excavation * 0.5, // est.: half of excavated volume returned as backfill
+    footingConcreteM3: footingVol,
+    foundationWallM2: foundationWallArea,
+    hardcoreM2: footprint,
+    blindingM2: footprint,
+    dpmM2: footprint * 1.1,
+    groundSlabM3: groundSlabVol,
+    suspendedSlabM3: upperSlabVolTotal + (flatRoof ? footprint * A.UPPER_SLAB_THICKNESS_M : 0),
+    slabFormworkM2: footprint * (d.floors - 1) + (flatRoof ? footprint : 0),
+    ringBeamM3: ringBeamVol,
+    columnConcreteM3: columnVol,
+    steelKg: totals.steelKg,
+    wallNetM2: netWallArea,
+    wallThicknessMm: d.wallThicknessMm,
+    wallIsStone: d.wallType === "natural_stone",
+    lintelM: (d.doorsCount * 0.9 + d.windowsCount * 1.2) * 1.3, // opening widths + bearing
+    pitchedRoofM2: flatRoof ? 0 : footprint * A.PITCH_AREA_FACTOR,
+    roofCoverM2: totals.roofCoverM2,
+    flatRoofM3: flatRoof ? footprint * A.UPPER_SLAB_THICKNESS_M : 0,
+    flatRoofWaterproofM2: flatRoof ? footprint * 1.1 : 0,
+    plasterExtM2: plasterExt,
+    plasterIntM2: plasterInt,
+    paintExtM2: d.paint ? paintableExt : 0,
+    paintIntM2: d.paint ? paintableInt : 0,
+    screedM2: d.floorFinish === "screed" ? footprint * d.floors : 0,
+    tilesM2: d.floorFinish === "ceramic_tiles" ? footprint * d.floors : 0,
+    doorsNo: d.doorsCount,
+    windowsM2: d.windowsCount * A.WINDOW_AREA_M2,
+  };
+
+  return { engineVersion: ENGINE_VERSION, sections, totals, measures, assumptions: A };
 }

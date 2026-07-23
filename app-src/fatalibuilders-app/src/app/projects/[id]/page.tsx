@@ -6,7 +6,9 @@ import { readSessionCookie } from "@/lib/session-cookie";
 import { getProject } from "@/lib/projects";
 import { projectDataSchema, ROOF_TYPES, SOIL_TYPES, WALL_TYPES } from "@/lib/project-schema";
 import { computeMaterials } from "@/engines/materials/residential";
+import { computeCost } from "@/engines/cost";
 import { ResultsView } from "@/components/ResultsView";
+import { CostView } from "@/components/CostView";
 
 export const metadata: Metadata = { title: "Project — Fatalibuilders" };
 export const dynamic = "force-dynamic";
@@ -63,12 +65,18 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           );
         }
         return (
-          <ResultsView result={computeMaterials(parsed.data)} codeProfile={parsed.data.codeProfile} />
+          <>
+            <ResultsView
+              result={computeMaterials(parsed.data)}
+              codeProfile={parsed.data.codeProfile}
+            />
+            <CostView result={computeCost(parsed.data)} />
+          </>
         );
       })()}
 
       <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-center text-sm text-stone-600">
-        Cost estimate and labor plan arrive next — they will use this same data automatically.
+        Labor & time plan arrives next — it will use this same data automatically.
       </div>
     </main>
   );
