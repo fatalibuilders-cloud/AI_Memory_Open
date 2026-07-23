@@ -104,6 +104,7 @@ class TradingBot:
 
         signal = self.strategy.signal(closed)
         if signal is None:
+            log.debug("%s: candle closed @ %.5f — no signal", symbol, closed[-1].close)
             return
 
         balance = self.broker.balance()
