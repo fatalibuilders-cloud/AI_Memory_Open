@@ -26,8 +26,11 @@ The AI cannot create repositories, so this one needs you:
 - [~] **CORE-6.0** — materials results view done; cost/labor views land with CORE-5.1/5.2
 - [x] ~~CORE-5.1~~ **[DONE 2026-07-23]** — cost engine on the owner's 2026 rate card; BOQ format (Thika BOQ features retained); dual pricing full/labour-only; live in app
 - [x] ~~CORE-5.2~~ **[DONE 2026-07-23]** — labor & time engine. Day rates owner-updated 2026-07-23 (laborer 600, painter/electrician/plumber 1,500, consultation 5,000; electrician/plumber added for future services phases). **Remaining open validation: productivity norms + carpenter rate**
-- [ ] **CORE-5.3** — engine hardening (edge cases, bounds, reproducibility) — pure [AI]
-- [ ] **CORE-6.1 / 6.2** — Excel + PDF export (BOQ format from the Thika template) — pure [AI]
+- [x] ~~CORE-5.3~~ **[DONE]** engine hardening (12 tests: no NaN/negatives, determinism, monotonicity)
+- [x] ~~CORE-6.1~~ **[DONE]** Excel/BOQ export — 4-sheet branded workbook, paywall-gated (402 for free users), live download verified
+- [ ] **CORE-6.2** — PDF export (BOQ, A4, disclaimer footer) — pure [AI]
+- [ ] **CORE-6.3** — WhatsApp share (wa.me) + tap-to-call — pure [AI]
+- [ ] **Epic 3 — Payments** ($30 checkout): CORE-3.0 needs owner to pick + sign up with a payment provider
 - [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account

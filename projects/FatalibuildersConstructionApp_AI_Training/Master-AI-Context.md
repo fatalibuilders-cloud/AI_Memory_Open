@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~34% (10/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2, 5.0 (owner-validated), 5.1 (2026 rate card, BOQ, dual pricing), **5.2 (labor engine, day rates from owner's work log)**. **All three calculators live** — a completed project shows materials + cost (full/labour) + labor/time end-to-end. CORE-6.0 all three views done. Open validations: labor productivity norms + carpenter/painter rates. Pending gates: CORE-1.0 repo migration (app now holds company rate data). Next: CORE-5.3 hardening → CORE-6.1/6.2 Excel/PDF exports. App at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~41% (12/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, **5.3 (hardening, 12 tests), 6.0 (all 3 result views), 6.1 (Excel/BOQ export, paywall-gated)**. A completed project shows materials + cost (full/labour) + labor, and paid users download a 4-sheet Excel BOQ. 66 tests passing. Open validations: labor productivity norms + carpenter rate. Pending gates: CORE-1.0 repo migration (app holds company rate data). Next: CORE-6.2 PDF export → CORE-6.3 WhatsApp share → Epic 3 payments. App at `app-src/fatalibuilders-app/` (temporary location).
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

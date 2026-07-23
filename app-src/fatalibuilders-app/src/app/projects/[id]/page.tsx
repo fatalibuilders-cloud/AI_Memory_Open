@@ -11,6 +11,7 @@ import { computeLabor } from "@/engines/labor";
 import { ResultsView } from "@/components/ResultsView";
 import { CostView } from "@/components/CostView";
 import { LaborView } from "@/components/LaborView";
+import { ExportBar } from "@/components/ExportBar";
 
 export const metadata: Metadata = { title: "Project — Fatalibuilders" };
 export const dynamic = "force-dynamic";
@@ -56,6 +57,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           {SOIL_TYPES[d.soilType ?? "unknown"]}
         </p>
       </div>
+
+      <ExportBar projectId={project.id} hasAccess={user.lifetimeAccess} />
 
       {(() => {
         const parsed = projectDataSchema.safeParse(d);

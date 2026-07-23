@@ -24,8 +24,8 @@
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
-| 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — all 3 calculators + hardening pending |
-| 6 | Outputs & Sharing | 4 | In Progress (6.0 materials view done) |
+| 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — 3 calculators + hardening done |
+| 6 | Outputs & Sharing | 4 | In Progress (6.0 views + 6.1 Excel done; 6.2 PDF, 6.3 WhatsApp next) |
 | 7 | Product Site & Onboarding | 4 | Pending |
 | 8 | Launch Readiness | 3 | Pending |
 
@@ -118,9 +118,10 @@ Crew composition and duration estimates from productivity rates per trade; `[Hum
 *Acceptance:* outputs crew size + duration per phase; owner-validated example passes.
 *Status note:* `engines/labor/` computes crew, duration and labor cost per phase (excavation, foundation/slab, walling, concrete frame, roofing, plaster/screed, painting) + weekly engineer supervision. **DAY_RATES_KES from the owner's AP Mosque work log: mason 1,500 / laborer 1,200 / engineer 5,000** (carpenter/painter assumed = 1,500/1,300, pending owner confirmation). LABOR_ASSUMPTIONS = named productivity norms (m²/mason-day etc.) exposed for owner review. 7 worked-example tests (12×9 bungalow: walling 10 days @ 54,000; excavation 5 days; ≈calendar weeks). LaborView on project page (duration/peak-crew/cost cards + phase table). **Open validation: confirm productivity norms + carpenter/painter day rates.**
 
-**CORE-5.3 [AI] — Engine hardening**
+**CORE-5.3 [AI] — Engine hardening** `[DONE 2026-07-23]`
 Edge-case tests (tiny/large inputs, missing optionals), input bounds with friendly validation messages, deterministic outputs, engine versioning (results record engine + profile version).
 *Acceptance:* test suite green; nonsense inputs rejected with clear messages; results reproducible.
+*Status note:* `engines/hardening.test.ts` — 12 tests across all 3 engines over tiny (3×3, 1 floor)/base/large (100×100, 4 floors) inputs: proves no NaN/Infinity/negatives, labour ≤ full, positive durations, determinism (identical output on repeat), monotonicity (bigger → more cost/time/materials), and engine-version stamps. Input bounds enforced by the zod schema (CORE-4.0) with friendly messages.
 
 ## Epic 6: Outputs & Sharing
 
@@ -129,9 +130,10 @@ Mobile-first results: summary cards + itemized tables per output type; per-proje
 *Acceptance:* all three calculator outputs render clearly on a phone; saved and reloadable.
 *Status note:* Materials results live on the project page: totals cards (cement/sand/ballast/blocks/steel/roof/paint), collapsible per-element tables, code-profile + engine-version stamp, estimating disclaimer. Results computed on demand from stored project data (always current). Cost + labor views land with their engines (CORE-5.1/5.2).
 
-**CORE-6.1 [AI] — Excel export**
+**CORE-6.1 [AI] — Excel export** `[DONE 2026-07-23]`
 .xlsx export (quantities, cost estimate, labor plan as sheets) with code-profile stamp and project header.
 *Acceptance:* file opens correctly in Excel; matches on-screen results.
+*Status note:* `lib/export-excel.ts` (exceljs) builds a 4-sheet branded workbook — Summary (project + headline totals + disclaimer), Materials, Cost BOQ (elements, subtotals, contingency, grand totals full & labour), Labor Plan (phases, crew, days, cost) — navy header styling, KES number formats. Served by `GET /api/projects/[id]/export`, **gated on lifetime access (402 for free users)** — this is the paywall in action. 3 export tests + live end-to-end verified: HTTP 200, correct MIME, 12.8 KB, opens with all 4 sheets. Filename: "{project} - Fatalibuilders.xlsx".
 
 **CORE-6.2 [AI] — PDF export**
 Branded PDF result sheets with project details, code-profile stamp, and the standard disclaimer block.
