@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Diagnose why the bot is not trading.
+r"""Diagnose why the bot is not trading.
 
-    .\.venv\\Scripts\\python.exe doctor.py
+    .\.venv\Scripts\python.exe doctor.py
 
 Checks, in order, everything that stands between "bot running" and "order
 placed", and prints a verdict naming the actual blocker. Read-only: it
