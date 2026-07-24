@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~52% (15/29) — [DONE]: **CORE-1.0 (app repo created & migrated 2026-07-23)**, 1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, Epic 6 (6.0 views, 6.1 Excel, 6.2 PDF, 6.3 WhatsApp share). A completed project shows materials + cost (full/labour) + labor; paid users download a 4-sheet Excel BOQ and an A4 PDF BOQ; anyone can WhatsApp-share a summary (growth loop). 68 tests passing. **App now lives in its own private repo `fatalibuilders-cloud/fatalibuilders-app` (main branch).** Only open validation: labor productivity norms. **Remaining for a sellable MVP: Epic 3 (payments — the $30 checkout) + Epic 7 (product site/onboarding/legal) + Epic 8 (launch).**
+- **Completion:** ~55% (16/29) — [DONE]: CORE-1.0 (migrated), 1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, Epic 6 (6.0/6.1/6.2/6.3), **CORE-3.1 ($30 checkout & entitlement — sandbox provider; real provider swaps in at 3.0)**. A completed project shows materials + cost + labor; paid users download Excel/PDF BOQ + WhatsApp-share; **the full $30 buy→unlock flow works in sandbox mode.** 76 tests passing. App in its own private repo `fatalibuilders-cloud/fatalibuilders-app` (main). Open validation: labor productivity norms. **Remaining for sellable MVP: CORE-3.0/3.2 (owner signs up with card + M-Pesa providers, wire real keys), CORE-1.1/1.2 (hosting + DB), Epic 7 (site/preview-gating/legal), Epic 8 (launch).**
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

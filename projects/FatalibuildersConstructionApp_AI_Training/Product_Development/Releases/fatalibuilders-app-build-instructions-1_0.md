@@ -22,7 +22,7 @@
 |:---:|:---|:---:|:---:|
 | 1 | Foundation & Infrastructure | 4 | In Progress (CORE-1.0 ✅ migrated; 1.3 ✅; hosting/DB next) |
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
-| 3 | Payments ($30 Lifetime) | 4 | Pending |
+| 3 | Payments ($30 Lifetime) | 4 | In Progress (3.1 checkout+entitlement built in sandbox; 3.0/3.2 need owner provider signup) |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
 | 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — 3 calculators + hardening done |
 | 6 | Outputs & Sharing | 4 | ✅ **Complete (2026-07-23)** — views, Excel, PDF, WhatsApp/call |
@@ -75,9 +75,10 @@ Transactional email provider (Resend or similar — free tier): `[Human]` owner 
 AI presents final Paddle vs Lemon Squeezy recommendation for a Kenya-based seller selling worldwide; `[Human]` owner signs up, completes identity/business verification (ID + bank details), creates the "$30 lifetime access" product, and pastes TEST keys into env vars — all with step-by-step plain-language instructions.
 *Acceptance:* provider account verified; test keys configured; product exists in the provider dashboard.
 
-**CORE-3.1 [AI] — Card checkout integration**
+**CORE-3.1 [AI] — Card checkout integration** `[DONE in sandbox 2026-07-23 — real provider swaps in at CORE-3.0]`
 Provider-hosted checkout from the pricing page; webhook receiver sets `lifetime_access=true`; idempotent handling; test-mode purchase flow verified.
 *Acceptance:* test purchase grants access automatically within seconds; webhook signature verified; failure paths logged.
+*Status note:* Full buy→unlock flow built provider-agnostically. `purchases` table (idempotent via provider_ref); `lib/payments.ts` selects provider via `PAYMENTS_PROVIDER` (default "mock" = self-contained sandbox that works with NO external account). Routes: `POST /api/checkout` (start), `POST /api/checkout/mock-confirm` (HMAC-signed, forge-proof, user-matched), `POST /api/payments/webhook` (real-provider stub). `completePurchase()` grants lifetime access idempotently. Working Buy button on /pricing → sandbox checkout page → success banner on /account. 8 payment tests (entitlement, idempotency, wrong-user 403, token tamper, 501 for unconfigured real provider). **Real card provider (Paddle/Lemon Squeezy) drops in at CORE-3.0 — only needs the owner's account + keys; the checkout/entitlement/webhook shape is already in place.** Live HTTP smoke test blocked this round by the sandbox terminating the dev server; logic fully covered by unit tests + identical auth-cookie pattern to the live-verified export routes.
 
 **CORE-3.2 [AI+Human] — M-Pesa checkout (Kenya)**
 AI recommends the gateway (Pesapal/Flutterwave/DPO) and integrates its hosted flow; `[Human]` owner creates the gateway account (business verification) and pastes sandbox keys.

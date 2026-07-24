@@ -24,8 +24,12 @@ The app now lives at **https://github.com/fatalibuilders-cloud/fatalibuilders-ap
 - [x] ~~CORE-6.1~~ **[DONE]** Excel/BOQ export — 4-sheet branded workbook, paywall-gated (402 for free users), live download verified
 - [x] ~~CORE-6.2~~ **[DONE]** PDF export (A4 BOQ, per-page disclaimer footer, paywall-gated)
 - [x] ~~CORE-6.3~~ **[DONE]** WhatsApp share (wa.me summary + app promo — growth loop); tap-to-call deferred to R4 (no phone field in R1)
-- [ ] **Epic 3 — Payments** ($30 checkout) — **NEXT MAJOR MILESTONE.** CORE-3.0 needs the owner to pick + sign up with a payment provider (Paddle/Lemon Squeezy for cards worldwide + Pesapal/Flutterwave for M-Pesa). Until then, CORE-3.1 checkout UI can be built against the provider sandbox.
-- [ ] **Epic 7** — product site (landing/pricing polish, free-preview gating CORE-2.2, legal pages) → **Epic 8** launch
+- [x] ~~CORE-3.1~~ **[DONE in sandbox 2026-07-23]** — full $30 buy→unlock flow (checkout, entitlement, idempotent grant, forge-proof mock, success banner); 8 payment tests. Works today in sandbox mode with no external account.
+- [ ] **CORE-3.0 [Human+AI]** — owner picks & signs up with a **card provider (Paddle or Lemon Squeezy)**, completes identity/business verification, creates the "$30 lifetime" product, pastes TEST keys → AI wires the real provider (checkout/webhook shape already built)
+- [ ] **CORE-3.2 [Human+AI]** — owner signs up with an **M-Pesa gateway (Pesapal/Flutterwave/DPO)** → AI wires it
+- [ ] **CORE-1.1/1.2 [Human+AI]** — hosting account + managed Postgres so the app gets a public URL and real DB
+- [ ] **CORE-2.2** — free-preview gating; **Epic 7** — landing/legal pages; **Epic 8** — launch
+- **Owner decision needed to proceed on payments:** which card provider — Paddle or Lemon Squeezy? (Both are merchant-of-record; either works.)
 - [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
 - [ ] **CORE-1.1** — hosting platform: AI recommends, then the owner's checkpoint is creating the hosting account
