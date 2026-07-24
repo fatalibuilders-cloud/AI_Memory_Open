@@ -101,9 +101,13 @@ class MT5Broker(Broker):
             raise BrokerError(
                 f"Symbol {symbol} does not exist on this account.{self._suggest(symbol)}")
         rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
-        if rates is None or len(rates) == 0:
-            # right after (re)connect the terminal may still be syncing history
-            time.sleep(3)
+        # A symbol added to Market Watch for the first time has no local
+        # history yet; the terminal downloads it in the background.
+        for wait in (2, 5, 8):
+            if rates is not None and len(rates):
+                break
+            log.info("Waiting %ss for %s history to download...", wait, symbol)
+            time.sleep(wait)
             rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
         if rates is None or len(rates) == 0:
             raise BrokerError(
