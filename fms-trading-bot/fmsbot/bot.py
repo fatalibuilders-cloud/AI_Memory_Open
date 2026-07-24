@@ -110,7 +110,8 @@ class TradingBot:
         balance = self.broker.balance()
         equity = self.broker.equity()
         all_pos = self.broker.positions()
-        sym_pos = [p for p in all_pos if p.symbol == symbol]
+        # broker may report its own spelling (EURUSDm vs a config typo EURUSDM)
+        sym_pos = [p for p in all_pos if p.symbol.lower() == symbol.lower()]
         ok, reason = self.risk.can_enter(symbol, balance, equity,
                                          len(all_pos), len(sym_pos))
         if not ok:
