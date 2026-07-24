@@ -94,7 +94,11 @@ class Settings:
     atr_tp_mult: float = 2.0          # take-profit = ATR * mult
 
     # --- Risk ------------------------------------------------------------------
-    risk_pct: float = 0.5             # % of balance risked per trade
+    # Fixed lot size per trade. When > 0 this OVERRIDES risk_pct sizing and
+    # every trade uses exactly this many lots (0.01 = broker minimum on most
+    # accounts). Safest way to cap exposure while testing.
+    fixed_lot: float = 0.0
+    risk_pct: float = 0.5             # % of balance risked per trade (when fixed_lot = 0)
     max_open_positions: int = 3
     max_positions_per_symbol: int = 1
     max_trades_per_day: int = 10
@@ -135,6 +139,7 @@ class Settings:
             atr_period=_i("ATR_PERIOD", 14),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
+            fixed_lot=_f("FIXED_LOT", 0.0),
             risk_pct=_f("RISK_PCT", 0.5),
             max_open_positions=_i("MAX_OPEN_POSITIONS", 3),
             max_positions_per_symbol=_i("MAX_POSITIONS_PER_SYMBOL", 1),
@@ -163,7 +168,9 @@ class Settings:
             problems.append(f"BROKER must be 'mt5' or 'oanda', got '{self.broker}'.")
         if not self.symbols:
             problems.append("SYMBOLS is empty.")
-        if self.risk_pct <= 0 or self.risk_pct > 5:
+        if self.fixed_lot < 0:
+            problems.append("FIXED_LOT cannot be negative (use 0 to size by RISK_PCT).")
+        if self.fixed_lot == 0 and (self.risk_pct <= 0 or self.risk_pct > 5):
             problems.append("RISK_PCT must be between 0 and 5 (risking >5%/trade is reckless).")
         if self.entry_mode not in ("signal", "interval"):
             problems.append(f"ENTRY_MODE must be 'signal' or 'interval', got '{self.entry_mode}'.")

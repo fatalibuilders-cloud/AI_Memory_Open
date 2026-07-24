@@ -51,7 +51,13 @@ def main() -> int:
     print(f"  symbols     : {settings.symbols}")
     print(f"  timeframe   : {settings.timeframe}")
     print(f"  start_paused: {settings.start_paused}")
-    print(f"  risk/trade  : {settings.risk_pct}%")
+    if settings.fixed_lot > 0:
+        print(f"  size/trade  : {settings.fixed_lot} lot (FIXED — overrides RISK_PCT)")
+    else:
+        print(f"  size/trade  : {settings.risk_pct}% of balance")
+    print(f"  entry mode  : {settings.entry_mode}"
+          + (f" every {settings.entry_interval_seconds}s"
+             if settings.entry_mode == "interval" else ""))
     print(f"  strategy    : EMA{settings.ema_fast}/{settings.ema_slow}, "
           f"RSI{settings.rsi_period} floor {settings.rsi_floor}/ceil {settings.rsi_ceiling}")
     if problems:

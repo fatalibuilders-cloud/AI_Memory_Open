@@ -213,6 +213,15 @@ class OandaBroker(Broker):
 
     # -- sizing --------------------------------------------------------------------------
 
+    def volume_from_lots(self, symbol: str, lots: float) -> float:
+        """OANDA trades in units: 1 standard lot = 100,000 units."""
+        self._require()
+        info = self._instrument(symbol)
+        units = float(lots) * 100_000.0
+        units = max(units, float(info.get("minimumTradeSize", 1)))
+        units = min(units, float(info.get("maximumOrderUnits", 1e9)))
+        return float(int(units))
+
     def volume_for_risk(self, symbol: str, sl_distance: float, risk_amount: float) -> float:
         """Units such that hitting the SL loses ~risk_amount (account currency).
 

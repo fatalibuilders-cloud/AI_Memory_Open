@@ -20,6 +20,12 @@ _TF_SECONDS = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
                "H1": 3600, "H4": 14400, "D1": 86400}
 
 
+def sizing_label(settings) -> str:
+    if settings.fixed_lot > 0:
+        return f"{settings.fixed_lot} lot (fixed)"
+    return f"{settings.risk_pct}% risk"
+
+
 class TradingBot:
     def __init__(self, settings: Settings, broker: Broker):
         self.s = settings
@@ -62,7 +68,7 @@ class TradingBot:
                                 "(raise to >= %s for the full rate).", name, value, needed)
         self.remote.broadcast(
             f"🤖 Bot online ({state}).\nSymbols: {', '.join(self.s.symbols)} "
-            f"@ {self.s.timeframe}, risk {self.s.risk_pct}%/trade.")
+            f"@ {self.s.timeframe}, size {sizing_label(self.s)}.")
         try:
             while not self._stop.is_set():
                 try:
@@ -162,7 +168,12 @@ class TradingBot:
 
         risk_amount = self.risk.risk_amount(balance)
         try:
-            volume = self.broker.volume_for_risk(symbol, signal.sl_distance, risk_amount)
+            if self.s.fixed_lot > 0:
+                volume = self.broker.volume_from_lots(symbol, self.s.fixed_lot)
+                sizing = f"fixed {self.s.fixed_lot} lot"
+            else:
+                volume = self.broker.volume_for_risk(symbol, signal.sl_distance, risk_amount)
+                sizing = f"risking ~{risk_amount:.2f}"
         except BrokerError as exc:
             log.warning("Sizing failed for %s: %s", symbol, exc)
             return
@@ -186,7 +197,7 @@ class TradingBot:
         msg = (f"📈 OPENED {receipt.side.upper()} {receipt.symbol} "
                f"{receipt.volume} @ {receipt.price}\n"
                f"SL {receipt.sl} | TP {receipt.tp}\n"
-               f"({signal.reason}; risking ~{risk_amount:.2f})")
+               f"({signal.reason}; {sizing})")
         log.info(msg.replace("\n", " | "))
         self.remote.broadcast(msg)
 
@@ -220,7 +231,8 @@ class TradingBot:
             return (f"{mode} | {', '.join(self.s.symbols)} @ {self.s.timeframe}\n"
                     f"Balance {balance:.2f} | Equity {equity:.2f}\n"
                     f"Open positions: {len(self.broker.positions())}\n"
-                    f"Risk/trade: {self.s.risk_pct}% | {self.risk.day_summary(balance, equity)}")
+                    f"Size/trade: {sizing_label(self.s)} | "
+                    f"{self.risk.day_summary(balance, equity)}")
         if command == "balance":
             return f"Balance: {self.broker.balance():.2f}\nEquity: {self.broker.equity():.2f}"
         if command == "positions":
@@ -261,5 +273,9 @@ class TradingBot:
             if not 0 < value <= 5:
                 return "Risk must be between 0 and 5 (%.)"
             self.s.risk_pct = value
+            if self.s.fixed_lot > 0:
+                return (f"Risk set to {value}%, but FIXED_LOT={self.s.fixed_lot} is "
+                        f"active so every trade still uses {self.s.fixed_lot} lot. "
+                        f"Set FIXED_LOT=0 in .env to size by risk.")
             return f"Risk per trade set to {value}%."
         return "Unknown command — /help"
