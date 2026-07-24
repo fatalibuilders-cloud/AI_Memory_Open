@@ -39,6 +39,7 @@ class MT5Broker(Broker):
         self.server = server
         self.path = path
         self.mt5 = None
+        self._resolved: dict[str, str] = {}
 
     # -- lifecycle ------------------------------------------------------
 
@@ -95,6 +96,7 @@ class MT5Broker(Broker):
         tf = _TIMEFRAMES.get(timeframe)
         if tf is None:
             raise BrokerError(f"Unsupported timeframe {timeframe}")
+        symbol = self._resolve(symbol)
         if not mt5.symbol_select(symbol, True):
             raise BrokerError(
                 f"Symbol {symbol} does not exist on this account.{self._suggest(symbol)}")
@@ -108,6 +110,26 @@ class MT5Broker(Broker):
                 f"No bars for {symbol}: {mt5.last_error()}.{self._suggest(symbol)}")
         return [Bar(int(r["time"]), float(r["open"]), float(r["high"]),
                     float(r["low"]), float(r["close"])) for r in rates]
+
+    def _resolve(self, symbol: str) -> str:
+        """Map a symbol to the broker's exact spelling, ignoring case only.
+
+        Broker names are case-sensitive (Exness: EURUSDm), so a config typo
+        like EURUSDM would otherwise fail even though the symbol exists.
+        """
+        cached = self._resolved.get(symbol)
+        if cached:
+            return cached
+        mt5 = self._require()
+        if mt5.symbol_info(symbol) is not None:
+            self._resolved[symbol] = symbol
+            return symbol
+        for s in (mt5.symbols_get() or []):
+            if s.name.lower() == symbol.lower():
+                log.info("Symbol %s resolved to %s (case corrected).", symbol, s.name)
+                self._resolved[symbol] = s.name
+                return s.name
+        return symbol
 
     def _suggest(self, symbol: str) -> str:
         """Name near-miss symbols (brokers often add suffixes, e.g. EURUSDm)."""
@@ -127,6 +149,7 @@ class MT5Broker(Broker):
     def market_order(self, symbol: str, side: str, volume: float,
                      sl: float, tp: float, comment: str = "") -> OrderReceipt:
         mt5 = self._require()
+        symbol = self._resolve(symbol)
         tick = mt5.symbol_info_tick(symbol)
         info = mt5.symbol_info(symbol)
         if tick is None or info is None:
@@ -201,7 +224,7 @@ class MT5Broker(Broker):
 
     def volume_for_risk(self, symbol: str, sl_distance: float, risk_amount: float) -> float:
         mt5 = self._require()
-        info = mt5.symbol_info(symbol)
+        info = mt5.symbol_info(self._resolve(symbol))
         if info is None:
             raise BrokerError(f"symbol_info failed for {symbol}")
         # Money moved per 1.0 lot per 1.0 of price movement:

@@ -99,7 +99,9 @@ class Settings:
     @classmethod
     def load(cls, dotenv_path: str | Path = ".env") -> "Settings":
         _load_dotenv(dotenv_path)
-        symbols = [s.strip().upper() for s in os.environ.get("SYMBOLS", "EURUSD,XAUUSD").split(",") if s.strip()]
+        # NOTE: broker symbol names are case-sensitive (Exness uses EURUSDm,
+        # not EURUSDM) — never normalize the case here.
+        symbols = [s.strip() for s in os.environ.get("SYMBOLS", "EURUSD,XAUUSD").split(",") if s.strip()]
         return cls(
             tg_token=os.environ.get("TG_BOT_TOKEN", "").strip(),
             tg_password=os.environ.get("TG_PASSWORD", "").strip(),
