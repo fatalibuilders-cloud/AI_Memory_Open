@@ -1,0 +1,20 @@
+{
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/logout/route": "app/api/auth/logout/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/auth/signup/route": "app/api/auth/signup/route.js",
+  "/api/health/route": "app/api/health/route.js",
+  "/api/projects/[id]/export-pdf/route": "app/api/projects/[id]/export-pdf/route.js",
+  "/api/projects/[id]/export/route": "app/api/projects/[id]/export/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/projects/route": "app/api/projects/route.js",
+  "/api/projects/[id]/route": "app/api/projects/[id]/route.js",
+  "/page": "app/page.js",
+  "/account/page": "app/account/page.js",
+  "/login/page": "app/login/page.js",
+  "/projects/page": "app/projects/page.js",
+  "/pricing/page": "app/pricing/page.js",
+  "/signup/page": "app/signup/page.js",
+  "/projects/[id]/edit/page": "app/projects/[id]/edit/page.js",
+  "/projects/[id]/page": "app/projects/[id]/page.js"
+}

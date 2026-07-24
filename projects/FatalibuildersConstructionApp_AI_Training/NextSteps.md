@@ -8,14 +8,8 @@
 
 ## Immediate Next Steps
 
-### 1. Owner action — create the app's GitHub repository (5 minutes, whenever convenient)
-The AI cannot create repositories, so this one needs you:
-1. Go to **https://github.com/new** (logged in as `fatalibuilders-cloud`)
-2. Repository name: **`fatalibuilders-app`** (exactly this)
-3. Choose **Private** (recommended for now — can be changed later)
-4. Do NOT tick any of the "initialize" checkboxes (no README, no .gitignore, no license) — leave it completely empty
-5. Click **Create repository** — done. Tell the AI "the repo is created" in any session and it will move the code over automatically.
-*(Development is NOT blocked while you wait — the app lives temporarily at `app-src/fatalibuilders-app/` in this repository.)*
+### 1. ✅ DONE — App migrated to its own private repo (2026-07-23)
+The app now lives at **https://github.com/fatalibuilders-cloud/fatalibuilders-app** (`main` branch). 66 files pushed; 68/68 tests + build verified in the new repo. The `app-src/` copy was removed from this memory repo. **Future dev sessions:** `add_repo` fatalibuilders-cloud/fatalibuilders-app, clone, work there, push to `main`.
 
 ### 2. Next build session
 - [x] ~~CORE-1.0 scaffold~~ **BUILT & VERIFIED 2026-07-16** (8/8 tests, lint, build, health check ✅) — [DONE] after repo migration

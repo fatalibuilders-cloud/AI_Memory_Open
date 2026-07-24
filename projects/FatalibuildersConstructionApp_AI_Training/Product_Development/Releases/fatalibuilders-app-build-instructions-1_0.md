@@ -20,7 +20,7 @@
 
 | Epic | Name | Stories | Status |
 |:---:|:---|:---:|:---:|
-| 1 | Foundation & Infrastructure | 4 | In Progress (CORE-1.0 built & verified) |
+| 1 | Foundation & Infrastructure | 4 | In Progress (CORE-1.0 ✅ migrated; 1.3 ✅; hosting/DB next) |
 | 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
 | 3 | Payments ($30 Lifetime) | 4 | Pending |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
@@ -35,7 +35,8 @@
 
 ## Epic 1: Foundation & Infrastructure
 
-**CORE-1.0 [AI] — Scaffold the app repository** `[IN-PROGRESS — built & verified 2026-07-16; awaiting repo migration]`
+**CORE-1.0 [AI] — Scaffold the app repository** `[DONE — migrated to own repo 2026-07-23]`
+*Migration note (2026-07-23):* Owner created private repo `fatalibuilders-cloud/fatalibuilders-app`; the full app (66 files) was pushed to its `main` branch. Verified in the new location: `npm install`, 68/68 tests, production build all green. The `app-src/fatalibuilders-app/` copy has been removed from the AI_Memory_Open memory repo — the app now lives only in its own private repo. **NOTE:** company rate data remained in AI_Memory_Open git *history* prior to migration; if full history scrub is wanted, rewrite history separately (rates are the product's baseline price table, shown to users, so sensitivity is moderate).
 Create the `fatalibuilders-app` repository: Next.js + TypeScript + Tailwind, PWA config (manifest, service worker), ESLint/Prettier, folder structure per architecture doc §3, README, CI (lint + test on PR).
 *Acceptance:* `npm run dev` serves a placeholder page; lint and test pass in CI; module-map.md updated.
 *Status note (2026-07-16):* Scaffold complete at **`app-src/fatalibuilders-app/`** (temporary in-repo location — AI integration cannot create GitHub repos, 403). Verified locally: 8/8 engine tests pass, lint clean, production build succeeds, server + `/api/health` respond. Includes code-profile module, first materials-engine functions with worked-example tests (pending owner validation at CORE-5.0), PWA manifest, CI workflow (activates post-migration). **Remaining:** owner creates empty GitHub repo `fatalibuilders-app` → AI migrates code → story [DONE].

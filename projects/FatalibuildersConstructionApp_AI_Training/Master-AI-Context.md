@@ -38,7 +38,7 @@ Mobile-first **PWA** · Next.js (React) + TypeScript + Tailwind · Next.js API r
 
 ## 3. Core Directory Structure
 
-The app source code lives in its **own repository** (created at story CORE-1.0; name: `fatalibuilders-app`). Its structure is documented in [module-map.md](./Product_Development/FatalibuildersApp/module-map.md) once scaffolded.
+The app source code lives in its **own private repository**: **https://github.com/fatalibuilders-cloud/fatalibuilders-app** (migrated there 2026-07-23 — no longer under `app-src/` in this memory repo). Future sessions: clone the app repo (`add_repo` fatalibuilders-cloud/fatalibuilders-app), work there, push to its `main`. This memory repo holds context/planning only. Structure documented in [module-map.md](./Product_Development/FatalibuildersApp/module-map.md).
 
 ---
 
@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~48% (14/29) — [DONE]: CORE-1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, **Epic 6 complete (6.0 views, 6.1 Excel, 6.2 PDF, 6.3 WhatsApp share)**. A completed project shows materials + cost (full/labour) + labor; paid users download a 4-sheet Excel BOQ and an A4 PDF BOQ; anyone can WhatsApp-share a summary (growth loop). 68 tests passing. Only open validation: labor productivity norms. **Remaining for a sellable MVP: Epic 3 (payments — the $30 checkout) + Epic 7 (product site/onboarding/legal) + Epic 8 (launch).** Pending gates: CORE-1.0 repo migration (app holds company rate data). App at `app-src/fatalibuilders-app/` (temporary location).
+- **Completion:** ~52% (15/29) — [DONE]: **CORE-1.0 (app repo created & migrated 2026-07-23)**, 1.3, 2.0, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, Epic 6 (6.0 views, 6.1 Excel, 6.2 PDF, 6.3 WhatsApp share). A completed project shows materials + cost (full/labour) + labor; paid users download a 4-sheet Excel BOQ and an A4 PDF BOQ; anyone can WhatsApp-share a summary (growth loop). 68 tests passing. **App now lives in its own private repo `fatalibuilders-cloud/fatalibuilders-app` (main branch).** Only open validation: labor productivity norms. **Remaining for a sellable MVP: Epic 3 (payments — the $30 checkout) + Epic 7 (product site/onboarding/legal) + Epic 8 (launch).**
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders
