@@ -118,7 +118,12 @@ On every closed candle (default M5) per symbol:
 2. **Exits set at entry** — stop-loss at 1.5×ATR, take-profit at 2×ATR
    (positive reward:risk), executed broker-side so they trigger even if the
    bot goes offline.
-3. **Risk gate** — every entry must pass: daily trade cap, max open
+3. **Position size** — by default the stop-loss distance is scaled so a loss
+   costs `RISK_PCT`% of balance. Setting **`FIXED_LOT=0.01`** overrides that
+   and sends exactly 0.01 lots every trade — the broker minimum, and the
+   simplest hard cap on exposure while you are testing (1 pip ≈ $0.10 on
+   EURUSD instead of $167 at 0.5% risk).
+4. **Risk gate** — every entry must pass: daily trade cap, max open
    positions (total and per symbol), per-symbol cooldown, and the daily loss
    limit; position size is computed so the SL loses exactly `RISK_PCT`% of
    balance.

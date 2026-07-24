@@ -75,3 +75,9 @@ class Broker(ABC):
     def volume_for_risk(self, symbol: str, sl_distance: float, risk_amount: float) -> float:
         """Position size such that hitting the SL loses ~risk_amount, clamped
         to the symbol's min/max/step volume rules."""
+
+    @abstractmethod
+    def volume_from_lots(self, symbol: str, lots: float) -> float:
+        """Convert a standard-lot figure to this broker's volume unit,
+        clamped to the symbol's rules. MT5 trades in lots; OANDA in units
+        (1 lot = 100,000 units)."""

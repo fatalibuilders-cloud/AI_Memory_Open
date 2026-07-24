@@ -226,6 +226,20 @@ class MT5Broker(Broker):
 
     # -- sizing ----------------------------------------------------------------
 
+    def volume_from_lots(self, symbol: str, lots: float) -> float:
+        """MT5 already trades in lots — just clamp to the symbol's rules."""
+        mt5 = self._require()
+        info = mt5.symbol_info(self._resolve(symbol))
+        if info is None:
+            raise BrokerError(f"symbol_info failed for {symbol}")
+        step = info.volume_step or 0.01
+        volume = max(info.volume_min, min(info.volume_max, float(lots)))
+        volume = round(round(volume / step) * step, 8)
+        if abs(volume - lots) > 1e-9:
+            log.info("%s: lot size %.4f adjusted to %.4f (min %.2f, step %.2f).",
+                     symbol, lots, volume, info.volume_min, step)
+        return volume
+
     def volume_for_risk(self, symbol: str, sl_distance: float, risk_amount: float) -> float:
         mt5 = self._require()
         info = mt5.symbol_info(self._resolve(symbol))
