@@ -33,6 +33,7 @@ class TradingBot:
         self._stop = threading.Event()
         self._last_bar: dict[str, int] = {}       # symbol -> last processed bar time
         self._symbol_warned: dict[str, float] = {}  # symbol -> last warning ts
+        self._last_entry_attempt: dict[str, float] = {}  # interval mode pacing
         self._known_tickets: set[int] = set()
 
     # ------------------------------------------------------------------
@@ -45,6 +46,20 @@ class TradingBot:
         state = "PAUSED — send /resume from your phone to begin" if self.paused else "ACTIVE"
         log.info("Bot running (%s). Symbols: %s, timeframe %s.",
                  state, ", ".join(self.s.symbols), self.s.timeframe)
+        if self.s.entry_mode == "interval":
+            log.warning(
+                "INTERVAL MODE: attempting a trade every %ss per symbol. Every "
+                "trade pays the spread, so this mode bleeds money steadily even "
+                "when the direction calls are right. Demo accounts only.",
+                self.s.entry_interval_seconds)
+            for name, value, needed in (
+                ("COOLDOWN_SECONDS", self.s.cooldown_seconds, self.s.entry_interval_seconds),
+                ("MAX_TRADES_PER_DAY", self.s.max_trades_per_day, 100),
+                ("MAX_OPEN_POSITIONS", self.s.max_open_positions, 10),
+            ):
+                if value < needed:
+                    log.warning("  %s=%s will throttle interval mode "
+                                "(raise to >= %s for the full rate).", name, value, needed)
         self.remote.broadcast(
             f"🤖 Bot online ({state}).\nSymbols: {', '.join(self.s.symbols)} "
             f"@ {self.s.timeframe}, risk {self.s.risk_pct}%/trade.")
@@ -116,14 +131,22 @@ class TradingBot:
         if len(bars) < 3:
             return
         closed = bars[:-1]                     # last bar is still forming
-        newest = closed[-1].time
-        if self._last_bar.get(symbol) == newest:
-            return                             # no new closed bar yet
-        self._last_bar[symbol] = newest
 
-        signal = self.strategy.signal(closed)
+        if self.s.entry_mode == "interval":
+            elapsed = time.time() - self._last_entry_attempt.get(symbol, 0.0)
+            if elapsed < self.s.entry_interval_seconds:
+                return
+            self._last_entry_attempt[symbol] = time.time()
+            signal = self.strategy.trend_signal(closed)
+        else:
+            newest = closed[-1].time
+            if self._last_bar.get(symbol) == newest:
+                return                         # no new closed bar yet
+            self._last_bar[symbol] = newest
+            signal = self.strategy.signal(closed)
+
         if signal is None:
-            log.debug("%s: candle closed @ %.5f — no signal", symbol, closed[-1].close)
+            log.debug("%s: evaluated @ %.5f — no signal", symbol, closed[-1].close)
             return
 
         balance = self.broker.balance()
@@ -192,6 +215,8 @@ class TradingBot:
         if command == "status":
             balance, equity = self.broker.balance(), self.broker.equity()
             mode = "⏸ PAUSED" if self.paused else "▶️ ACTIVE"
+            if self.s.entry_mode == "interval":
+                mode += f" | ⚡ interval {self.s.entry_interval_seconds}s"
             return (f"{mode} | {', '.join(self.s.symbols)} @ {self.s.timeframe}\n"
                     f"Balance {balance:.2f} | Equity {equity:.2f}\n"
                     f"Open positions: {len(self.broker.positions())}\n"
