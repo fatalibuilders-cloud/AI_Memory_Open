@@ -32,6 +32,7 @@ class TradingBot:
         self.paused = settings.start_paused
         self._stop = threading.Event()
         self._last_bar: dict[str, int] = {}       # symbol -> last processed bar time
+        self._symbol_warned: dict[str, float] = {}  # symbol -> last warning ts
         self._known_tickets: set[int] = set()
 
     # ------------------------------------------------------------------
@@ -88,8 +89,26 @@ class TradingBot:
         self._notify_closed_positions()
         if self.paused:
             return
+        failures = 0
         for symbol in self.s.symbols:
-            self._check_symbol(symbol)
+            try:
+                self._check_symbol(symbol)
+            except BrokerError as exc:
+                # One unavailable symbol (history not downloaded, market for
+                # that instrument closed) must not stop the others or force a
+                # reconnect — only a total failure means the session is dead.
+                failures += 1
+                self._warn_symbol(symbol, exc)
+        if failures and failures == len(self.s.symbols):
+            raise BrokerError(f"all {failures} symbol(s) failing")
+
+    def _warn_symbol(self, symbol: str, exc: Exception) -> None:
+        """Warn about a broken symbol at most once every 15 minutes."""
+        now = time.time()
+        if now - self._symbol_warned.get(symbol, 0.0) < 900:
+            return
+        self._symbol_warned[symbol] = now
+        log.warning("%s unavailable, skipping it: %s", symbol, exc)
 
     def _check_symbol(self, symbol: str) -> None:
         bars = self.broker.bars(symbol, self.s.timeframe,
