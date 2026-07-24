@@ -52,9 +52,29 @@ class EmaCrossStrategy:
         if r is None or a is None or a <= 0:
             return None
 
+        return self._cross_signal(f_now, f_prev, s_now, s_prev, r, a)
+
+    def trend_signal(self, bars: list[Bar]) -> Optional[Signal]:
+        """Direction of the CURRENT trend, without waiting for a crossover.
+
+        Used by interval entry mode: fast EMA above slow EMA means buy,
+        below means sell. Fires on every call, so the caller must rate-limit.
+        """
+        if len(bars) < self.min_bars():
+            return None
+        closes = [b.close for b in bars]
+        fast = ema_series(closes, self.s.ema_fast)
+        slow = ema_series(closes, self.s.ema_slow)
+        a = atr([b.high for b in bars], [b.low for b in bars], closes, self.s.atr_period)
+        if not fast or not slow or a is None or a <= 0:
+            return None
+        side = "buy" if fast[-1] > slow[-1] else "sell"
+        return Signal(side, a * self.s.atr_sl_mult, a * self.s.atr_tp_mult,
+                      f"interval entry, trend {side}")
+
+    def _cross_signal(self, f_now, f_prev, s_now, s_prev, r, a) -> Optional[Signal]:
         crossed_up = f_prev <= s_prev and f_now > s_now
         crossed_down = f_prev >= s_prev and f_now < s_now
-
         if crossed_up and r > self.s.rsi_floor:
             return Signal("buy", a * self.s.atr_sl_mult, a * self.s.atr_tp_mult,
                           f"EMA{self.s.ema_fast}x{self.s.ema_slow} up, RSI {r:.0f}")

@@ -125,6 +125,24 @@ On every closed candle (default M5) per symbol:
 
 All parameters are in `.env` (see `.env.example`).
 
+### Interval mode (high-frequency) — demo only
+
+`ENTRY_MODE=interval` makes the bot attempt a trade every
+`ENTRY_INTERVAL_SECONDS` in the current trend direction instead of waiting
+for a crossover. It exists so you can *watch* what high-frequency trading
+actually does to an account. Understand the arithmetic first:
+
+Every trade pays the spread (~1 pip on EURUSD). With 0.5% risk and M1-sized
+ATR stops (~3 pips) the computed position is ~16 lots, so 1 pip ≈ **$167 per
+trade**. At one trade per 30 seconds that is **~$334/minute**, i.e. a
+$100,000 account consumed in roughly **5 hours by spread alone**, before the
+market moves at all. Frequency multiplies costs; it does not create edge.
+
+To reach the full rate you must also set `TIMEFRAME=M1`,
+`COOLDOWN_SECONDS` ≤ the interval, and raise `MAX_TRADES_PER_DAY` /
+`MAX_OPEN_POSITIONS` — the risk gates throttle it on purpose, and the bot
+logs a warning naming each limit that is holding it back.
+
 ## Project layout
 
 ```

@@ -75,6 +75,14 @@ class Settings:
     timeframe: str = "M5"             # M1 M5 M15 M30 H1 H4 D1
     history_bars: int = 300
 
+    # --- Entry mode ------------------------------------------------------
+    # "signal"   : trade only EMA-crossover signals (default, selective)
+    # "interval" : attempt a trade every entry_interval_seconds in the
+    #              current trend direction. Far more trades, and far more
+    #              spread paid — see README "Interval mode" before using.
+    entry_mode: str = "signal"
+    entry_interval_seconds: int = 30
+
     # --- Strategy ------------------------------------------------------------
     ema_fast: int = 20
     ema_slow: int = 50
@@ -117,6 +125,8 @@ class Settings:
             symbols=symbols,
             timeframe=os.environ.get("TIMEFRAME", "M5").strip().upper(),
             history_bars=_i("HISTORY_BARS", 300),
+            entry_mode=os.environ.get("ENTRY_MODE", "signal").strip().lower(),
+            entry_interval_seconds=_i("ENTRY_INTERVAL_SECONDS", 30),
             ema_fast=_i("EMA_FAST", 20),
             ema_slow=_i("EMA_SLOW", 50),
             rsi_period=_i("RSI_PERIOD", 14),
@@ -155,4 +165,8 @@ class Settings:
             problems.append("SYMBOLS is empty.")
         if self.risk_pct <= 0 or self.risk_pct > 5:
             problems.append("RISK_PCT must be between 0 and 5 (risking >5%/trade is reckless).")
+        if self.entry_mode not in ("signal", "interval"):
+            problems.append(f"ENTRY_MODE must be 'signal' or 'interval', got '{self.entry_mode}'.")
+        if self.entry_mode == "interval" and self.entry_interval_seconds < 5:
+            problems.append("ENTRY_INTERVAL_SECONDS must be >= 5.")
         return problems
