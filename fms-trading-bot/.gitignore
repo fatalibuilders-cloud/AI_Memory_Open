@@ -3,3 +3,6 @@ tg_state.json
 __pycache__/
 *.pyc
 *.log
+
+# preset backups
+.env.bak
