@@ -93,6 +93,14 @@ class Settings:
     atr_sl_mult: float = 1.5          # stop-loss  = ATR * mult
     atr_tp_mult: float = 2.0          # take-profit = ATR * mult
 
+    # Used by the alternative strategies available to the backtester /
+    # optimizer (mean_reversion, breakout). The live bot trades ema_cross.
+    rsi_oversold: float = 30.0
+    rsi_overbought: float = 70.0
+    bb_period: int = 20
+    bb_std: float = 2.0
+    donchian_period: int = 20
+
     # --- Risk ------------------------------------------------------------------
     # Fixed lot size per trade. When > 0 this OVERRIDES risk_pct sizing and
     # every trade uses exactly this many lots (0.01 = broker minimum on most
@@ -137,6 +145,11 @@ class Settings:
             rsi_floor=_f("RSI_FLOOR", 45.0),
             rsi_ceiling=_f("RSI_CEILING", 55.0),
             atr_period=_i("ATR_PERIOD", 14),
+            rsi_oversold=_f("RSI_OVERSOLD", 30.0),
+            rsi_overbought=_f("RSI_OVERBOUGHT", 70.0),
+            bb_period=_i("BB_PERIOD", 20),
+            bb_std=_f("BB_STD", 2.0),
+            donchian_period=_i("DONCHIAN_PERIOD", 20),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
             fixed_lot=_f("FIXED_LOT", 0.0),

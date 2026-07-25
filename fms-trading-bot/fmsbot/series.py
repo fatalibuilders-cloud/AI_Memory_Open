@@ -44,6 +44,42 @@ def rsi_full(values: Sequence[float], period: int = 14) -> list[Optional[float]]
     return out
 
 
+def bollinger_full(values: Sequence[float], period: int = 20, num_std: float = 2.0):
+    """Returns (lower, mid, upper) lists aligned with `values`."""
+    n = len(values)
+    lower: list[Optional[float]] = [None] * n
+    mid: list[Optional[float]] = [None] * n
+    upper: list[Optional[float]] = [None] * n
+    if n < period:
+        return lower, mid, upper
+    total = sum(values[:period])
+    total_sq = sum(v * v for v in values[:period])
+    for i in range(period - 1, n):
+        if i >= period:
+            out = values[i - period]
+            total += values[i] - out
+            total_sq += values[i] * values[i] - out * out
+        m = total / period
+        var = max(total_sq / period - m * m, 0.0)
+        sd = var ** 0.5
+        lower[i], mid[i], upper[i] = m - num_std * sd, m, m + num_std * sd
+    return lower, mid, upper
+
+
+def rolling_max(values: Sequence[float], period: int) -> list[Optional[float]]:
+    out: list[Optional[float]] = [None] * len(values)
+    for i in range(period - 1, len(values)):
+        out[i] = max(values[i - period + 1: i + 1])
+    return out
+
+
+def rolling_min(values: Sequence[float], period: int) -> list[Optional[float]]:
+    out: list[Optional[float]] = [None] * len(values)
+    for i in range(period - 1, len(values)):
+        out[i] = min(values[i - period + 1: i + 1])
+    return out
+
+
 def atr_full(highs: Sequence[float], lows: Sequence[float],
              closes: Sequence[float], period: int = 14) -> list[Optional[float]]:
     n = len(closes)
