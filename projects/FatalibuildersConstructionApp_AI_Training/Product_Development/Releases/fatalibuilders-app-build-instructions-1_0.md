@@ -21,12 +21,12 @@
 | Epic | Name | Stories | Status |
 |:---:|:---|:---:|:---:|
 | 1 | Foundation & Infrastructure | 4 | In Progress (CORE-1.0 ✅ migrated; 1.3 ✅; hosting/DB next) |
-| 2 | Accounts & Access | 3 | In Progress (CORE-2.0 done) |
+| 2 | Accounts & Access | 3 | ✅ Complete (2.0 auth, 2.1 email pending real provider, 2.2 gating) |
 | 3 | Payments ($30 Lifetime) | 4 | In Progress (3.1 checkout+entitlement built in sandbox; 3.0/3.2 need owner provider signup) |
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
 | 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — 3 calculators + hardening done |
 | 6 | Outputs & Sharing | 4 | ✅ **Complete (2026-07-23)** — views, Excel, PDF, WhatsApp/call |
-| 7 | Product Site & Onboarding | 4 | Pending |
+| 7 | Product Site & Onboarding | 4 | In Progress (7.0 landing + 7.2 legal done; 7.1 preview flow, 7.3 onboarding next) |
 | 8 | Launch Readiness | 3 | Pending |
 
 **Total: 29 stories** — 17 [AI], 11 [AI+Human], 1 [Human]
@@ -65,9 +65,10 @@ Email + password auth: argon2 hashing, secure httpOnly sessions, signup/login/lo
 Transactional email provider (Resend or similar — free tier): `[Human]` owner creates the account and pastes the API key into hosting env vars per instructions; AI builds verify + reset flows.
 *Acceptance:* new users receive verification email; reset flow works end-to-end.
 
-**CORE-2.2 [AI] — Entitlement & preview gating**
+**CORE-2.2 [AI] — Entitlement & preview gating** `[DONE 2026-07-23]`
 `lifetime_access` flag on user; free preview allowance (one sample calculation, limited output, no export); paid users unrestricted.
 *Acceptance:* preview limits enforced server-side; upgrade path visible to free users.
+*Status note:* Free users see **material quantities** (the preview that proves it works); the **cost estimate + labor plan** are gated behind lifetime access via `PaywallTeaser` (server-side check on the completed-project page), plus Excel/PDF exports already gated. Paid users see everything. Conversion funnel complete: on-screen value now matches the $30 unlock.
 
 ## Epic 3: Payments ($30 Lifetime)
 
@@ -149,17 +150,19 @@ wa.me share links with pre-filled summary + document link; `tel:` links on conta
 
 ## Epic 7: Product Site & Onboarding
 
-**CORE-7.0 [AI] — Landing & pricing pages**
+**CORE-7.0 [AI] — Landing & pricing pages** `[DONE 2026-07-23]`
 Landing page (what it does, the 7 outputs with R2/R3 marked "coming"), pricing page ($30 lifetime), FAQ.
 *Acceptance:* pages live, mobile-first, load fast; checkout reachable from pricing.
+*Status note:* Real landing page — hero ("Build Better. Estimate Smarter."), 7-outputs grid, 3-step how-it-works, CTAs to signup/pricing. Pricing page has the working Buy button (CORE-3.1).
 
 **CORE-7.1 [AI] — Free preview flow**
 Sample calculation for visitors/free accounts with limited output and a clear upgrade prompt.
 *Acceptance:* preview works without payment; export blocked with friendly upgrade message.
 
-**CORE-7.2 [AI+Human] — Legal pages**
+**CORE-7.2 [AI+Human] — Legal pages** `[AI DRAFT DONE 2026-07-23 — awaiting owner review before launch]`
 AI drafts Terms of Service, Privacy Policy (Kenya DPA + GDPR-aware), Refund Policy; `[Human]` owner reviews (and may consult a lawyer) before publishing.
 *Acceptance:* pages published and linked from footer + checkout; provider requirements satisfied.
+*Status note:* `/legal/terms`, `/legal/privacy`, `/legal/refund` live and linked from the footer. All marked DRAFT. **Owner action before launch:** review the three pages (14-day refund, Kenya DPA + GDPR practices, engineering-liability disclaimers); adjust the refund window to Paddle's requirements.
 
 **CORE-7.3 [AI] — First-run onboarding**
 Post-signup guidance: 3-step intro → start first project; empty states teach the flow.

@@ -28,7 +28,10 @@ The app now lives at **https://github.com/fatalibuilders-cloud/fatalibuilders-ap
 - [ ] **CORE-3.0 [Human+AI]** — owner picks & signs up with a **card provider (Paddle or Lemon Squeezy)**, completes identity/business verification, creates the "$30 lifetime" product, pastes TEST keys → AI wires the real provider (checkout/webhook shape already built)
 - [ ] **CORE-3.2 [Human+AI]** — owner signs up with an **M-Pesa gateway (Pesapal/Flutterwave/DPO)** → AI wires it
 - [ ] **CORE-1.1/1.2 [Human+AI]** — hosting account + managed Postgres so the app gets a public URL and real DB
-- [ ] **CORE-2.2** — free-preview gating; **Epic 7** — landing/legal pages; **Epic 8** — launch
+- [x] ~~CORE-2.2~~ **[DONE]** free-preview gating (materials free, cost+labor+exports gated → PaywallTeaser)
+- [x] ~~CORE-7.0~~ **[DONE]** landing page; ~~CORE-7.2~~ **[DRAFT DONE]** legal pages (Terms/Privacy/Refund — owner review before launch)
+- [ ] **CORE-7.1 / 7.3** — free-preview flow for visitors + first-run onboarding — pure [AI]
+- [ ] **Epic 8** — launch (after payments + hosting live)
 - **CARD PROVIDER CHOSEN (owner, 2026-07-23): Paddle.** Next CORE-3.0 steps: owner creates a Paddle account at paddle.com → Seller verification (business/ID details) → create a "$30 Lifetime Access" product → Developer Tools → generate **Sandbox** API key + client token → paste into app env (`PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PAYMENTS_PROVIDER=paddle`). Then AI wires Paddle checkout + webhook into the existing payment abstraction.
 - [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
