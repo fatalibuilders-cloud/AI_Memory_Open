@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+r"""Manage multiple broker accounts and switch the bot between them.
+
+    .\.venv\Scripts\python.exe profile.py list          # what is configured
+    .\.venv\Scripts\python.exe profile.py add hfm       # scaffold a new profile
+    .\.venv\Scripts\python.exe profile.py use hfm       # switch the bot to it
+    .\.venv\Scripts\python.exe profile.py brokers       # known brokers + notes
+
+Each profile keeps its own login, password, server and symbol list, because
+symbol names differ per broker (Exness uses EURUSDm, most others EURUSD).
+Switching profiles never touches your Telegram settings or strategy tuning.
+
+After switching, restart the bot:
+    Stop-ScheduledTask -TaskName FMSTradingBot; Start-ScheduledTask -TaskName FMSTradingBot
+"""
+
+from __future__ import annotations
+
+import re
+import shutil
+import sys
+from pathlib import Path
+
+from fmsbot.config import KNOWN_BROKERS
+
+ENV = Path(".env")
+KEYS = ("LOGIN", "PASSWORD", "SERVER", "SYMBOLS")
+
+
+def read_lines() -> list[str]:
+    if not ENV.is_file():
+        sys.exit(".env not found — run this from the fms-trading-bot folder.")
+    return ENV.read_text(encoding="utf-8").splitlines()
+
+
+def parse(lines: list[str]) -> dict[str, str]:
+    out = {}
+    for line in lines:
+        s = line.strip()
+        if s and not s.startswith("#") and "=" in s:
+            k, _, v = s.partition("=")
+            out[k.strip()] = v.split("#")[0].strip() if not v.strip().startswith(('"', "'")) else v.strip()
+    return out
+
+
+def profiles(env: dict[str, str]) -> dict[str, dict[str, str]]:
+    found: dict[str, dict[str, str]] = {}
+    for key, value in env.items():
+        m = re.match(r"^BROKER_([A-Z0-9]+)_(LOGIN|PASSWORD|SERVER|SYMBOLS)$", key)
+        if m:
+            found.setdefault(m.group(1).lower(), {})[m.group(2)] = value
+    return found
+
+
+def write(lines: list[str]) -> None:
+    shutil.copyfile(ENV, Path(".env.bak"))
+    ENV.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def cmd_list() -> int:
+    lines = read_lines()
+    env = parse(lines)
+    found = profiles(env)
+    active = env.get("ACTIVE_BROKER", "").lower()
+
+    if not found:
+        print("No broker profiles configured.\n")
+        print("The bot is using the plain MT5_LOGIN/MT5_PASSWORD/MT5_SERVER settings:")
+        print(f"  login  : {env.get('MT5_LOGIN', '(not set)')}")
+        print(f"  server : {env.get('MT5_SERVER', '(not set)')}")
+        print(f"  symbols: {env.get('SYMBOLS', '(not set)')}")
+        print("\nAdd a profile with:  python profile.py add exness")
+        return 0
+
+    print(f"Configured broker profiles ({len(found)}):\n")
+    for name, data in sorted(found.items()):
+        mark = " <-- ACTIVE" if name == active else ""
+        complete = all(data.get(k) for k in ("LOGIN", "PASSWORD", "SERVER"))
+        status = "" if complete else "   [INCOMPLETE]"
+        print(f"  {name}{mark}{status}")
+        print(f"      login  : {data.get('LOGIN') or '(not set)'}")
+        print(f"      server : {data.get('SERVER') or '(not set)'}")
+        print(f"      symbols: {data.get('SYMBOLS') or '(falls back to SYMBOLS)'}")
+    if not active:
+        print("\nNo ACTIVE_BROKER set — the plain MT5_* settings are in use.")
+        print("Switch with:  python profile.py use <name>")
+    return 0
+
+
+def cmd_brokers() -> int:
+    print("Known MT5 brokers (all accept Kenyan clients and offer crypto):\n")
+    for name, meta in KNOWN_BROKERS.items():
+        suffix = f"symbols end in '{meta['suffix']}'" if meta["suffix"] else "plain symbol names"
+        print(f"  {name:12} {suffix}")
+        print(f"               {meta['note']}")
+    print("\nSuffixes vary by ACCOUNT TYPE as well as broker — always confirm with:")
+    print("  python symbols.py BTC")
+    return 0
+
+
+def cmd_add(name: str) -> int:
+    name = name.lower()
+    lines = read_lines()
+    env = parse(lines)
+    if any(k.startswith(f"BROKER_{name.upper()}_") for k in env):
+        print(f"Profile '{name}' already exists. Edit it with: notepad .env")
+        return 1
+
+    meta = KNOWN_BROKERS.get(name)
+    suffix = meta["suffix"] if meta else ""
+    symbols = ",".join(f"{s}{suffix}" for s in ("EURUSD", "XAUUSD", "BTCUSD"))
+
+    block = [
+        "",
+        f"# --- broker profile: {name} ---",
+    ]
+    if meta:
+        block.append(f"# {meta['note']}")
+    block += [
+        f"BROKER_{name.upper()}_LOGIN=",
+        f"BROKER_{name.upper()}_PASSWORD=",
+        f"BROKER_{name.upper()}_SERVER=",
+        f"BROKER_{name.upper()}_SYMBOLS={symbols}",
+    ]
+    write(lines + block)
+    print(f"Added profile '{name}' to .env (backup in .env.bak).\n")
+    print("Now fill in its credentials:")
+    print("  notepad .env")
+    print(f"\nSuggested symbols: {symbols}")
+    print("  (verify with 'python symbols.py' once connected — names differ per account type)")
+    print(f"\nThen activate it:  python profile.py use {name}")
+    return 0
+
+
+def cmd_use(name: str) -> int:
+    name = name.lower()
+    lines = read_lines()
+    env = parse(lines)
+    found = profiles(env)
+    if name not in found:
+        print(f"No profile '{name}'. Configured: {', '.join(sorted(found)) or '(none)'}")
+        print(f"Create it with:  python profile.py add {name}")
+        return 1
+    missing = [k for k in ("LOGIN", "PASSWORD", "SERVER") if not found[name].get(k)]
+    if missing:
+        print(f"Profile '{name}' is missing: {', '.join(missing)}")
+        print("Fill them in with: notepad .env")
+        return 1
+
+    out, seen = [], False
+    for line in lines:
+        if re.match(r"^\s*ACTIVE_BROKER\s*=", line):
+            out.append(f"ACTIVE_BROKER={name}")
+            seen = True
+        else:
+            out.append(line)
+    if not seen:
+        out += ["", "# active broker profile (see profile.py)", f"ACTIVE_BROKER={name}"]
+    write(out)
+
+    data = found[name]
+    print(f"Switched to '{name}' (backup in .env.bak).")
+    print(f"  login  : {data['LOGIN']}")
+    print(f"  server : {data['SERVER']}")
+    print(f"  symbols: {data.get('SYMBOLS') or '(falls back to SYMBOLS)'}")
+    print("\nRestart the bot to apply:")
+    print("  Stop-ScheduledTask -TaskName FMSTradingBot; "
+          "Start-ScheduledTask -TaskName FMSTradingBot")
+    return 0
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if not args or args[0] not in ("list", "add", "use", "brokers"):
+        print(__doc__)
+        return 2
+    if args[0] == "list":
+        return cmd_list()
+    if args[0] == "brokers":
+        return cmd_brokers()
+    if len(args) < 2:
+        print(f"Usage: python profile.py {args[0]} <name>")
+        return 2
+    return cmd_add(args[1]) if args[0] == "add" else cmd_use(args[1])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

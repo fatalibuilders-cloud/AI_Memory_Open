@@ -228,6 +228,8 @@ class TradingBot:
             mode = "⏸ PAUSED" if self.paused else "▶️ ACTIVE"
             if self.s.entry_mode == "interval":
                 mode += f" | ⚡ interval {self.s.entry_interval_seconds}s"
+            if self.s.active_broker:
+                mode += f" | {self.s.active_broker}"
             return (f"{mode} | {', '.join(self.s.symbols)} @ {self.s.timeframe}\n"
                     f"Balance {balance:.2f} | Equity {equity:.2f}\n"
                     f"Open positions: {len(self.broker.positions())}\n"
