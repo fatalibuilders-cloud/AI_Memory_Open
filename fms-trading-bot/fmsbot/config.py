@@ -48,6 +48,34 @@ def _b(name: str, default: bool) -> bool:
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
+# Known MT5 brokers and the symbol-naming convention they use, so the
+# right names can be suggested instead of guessed. Suffixes vary by
+# ACCOUNT TYPE too — symbols.py always reports the truth for your account.
+KNOWN_BROKERS = {
+    "exness":     {"suffix": "m", "crypto": True,
+                   "note": "CMA-licensed in Kenya, KES accounts, M-Pesa. 9 crypto pairs."},
+    "hfm":        {"suffix": "", "crypto": True,
+                   "note": "CMA-licensed in Kenya, KES accounts. 75+ crypto pairs."},
+    "pepperstone": {"suffix": "", "crypto": True,
+                    "note": "CMA-licensed, M-Pesa. BTCUSD spread from ~$15, no KES accounts."},
+    "icmarkets":  {"suffix": "", "crypto": True, "note": "Tight spreads, offshore regulation."},
+    "xm":         {"suffix": "", "crypto": True, "note": "Widely available, offshore regulation."},
+    "roboforex":  {"suffix": "", "crypto": True, "note": "Wide instrument range."},
+    "fbs":        {"suffix": "", "crypto": True, "note": "Widely available in Africa/Asia."},
+    "deriv":      {"suffix": "", "crypto": True,
+                   "note": "Popular in Kenya, M-Pesa, 24/7 synthetic indices."},
+}
+
+
+def _profile_value(profile: str, key: str, fallback_env: str) -> str:
+    """Read BROKER_<PROFILE>_<KEY>, else the plain MT5_* variable."""
+    if profile:
+        value = os.environ.get(f"BROKER_{profile.upper()}_{key}", "").strip()
+        if value:
+            return value
+    return os.environ.get(fallback_env, "").strip()
+
+
 @dataclass
 class Settings:
     # --- Telegram remote control ---------------------------------------
@@ -58,6 +86,10 @@ class Settings:
     # --- Broker selection -------------------------------------------------
     broker: str = "mt5"               # "mt5" (Windows; forex+metals+stocks)
                                       # or "oanda" (any OS; forex+metals)
+
+    # Name of the active broker profile (ACTIVE_BROKER in .env). Empty means
+    # the plain MT5_LOGIN/PASSWORD/SERVER variables are used.
+    active_broker: str = ""
 
     # --- MetaTrader 5 ----------------------------------------------------
     mt5_login: int = 0
@@ -121,15 +153,21 @@ class Settings:
         _load_dotenv(dotenv_path)
         # NOTE: broker symbol names are case-sensitive (Exness uses EURUSDm,
         # not EURUSDM) — never normalize the case here.
-        symbols = [s.strip() for s in os.environ.get("SYMBOLS", "EURUSD,XAUUSD").split(",") if s.strip()]
+        # An active profile supplies credentials and (optionally) its own
+        # symbol list, since naming differs per broker.
+        profile = os.environ.get("ACTIVE_BROKER", "").strip().lower()
+        raw_symbols = (_profile_value(profile, "SYMBOLS", "SYMBOLS")
+                       or "EURUSD,XAUUSD")
+        symbols = [s.strip() for s in raw_symbols.split(",") if s.strip()]
         return cls(
             tg_token=os.environ.get("TG_BOT_TOKEN", "").strip(),
             tg_password=os.environ.get("TG_PASSWORD", "").strip(),
             tg_state_file=os.environ.get("TG_STATE_FILE", "tg_state.json").strip(),
             broker=os.environ.get("BROKER", "mt5").strip().lower(),
-            mt5_login=_i("MT5_LOGIN", 0),
-            mt5_password=os.environ.get("MT5_PASSWORD", ""),
-            mt5_server=os.environ.get("MT5_SERVER", "").strip(),
+            active_broker=profile,
+            mt5_login=int(_profile_value(profile, "LOGIN", "MT5_LOGIN") or 0),
+            mt5_password=_profile_value(profile, "PASSWORD", "MT5_PASSWORD"),
+            mt5_server=_profile_value(profile, "SERVER", "MT5_SERVER"),
             mt5_path=os.environ.get("MT5_PATH", "").strip(),
             oanda_token=os.environ.get("OANDA_API_TOKEN", "").strip(),
             oanda_account=os.environ.get("OANDA_ACCOUNT_ID", "").strip(),
@@ -171,7 +209,14 @@ class Settings:
             problems.append("TG_PASSWORD missing/too short (min 6 chars) — this is your phone login password.")
         if self.broker == "mt5":
             if not self.mt5_login or not self.mt5_password or not self.mt5_server:
-                problems.append("MT5_LOGIN / MT5_PASSWORD / MT5_SERVER missing — use your MT5 account credentials.")
+                if self.active_broker:
+                    p = f"BROKER_{self.active_broker.upper()}_"
+                    problems.append(
+                        f"ACTIVE_BROKER={self.active_broker} but {p}LOGIN / {p}PASSWORD / "
+                        f"{p}SERVER are not all set (and no MT5_* fallback). "
+                        f"Run 'python profile.py list' to see configured profiles.")
+                else:
+                    problems.append("MT5_LOGIN / MT5_PASSWORD / MT5_SERVER missing — use your MT5 account credentials.")
         elif self.broker == "oanda":
             if not self.oanda_token or not self.oanda_account:
                 problems.append("OANDA_API_TOKEN / OANDA_ACCOUNT_ID missing — generate them in the OANDA portal.")

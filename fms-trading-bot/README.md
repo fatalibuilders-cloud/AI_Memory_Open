@@ -148,6 +148,35 @@ To reach the full rate you must also set `TIMEFRAME=M1`,
 `MAX_OPEN_POSITIONS` — the risk gates throttle it on purpose, and the bot
 logs a warning naming each limit that is holding it back.
 
+## Multiple brokers
+
+The bot works with any MT5 broker. Keep several accounts configured at once
+and switch between them without re-editing credentials:
+
+```powershell
+.\.venv\Scripts\python.exe profile.py brokers      # known brokers + naming
+.\.venv\Scripts\python.exe profile.py add hfm      # scaffold a profile
+notepad .env                                       # fill in its credentials
+.\.venv\Scripts\python.exe profile.py use hfm      # switch
+```
+
+Each profile carries its own login, password, server **and symbol list**,
+because naming differs per broker — Exness uses `EURUSDm`, most others use
+`EURUSD`. Switching never touches your Telegram settings or strategy tuning,
+and `/status` shows which broker is active.
+
+Brokers that accept Kenyan clients, run MT5, and offer Bitcoin:
+
+| Broker | Crypto | Notes |
+|---|---|---|
+| HFM | 75+ pairs | CMA-licensed in Kenya, KES accounts |
+| Exness | 9 pairs | CMA-licensed, KES accounts, M-Pesa, `m` symbol suffix |
+| Pepperstone | BTCUSD ~$15 spread | CMA-licensed, M-Pesa, no KES accounts |
+| Deriv, IC Markets, XM, RoboForex, FBS | yes | see `profile.py brokers` |
+
+Symbol suffixes vary by **account type** as well as broker — confirm with
+`python symbols.py BTC` once connected rather than guessing.
+
 ## Backtesting — measure before you trust
 
 `backtest.py` replays the strategy over real history from your own MT5
