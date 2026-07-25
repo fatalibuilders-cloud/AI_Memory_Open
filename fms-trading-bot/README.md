@@ -148,6 +148,25 @@ To reach the full rate you must also set `TIMEFRAME=M1`,
 `MAX_OPEN_POSITIONS` — the risk gates throttle it on purpose, and the bot
 logs a warning naming each limit that is holding it back.
 
+## Backtesting — measure before you trust
+
+`backtest.py` replays the strategy over real history from your own MT5
+terminal and reports what it would actually have returned:
+
+```powershell
+.\.venv\Scripts\python.exe backtest.py --symbol EURUSDm --days 30 --balance 50
+.\.venv\Scripts\python.exe backtest.py --symbol BTCUSDm --days 30 --preset aggressive
+```
+
+It reports trades, win rate, profit factor, max drawdown, end balance and the
+average daily return — then projects how long 20x would take at that rate.
+The simulation is deliberately pessimistic: entries fill at the next bar's
+open (no lookahead), the spread is charged on every entry, and when a bar's
+range covers both stop and target it assumes the **stop** was hit.
+
+Read `profit factor` first: below 1.0 the configuration loses money, and no
+amount of leverage or frequency fixes a losing edge — it only loses faster.
+
 ## Project layout
 
 ```
