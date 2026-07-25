@@ -167,6 +167,31 @@ range covers both stop and target it assumes the **stop** was hit.
 Read `profit factor` first: below 1.0 the configuration loses money, and no
 amount of leverage or frequency fixes a losing edge — it only loses faster.
 
+### Searching for an edge
+
+`optimize.py` grid-searches four strategies (EMA crossover, Bollinger mean
+reversion, Donchian breakout, always-with-trend) over parameter ranges,
+fits on the first two-thirds of the data and reports each candidate's
+performance on the **final third it never saw**:
+
+```powershell
+.\.venv\Scripts\python.exe optimize.py --symbol EURUSDm --days 60
+```
+
+Two rules for reading it honestly:
+
+1. **In-sample numbers mean nothing.** Fitting parameters to history always
+   produces something that looks good.
+2. **One out-of-sample survivor out of hundreds also means nothing.** The
+   tool prints how many combinations it tried and how many would pass by
+   pure luck. A real edge appears across several symbols and periods; a
+   coincidence appears in exactly one. Verified: on a synthetic random walk
+   with no edge by construction, the search still found a config returning
+   +4.3% out-of-sample.
+
+The genuinely useful outcome is often "nothing survived" — that saves you
+the money you would have lost finding out live.
+
 ## Project layout
 
 ```
