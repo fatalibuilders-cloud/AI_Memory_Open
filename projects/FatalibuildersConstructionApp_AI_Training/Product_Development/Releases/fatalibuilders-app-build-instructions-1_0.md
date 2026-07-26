@@ -26,7 +26,7 @@
 | 4 | Project Data Input (Residential) | 3 | ✅ **Complete (2026-07-23)** |
 | 5 | Calculators | 4 | ✅ **Complete (2026-07-23)** — 3 calculators + hardening done |
 | 6 | Outputs & Sharing | 4 | ✅ **Complete (2026-07-23)** — views, Excel, PDF, WhatsApp/call |
-| 7 | Product Site & Onboarding | 4 | In Progress (7.0 landing + 7.2 legal done; 7.1 preview flow, 7.3 onboarding next) |
+| 7 | Product Site & Onboarding | 4 | ✅ Complete (7.0 landing, 7.1 demo, 7.2 legal drafts, 7.3 onboarding) |
 | 8 | Launch Readiness | 3 | Pending |
 
 **Total: 29 stories** — 17 [AI], 11 [AI+Human], 1 [Human]
@@ -155,17 +155,19 @@ Landing page (what it does, the 7 outputs with R2/R3 marked "coming"), pricing p
 *Acceptance:* pages live, mobile-first, load fast; checkout reachable from pricing.
 *Status note:* Real landing page — hero ("Build Better. Estimate Smarter."), 7-outputs grid, 3-step how-it-works, CTAs to signup/pricing. Pricing page has the working Buy button (CORE-3.1).
 
-**CORE-7.1 [AI] — Free preview flow**
+**CORE-7.1 [AI] — Free preview flow** `[DONE 2026-07-23]`
 Sample calculation for visitors/free accounts with limited output and a clear upgrade prompt.
 *Acceptance:* preview works without payment; export blocked with friendly upgrade message.
+*Status note:* Public `/demo` page renders a real sample (12×9 bungalow material quantities) with NO signup, plus a locked cost/schedule teaser and signup CTA; linked from the landing hero. In-app, free accounts get the same materials-preview + PaywallTeaser (CORE-2.2).
 
 **CORE-7.2 [AI+Human] — Legal pages** `[AI DRAFT DONE 2026-07-23 — awaiting owner review before launch]`
 AI drafts Terms of Service, Privacy Policy (Kenya DPA + GDPR-aware), Refund Policy; `[Human]` owner reviews (and may consult a lawyer) before publishing.
 *Acceptance:* pages published and linked from footer + checkout; provider requirements satisfied.
 *Status note:* `/legal/terms`, `/legal/privacy`, `/legal/refund` live and linked from the footer. All marked DRAFT. **Owner action before launch:** review the three pages (14-day refund, Kenya DPA + GDPR practices, engineering-liability disclaimers); adjust the refund window to Paddle's requirements.
 
-**CORE-7.3 [AI] — First-run onboarding**
+**CORE-7.3 [AI] — First-run onboarding** `[DONE 2026-07-23]`
 Post-signup guidance: 3-step intro → start first project; empty states teach the flow.
+*Status note:* Projects empty state shows a welcoming 3-step guide (enter → get results → download/share) with a prominent create-first-project button.
 *Acceptance:* new user reaches their first result without external help.
 
 ## Epic 8: Launch Readiness

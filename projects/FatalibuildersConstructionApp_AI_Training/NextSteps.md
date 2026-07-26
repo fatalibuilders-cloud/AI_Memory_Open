@@ -30,8 +30,16 @@ The app now lives at **https://github.com/fatalibuilders-cloud/fatalibuilders-ap
 - [ ] **CORE-1.1/1.2 [Human+AI]** — hosting account + managed Postgres so the app gets a public URL and real DB
 - [x] ~~CORE-2.2~~ **[DONE]** free-preview gating (materials free, cost+labor+exports gated → PaywallTeaser)
 - [x] ~~CORE-7.0~~ **[DONE]** landing page; ~~CORE-7.2~~ **[DRAFT DONE]** legal pages (Terms/Privacy/Refund — owner review before launch)
-- [ ] **CORE-7.1 / 7.3** — free-preview flow for visitors + first-run onboarding — pure [AI]
-- [ ] **Epic 8** — launch (after payments + hosting live)
+- [x] ~~CORE-7.1 / 7.3~~ **[DONE]** public /demo sample estimate + first-run onboarding — Epic 7 complete
+- [ ] **Epic 8** — launch (UAT + go-live), after payments + hosting are live
+
+**⏳ The remaining Release 1.0 work is now mostly gated on owner actions:**
+1. **Paddle** — create account, verify, make "$30 Lifetime" product, get sandbox keys → AI wires it (CORE-3.0)
+2. **M-Pesa gateway** (Pesapal/Flutterwave) signup → AI wires it (CORE-3.2)
+3. **Hosting** (Vercel) + **Postgres** (Neon/Supabase) accounts → AI deploys (CORE-1.1/1.2)
+4. **Email provider** (Resend) for verification/receipts (CORE-2.1)
+5. **Review the 3 legal pages** (/legal/terms, /privacy, /refund)
+*AI can pre-write the Paddle/M-Pesa integration code against the docs now if desired, ready to activate when keys arrive.*
 - **CARD PROVIDER CHOSEN (owner, 2026-07-23): Paddle.** Next CORE-3.0 steps: owner creates a Paddle account at paddle.com → Seller verification (business/ID details) → create a "$30 Lifetime Access" product → Developer Tools → generate **Sandbox** API key + client token → paste into app env (`PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PAYMENTS_PROVIDER=paddle`). Then AI wires Paddle checkout + webhook into the existing payment abstraction.
 - [ ] **PRIORITY REMINDER — owner:** create the private GitHub repo `fatalibuilders-app` — the app now contains company rate data and sits in the PUBLIC memory repo until migrated
 - [ ] **CORE-2.2** — entitlement & preview gating (pure [AI])
