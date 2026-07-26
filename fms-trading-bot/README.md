@@ -148,6 +148,42 @@ To reach the full rate you must also set `TIMEFRAME=M1`,
 `MAX_OPEN_POSITIONS` — the risk gates throttle it on purpose, and the bot
 logs a warning naming each limit that is holding it back.
 
+## Copying signals from a Telegram group
+
+`signal_copier.py` reads a signal group you belong to, parses the messages
+into orders, and — **in paper mode by default** — logs what it would have
+done so you can measure the group before trusting it.
+
+```powershell
+pip install telethon
+.\.venv\Scripts\python.exe signal_copier.py --list-chats   # find the group id
+.\.venv\Scripts\python.exe signal_copier.py                # paper mode
+.\.venv\Scripts\python.exe signal_copier.py --report       # the group's record
+.\.venv\Scripts\python.exe signal_copier.py --live         # place real orders
+```
+
+Setup: get `api_id`/`api_hash` from https://my.telegram.org (API development
+tools) into `TG_API_ID` / `TG_API_HASH`, then put the group id in
+`SIGNAL_CHAT_ID`.
+
+**Why paper mode is the default.** Signal groups publish their winners and
+quietly drop their losers, so their advertised record is meaningless. Paper
+mode records every signal as it arrives, which after a few weeks gives you
+the group's real hit rate — the only basis for deciding whether to follow it.
+
+**Safety rules the copier enforces:**
+
+- a signal is traded only if it has **both** an explicit stop and target
+- signals whose levels are on the wrong side of entry are logged, never traded
+- symbols the account doesn't offer are skipped with a clear reason
+- all normal risk gates apply (`FIXED_LOT`, daily loss stop, position limits)
+- a separate cap on signal orders per day (`--max-per-day`, default 5)
+- `--live` requires typing `yes` at a confirmation prompt
+
+**Note on access:** reading a group requires signing in as your own Telegram
+account, which creates a `signal_session.session` file granting full access
+to your Telegram. It is git-ignored — keep it private, and never share it.
+
 ## Multiple brokers
 
 The bot works with any MT5 broker. Keep several accounts configured at once
