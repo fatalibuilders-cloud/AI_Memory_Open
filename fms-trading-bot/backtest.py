@@ -125,16 +125,32 @@ def signal_at(s: Settings, i: int, fast, slow, rsis, atrs) -> Optional[Signal]:
     return None
 
 
+SYNTHETIC_KEYS = ("VOLATILITY", "BOOM", "CRASH", "STEP INDEX", "JUMP")
+
+
+def is_synthetic(symbol: str) -> bool:
+    upper = symbol.upper()
+    return any(k in upper for k in SYNTHETIC_KEYS)
+
+
 def point_value_for(symbol: str) -> float:
+    upper = symbol.upper()
+    if is_synthetic(symbol):
+        # Contract sizes differ per synthetic index; when reading from MT5 the
+        # terminal's own tick value is used instead of this fallback.
+        return 1.0
     for key, value in DEFAULT_POINT_VALUE.items():
-        if symbol.upper().startswith(key):
+        if upper.startswith(key):
             return value
     return FX_POINT_VALUE
 
 
 def spread_for(symbol: str) -> float:
+    upper = symbol.upper()
+    if is_synthetic(symbol):
+        return 0.5
     for key, value in DEFAULT_SPREAD.items():
-        if symbol.upper().startswith(key):
+        if upper.startswith(key):
             return value
     return FX_SPREAD
 
