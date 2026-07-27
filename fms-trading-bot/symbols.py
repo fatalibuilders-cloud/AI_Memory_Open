@@ -17,6 +17,8 @@ import sys
 from fmsbot.config import Settings
 
 GROUPS = (
+    ("Synthetics (24/7, simulated)",
+     ("VOLATILITY", "BOOM", "CRASH", "STEP INDEX", "JUMP", "RANGE BREAK", "DRIFT SWITCH")),
     ("Crypto", ("BTC", "ETH", "XRP", "LTC", "SOL", "DOGE", "ADA", "BNB", "CRYPTO")),
     ("Metals", ("XAU", "XAG", "XPT", "XPD", "GOLD", "SILVER")),
     ("Energy", ("OIL", "BRENT", "WTI", "USOIL", "UKOIL", "NGAS")),

@@ -51,6 +51,16 @@ def _b(name: str, default: bool) -> bool:
 # Known MT5 brokers and the symbol-naming convention they use, so the
 # right names can be suggested instead of guessed. Suffixes vary by
 # ACCOUNT TYPE too — symbols.py always reports the truth for your account.
+# Deriv's synthetic indices are simulated instruments that run 24/7,
+# including weekends when every real market is shut. Names contain spaces
+# and are used verbatim in SYMBOLS.
+DERIV_SYNTHETICS = [
+    "Volatility 10 Index", "Volatility 25 Index", "Volatility 50 Index",
+    "Volatility 75 Index", "Volatility 100 Index",
+    "Boom 1000 Index", "Crash 1000 Index",
+    "Step Index", "Jump 100 Index",
+]
+
 KNOWN_BROKERS = {
     "exness":     {"suffix": "m", "crypto": True,
                    "note": "CMA-licensed in Kenya, KES accounts, M-Pesa. 9 crypto pairs."},
@@ -63,7 +73,11 @@ KNOWN_BROKERS = {
     "roboforex":  {"suffix": "", "crypto": True, "note": "Wide instrument range."},
     "fbs":        {"suffix": "", "crypto": True, "note": "Widely available in Africa/Asia."},
     "deriv":      {"suffix": "", "crypto": True,
-                   "note": "Popular in Kenya, M-Pesa, 24/7 synthetic indices."},
+                   "symbols": ["Volatility 75 Index", "Volatility 100 Index", "Step Index"],
+                   "note": ("Popular in Kenya, M-Pesa. Synthetic indices trade 24/7 "
+                            "including weekends — but they are simulated instruments, "
+                            "not real markets (see README)."),
+                   },
 }
 
 
