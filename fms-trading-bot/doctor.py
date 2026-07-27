@@ -122,6 +122,22 @@ def main() -> int:
         for ts, side, reason in hits[-5:]:
             print(f"     {fmt_ts(ts)}  {side.upper():4}  {reason}")
 
+        # Rapid direction flips mean the strategy is chasing noise. Each
+        # reversal pays the spread, so this bleeds money regardless of
+        # whether the direction calls are eventually right.
+        flips = [(hits[i][0] - hits[i - 1][0]) / 60.0
+                 for i in range(1, len(hits))
+                 if hits[i][1] != hits[i - 1][1]]
+        quick = [m for m in flips if m <= 15]
+        if quick:
+            per_day = len(hits) / span_h * 24 if span_h > 0 else 0
+            print(f"  {WARN} WHIPSAW: {len(quick)} direction reversal(s) within 15 min "
+                  f"(fastest {min(quick):.0f} min apart)")
+            print(f"          ~{per_day:.0f} signals/day — every reversal pays the "
+                  f"spread twice.")
+            print( "          Slow it down: preset.py balanced, or raise "
+                   "TIMEFRAME/EMA periods.")
+
     # -- risk gates ------------------------------------------------------
     print(f"\n-- RISK GATES (simulated for first symbol) --")
     risk = RiskManager(settings)
@@ -130,7 +146,11 @@ def main() -> int:
     allowed, reason = risk.can_enter(sym, balance, equity, len(open_positions), sym_open)
     if allowed:
         print(f"  {OK} a signal right now would be allowed through")
-        print(f"     risk amount/trade: {risk.risk_amount(balance):.2f}")
+        if settings.fixed_lot > 0:
+            print(f"     size/trade: {settings.fixed_lot} lot (fixed)")
+        else:
+            print(f"     risk amount/trade: {risk.risk_amount(balance):.2f} "
+                  f"({settings.risk_pct}% of balance)")
     else:
         print(f"  {WARN} entry would be BLOCKED: {reason}")
 
