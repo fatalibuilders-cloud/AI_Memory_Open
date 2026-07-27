@@ -34,7 +34,7 @@ The app now lives at **https://github.com/fatalibuilders-cloud/fatalibuilders-ap
 - [ ] **Epic 8** — launch (UAT + go-live), after payments + hosting are live
 
 **⏳ The remaining Release 1.0 work is now mostly gated on owner actions:**
-1. **Paddle** — create account, verify, make "$30 Lifetime" product, get sandbox keys → AI wires it (CORE-3.0)
+1. **Paddle** — integration is **PRE-BUILT & tested**; just needs your keys. Follow `Paddle-Activation-Guide.md`: sign up → verify → create the $30 price → copy client token, price id, webhook secret → set `PADDLE_*` env + `PAYMENTS_PROVIDER=paddle`. Activation is then ~10 min.
 2. **M-Pesa gateway** (Pesapal/Flutterwave) signup → AI wires it (CORE-3.2)
 3. **Hosting** (Vercel) + **Postgres** (Neon/Supabase) accounts → AI deploys (CORE-1.1/1.2)
 4. **Email provider** (Resend) for verification/receipts (CORE-2.1)

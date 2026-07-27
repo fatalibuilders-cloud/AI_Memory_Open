@@ -146,7 +146,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
-- **Completion:** ~72% (21/29) — [DONE]: CORE-1.0, 1.3, 2.0, 2.2, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, Epic 6 (6.0/6.1/6.2/6.3), CORE-3.1 (sandbox $30 checkout), **Epic 7 complete (7.0 landing, 7.1 /demo, 7.2 legal drafts, 7.3 onboarding)**. Full journey works in sandbox: public /demo → signup → enter project → materials preview (free) → cost+labor+exports gated behind $30 → buy → unlock. 76 tests. App in private repo `fatalibuilders-cloud/fatalibuilders-app` (main). **Remaining for sellable MVP (all need the owner or are quick wires): CORE-3.0/3.2 (Paddle + M-Pesa signup → wire keys), CORE-1.1/1.2 (hosting + Postgres), CORE-2.1 (email provider), owner legal review, Epic 8 launch (UAT + go-live).** Open validation: labor productivity norms.
+- **Completion:** ~74% (22/29 built) — [DONE]: CORE-1.0, 1.3, 2.0, 2.2, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, Epic 6, CORE-3.1 (sandbox checkout), Epic 7 (7.0/7.1/7.2/7.3), **CORE-3.0 Paddle integration pre-built (activates on owner keys)**. Full journey works in sandbox: /demo → signup → project → materials free → cost+labor+exports gated → buy → unlock. **86 tests.** App in private repo `fatalibuilders-cloud/fatalibuilders-app` (main). **Remaining for sellable MVP — mostly owner-gated: Paddle keys (guide: `Paddle-Activation-Guide.md`) → activate; CORE-3.2 M-Pesa; CORE-1.1/1.2 hosting+Postgres; CORE-2.1 email; owner legal review; Epic 8 launch.** Open validation: labor productivity norms.
 
 ### Future Releases (planned skeleton)
 - **2.0 — See It:** 2D drawings, renders

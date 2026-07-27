@@ -72,9 +72,10 @@ Transactional email provider (Resend or similar — free tier): `[Human]` owner 
 
 ## Epic 3: Payments ($30 Lifetime)
 
-**CORE-3.0 [AI+Human] — Choose & set up merchant-of-record provider**
+**CORE-3.0 [AI+Human] — Choose & set up merchant-of-record provider** `[Paddle chosen; integration PRE-BUILT 2026-07-23 — awaiting owner keys]`
 AI presents final Paddle vs Lemon Squeezy recommendation for a Kenya-based seller selling worldwide; `[Human]` owner signs up, completes identity/business verification (ID + bank details), creates the "$30 lifetime access" product, and pastes TEST keys into env vars — all with step-by-step plain-language instructions.
 *Acceptance:* provider account verified; test keys configured; product exists in the provider dashboard.
+*Status note:* **Owner chose Paddle.** Full Paddle Billing integration built & unit-tested ahead of keys: `lib/paddle.ts` (config + webhook signature verification, replay-protected + transaction extraction), `payments.createCheckout` paddle branch (overlay params), `lib/paddle-client.ts` (Paddle.js overlay), webhook route grants on verified `transaction.completed`, BuyButton handles the overlay, `.env.example` documents all vars. 10 signature/extraction tests pass. **Remaining [Human]:** owner completes Paddle signup/verification, creates the $30 price, and provides sandbox `PADDLE_*` keys — then set `PAYMENTS_PROVIDER=paddle`. Step-by-step: `Paddle-Activation-Guide.md`. (Live overlay/webhook round-trip verifies once sandbox keys + a public URL exist.)
 
 **CORE-3.1 [AI] — Card checkout integration** `[DONE in sandbox 2026-07-23 — real provider swaps in at CORE-3.0]`
 Provider-hosted checkout from the pricing page; webhook receiver sets `lifetime_access=true`; idempotent handling; test-mode purchase flow verified.
