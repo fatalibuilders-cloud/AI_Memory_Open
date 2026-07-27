@@ -39,42 +39,50 @@ def classify(name: str) -> str:
     return "Other (stocks/CFDs)"
 
 
+def list_symbols(backend: str, broker) -> list[tuple[str, bool]]:
+    """(name, tradeable) for every instrument the account offers."""
+    if backend in ("mt5", "exness", "deriv", "vantage"):
+        # trade_mode 0 = disabled, 4 = full access
+        return [(s.name, getattr(s, "trade_mode", 4) != 0)
+                for s in (broker.mt5.symbols_get() or [])]
+    if backend == "oanda":
+        return [(name, True) for name in broker._instruments]
+    if backend == "binance":
+        return [(name, True) for name in broker._filters]
+    raise SystemExit(f"Unknown broker backend '{backend}'.")
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     tradeable_only = "--tradeable" in sys.argv
     needle = args[0].upper() if args else None
 
     settings = Settings.load()
-    if settings.broker != "mt5":
-        print("This tool currently supports BROKER=mt5 only.", file=sys.stderr)
-        return 1
-
-    from fmsbot.broker.mt5 import MT5Broker
-    broker = MT5Broker(settings.mt5_login, settings.mt5_password,
-                       settings.mt5_server, settings.mt5_path)
+    from fmsbot.broker import build_broker
+    broker = build_broker(settings)
     broker.connect()
     try:
-        all_symbols = broker.mt5.symbols_get() or []
         rows = []
-        for s in all_symbols:
-            if needle and needle not in s.name.upper():
+        for name, enabled in list_symbols(settings.broker, broker):
+            if needle and needle not in name.upper():
                 continue
-            # trade_mode 0 = disabled, 4 = full access
-            enabled = getattr(s, "trade_mode", 4) != 0
             if tradeable_only and not enabled:
                 continue
-            rows.append((classify(s.name), s.name, enabled))
+            rows.append((classify(name), name, enabled))
 
         if not rows:
             print(f"No symbols matching '{needle}'." if needle else "No symbols found.")
             if needle:
-                print("Your account type may not offer this instrument. Ask Exness "
-                      "support, or open a different account type that includes it.")
+                print("Your account type may not offer this instrument. Ask the "
+                      "broker's support, or open an account type that includes it.")
             return 0
 
+        account = (f"{settings.mt5_login} ({settings.mt5_server})"
+                   if settings.broker in ("mt5", "exness", "deriv", "vantage")
+                   else settings.broker)
         print(f"{len(rows)} symbol(s)"
               + (f" matching '{needle}'" if needle else "")
-              + f" on account {settings.mt5_login} ({settings.mt5_server}):\n")
+              + f" on {account}:\n")
         current = None
         for group, name, enabled in sorted(rows):
             if group != current:
