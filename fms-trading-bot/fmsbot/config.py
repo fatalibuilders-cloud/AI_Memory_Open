@@ -73,7 +73,9 @@ KNOWN_BROKERS = {
     "roboforex":  {"suffix": "", "crypto": True, "note": "Wide instrument range."},
     "fbs":        {"suffix": "", "crypto": True, "note": "Widely available in Africa/Asia."},
     "deriv":      {"suffix": "", "crypto": True,
-                   "symbols": ["Volatility 75 Index", "Volatility 100 Index", "Step Index"],
+                   # Deriv MT5 offers real crypto (BTCUSD, ETHUSD) alongside
+                   # its synthetic indices — both trade 24/7.
+                   "symbols": ["BTCUSD", "ETHUSD", "Volatility 75 Index"],
                    "note": ("Popular in Kenya, M-Pesa. Synthetic indices trade 24/7 "
                             "including weekends — but they are simulated instruments, "
                             "not real markets (see README)."),
@@ -115,6 +117,11 @@ class Settings:
     oanda_token: str = ""
     oanda_account: str = ""
     oanda_env: str = "practice"       # practice | live
+
+    # --- Binance USDⓈ-M Futures ----------------------------------------------
+    binance_key: str = ""
+    binance_secret: str = ""
+    binance_testnet: bool = True      # testnet.binancefuture.com = free demo
 
     # --- Trading -----------------------------------------------------------
     symbols: list[str] = field(default_factory=lambda: ["EURUSD", "XAUUSD"])
@@ -186,6 +193,9 @@ class Settings:
             oanda_token=os.environ.get("OANDA_API_TOKEN", "").strip(),
             oanda_account=os.environ.get("OANDA_ACCOUNT_ID", "").strip(),
             oanda_env=os.environ.get("OANDA_ENV", "practice").strip().lower(),
+            binance_key=os.environ.get("BINANCE_API_KEY", "").strip(),
+            binance_secret=os.environ.get("BINANCE_API_SECRET", "").strip(),
+            binance_testnet=_b("BINANCE_TESTNET", True),
             symbols=symbols,
             timeframe=os.environ.get("TIMEFRAME", "M5").strip().upper(),
             history_bars=_i("HISTORY_BARS", 300),
@@ -221,7 +231,12 @@ class Settings:
             problems.append("TG_BOT_TOKEN missing — create a bot with @BotFather and paste its token.")
         if not self.tg_password or len(self.tg_password) < 6:
             problems.append("TG_PASSWORD missing/too short (min 6 chars) — this is your phone login password.")
-        if self.broker == "mt5":
+        if self.broker == "binance":
+            if not self.binance_key or not self.binance_secret:
+                problems.append("BINANCE_API_KEY / BINANCE_API_SECRET missing — "
+                                "create them at testnet.binancefuture.com (demo) "
+                                "with Futures trading enabled and withdrawals OFF.")
+        elif self.broker in ("mt5", "exness", "deriv", "vantage"):
             if not self.mt5_login or not self.mt5_password or not self.mt5_server:
                 if self.active_broker:
                     p = f"BROKER_{self.active_broker.upper()}_"
@@ -236,8 +251,10 @@ class Settings:
                 problems.append("OANDA_API_TOKEN / OANDA_ACCOUNT_ID missing — generate them in the OANDA portal.")
             if self.oanda_env not in ("practice", "live"):
                 problems.append("OANDA_ENV must be 'practice' or 'live'.")
-        else:
-            problems.append(f"BROKER must be 'mt5' or 'oanda', got '{self.broker}'.")
+        elif self.broker != "oanda":
+            problems.append(
+                f"BROKER must be one of mt5, exness, deriv, vantage, oanda, "
+                f"binance — got '{self.broker}'.")
         if not self.symbols:
             problems.append("SYMBOLS is empty.")
         if self.fixed_lot < 0:

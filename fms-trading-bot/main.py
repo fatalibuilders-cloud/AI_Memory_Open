@@ -17,17 +17,8 @@ import signal
 import sys
 
 from fmsbot.bot import TradingBot
+from fmsbot.broker import build_broker
 from fmsbot.config import Settings
-
-
-def build_broker(settings: Settings):
-    if settings.broker == "oanda":
-        from fmsbot.broker.oanda import OandaBroker
-        return OandaBroker(settings.oanda_token, settings.oanda_account,
-                           settings.oanda_env)
-    from fmsbot.broker.mt5 import MT5Broker
-    return MT5Broker(settings.mt5_login, settings.mt5_password,
-                     settings.mt5_server, settings.mt5_path)
 
 
 def main() -> int:
