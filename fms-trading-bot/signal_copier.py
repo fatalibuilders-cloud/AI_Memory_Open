@@ -138,13 +138,13 @@ async def run_copier(settings: Settings, chat_id: int, api_id: int, api_hash: st
     broker = None
     available: list[str] | None = None
     if live:
-        from fmsbot.broker.mt5 import MT5Broker
+        from fmsbot.broker import build_broker
         from fmsbot.risk import RiskManager
-        broker = MT5Broker(settings.mt5_login, settings.mt5_password,
-                           settings.mt5_server, settings.mt5_path)
+        from symbols import list_symbols
+        broker = build_broker(settings)
         broker.connect()
         risk = RiskManager(settings)
-        available = [s.name for s in (broker.mt5.symbols_get() or [])]
+        available = [name for name, _ in list_symbols(settings.broker, broker)]
         print(f"LIVE MODE — orders will be placed on account {settings.mt5_login} "
               f"at {settings.fixed_lot or str(settings.risk_pct) + '%'} per trade.")
     else:

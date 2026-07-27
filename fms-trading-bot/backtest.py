@@ -235,24 +235,31 @@ def load_csv(path: str) -> list[Bar]:
 
 
 def load_mt5(settings: Settings, symbol: str, timeframe: str, days: int):
-    """Returns (bars, point_value, spread) straight from the terminal."""
-    from fmsbot.broker.mt5 import MT5Broker
-    broker = MT5Broker(settings.mt5_login, settings.mt5_password,
-                       settings.mt5_server, settings.mt5_path)
+    """Returns (bars, point_value, spread) from whichever broker is configured.
+
+    Named for history; it works for every backend, using the broker's own
+    contract details when it exposes them and sensible defaults otherwise.
+    """
+    from fmsbot.broker import build_broker
+    broker = build_broker(settings)
     broker.connect()
     try:
         per_bar = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
                    "H1": 3600, "H4": 14400, "D1": 86400}[timeframe]
         count = min(int(days * 86400 / per_bar), 200_000)
         bars = broker.bars(symbol, timeframe, count)
-        info = broker.mt5.symbol_info(broker._resolve(symbol))
+
         point_value = spread = None
-        if info is not None and info.trade_tick_size:
-            point_value = info.trade_tick_value / info.trade_tick_size
-            spread = info.spread * info.point if info.point else None
+        if settings.broker in ("mt5", "exness", "deriv", "vantage"):
+            info = broker.mt5.symbol_info(broker._resolve(symbol))
+            if info is not None and info.trade_tick_size:
+                point_value = info.trade_tick_value / info.trade_tick_size
+                spread = info.spread * info.point if info.point else None
+        elif settings.broker == "binance":
+            point_value = 1.0          # USDT-quoted: 1 price unit = 1 USDT
         return (bars,
                 point_value or point_value_for(symbol),
-                spread or spread_for(symbol))
+                spread if spread is not None else spread_for(symbol))
     finally:
         broker.disconnect()
 
