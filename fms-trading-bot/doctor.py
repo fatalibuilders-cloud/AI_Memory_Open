@@ -68,7 +68,7 @@ def main() -> int:
 
     # -- broker ------------------------------------------------------
     print(f"\n-- BROKER CONNECTION --")
-    from main import build_broker
+    from fmsbot.broker import build_broker
     broker = build_broker(settings)
     try:
         broker.connect()

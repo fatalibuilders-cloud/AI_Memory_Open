@@ -10,12 +10,26 @@ closes.
  your phone (Telegram) ⇄ Telegram Bot API ⇄ this bot ⇄ broker (MT5 or OANDA)
 ```
 
-Two interchangeable broker backends (`BROKER=` in `.env`):
+Six broker backends (`BROKER=` in `.env`):
 
 | Backend | Runs on | Markets |
 |---|---|---|
-| `mt5` (MetaTrader 5) | Windows only | forex, metals, stock CFDs |
-| `oanda` (REST API) | Linux / Mac / Windows | forex, metals |
+| `mt5` | Windows | forex, metals, stock CFDs — any MT5 broker |
+| `exness` | Windows | as above, with Exness traits (`m` suffix, IOC filling) |
+| `deriv` | Windows | crypto **and** 24/7 synthetic indices (FOK filling) |
+| `vantage` | Windows | as `mt5`, with Vantage traits (`+` suffix) |
+| `oanda` | any OS | forex, metals |
+| `binance` | any OS | crypto futures, 24/7 |
+
+Exness, Deriv and Vantage all speak MetaTrader 5, so they share one
+implementation (`broker/mt5.py`); their modules carry only what genuinely
+differs. The most important of those is the **order-filling mode** — Deriv
+generally requires FOK where Exness accepts IOC, and a wrong mode is
+rejected with "Unsupported filling mode". The bot now detects what each
+symbol permits and uses the broker's preference as a tie-breaker.
+
+OANDA and Binance have their own REST APIs and implement the `Broker`
+interface directly.
 
 ## Why the bot doesn't literally run *on* the phone
 
@@ -300,9 +314,14 @@ fms-trading-bot/
     ├── telegram.py        # phone remote (stdlib, long-polling)
     ├── bot.py             # orchestrator
     └── broker/
+        ├── __init__.py    # build_broker() factory
         ├── base.py        # Broker interface
-        ├── mt5.py         # MetaTrader 5 adapter (Windows)
-        └── oanda.py       # OANDA v20 REST adapter (any OS)
+        ├── mt5.py         # MetaTrader 5 engine (Windows)
+        ├── exness.py      # Exness traits   (MT5 subclass)
+        ├── deriv.py       # Deriv traits    (MT5 subclass, synthetics)
+        ├── vantage.py     # Vantage traits  (MT5 subclass)
+        ├── oanda.py       # OANDA v20 REST adapter (any OS)
+        └── binance.py     # Binance USD-M Futures REST adapter (any OS)
 ```
 
 ## Running it 24/7 for free

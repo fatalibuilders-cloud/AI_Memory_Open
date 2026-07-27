@@ -33,6 +33,15 @@ def _mt5():
 
 
 class MT5Broker(Broker):
+    #: Preferred order-filling mode name, overridden by broker subclasses.
+    #: Brokers differ here and a wrong mode is rejected as "Unsupported
+    #: filling mode", so the actual mode is detected per symbol at runtime
+    #: with this as the tie-breaker.
+    preferred_filling = "IOC"
+
+    #: Human label used in logs and /status.
+    broker_name = "MT5"
+
     def __init__(self, login: int, password: str, server: str, path: str = ""):
         self.login = login
         self.password = password
@@ -40,6 +49,7 @@ class MT5Broker(Broker):
         self.path = path
         self.mt5 = None
         self._resolved: dict[str, str] = {}
+        self._filling: dict[str, int] = {}
 
     # -- lifecycle ------------------------------------------------------
 
@@ -115,6 +125,36 @@ class MT5Broker(Broker):
         return [Bar(int(r["time"]), float(r["open"]), float(r["high"]),
                     float(r["low"]), float(r["close"])) for r in rates]
 
+    def _filling_for(self, symbol: str) -> int:
+        """Pick a filling mode the symbol actually allows.
+
+        MT5 rejects orders with "Unsupported filling mode" when the broker
+        does not permit the requested one, and brokers genuinely differ
+        (Deriv usually needs FOK where Exness accepts IOC). The symbol's
+        filling_mode field is a bitmask of what is allowed.
+        """
+        cached = self._filling.get(symbol)
+        if cached is not None:
+            return cached
+        mt5 = self._require()
+        allowed = getattr(mt5.symbol_info(symbol), "filling_mode", 0) or 0
+        # bit 1 = FOK permitted, bit 2 = IOC permitted
+        modes = []
+        if self.preferred_filling == "FOK":
+            modes = [(1, mt5.ORDER_FILLING_FOK), (2, mt5.ORDER_FILLING_IOC)]
+        else:
+            modes = [(2, mt5.ORDER_FILLING_IOC), (1, mt5.ORDER_FILLING_FOK)]
+        chosen = None
+        for bit, mode in modes:
+            if allowed & bit:
+                chosen = mode
+                break
+        if chosen is None:                     # broker reported nothing useful
+            chosen = (mt5.ORDER_FILLING_FOK if self.preferred_filling == "FOK"
+                      else mt5.ORDER_FILLING_IOC)
+        self._filling[symbol] = chosen
+        return chosen
+
     def _resolve(self, symbol: str) -> str:
         """Map a symbol to the broker's exact spelling, ignoring case only.
 
@@ -172,7 +212,7 @@ class MT5Broker(Broker):
             "magic": 984512,
             "comment": (comment or "fmsbot")[:31],
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": self._filling_for(symbol),
         }
         result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
@@ -217,7 +257,7 @@ class MT5Broker(Broker):
             "magic": 984512,
             "comment": "fmsbot close",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": self._filling_for(symbol),
         }
         result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
