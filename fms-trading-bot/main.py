@@ -17,7 +17,6 @@ import signal
 import sys
 
 from fmsbot.bot import TradingBot
-from fmsbot.broker import build_broker
 from fmsbot.config import Settings
 
 
@@ -35,7 +34,7 @@ def main() -> int:
             print(f"CONFIG ERROR: {p}", file=sys.stderr)
         return 2
 
-    bot = TradingBot(settings, build_broker(settings))
+    bot = TradingBot(settings)
 
     def _shutdown(signum, frame):  # noqa: ARG001
         bot.stop()

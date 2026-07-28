@@ -32,35 +32,37 @@ BROKER_CREDENTIALS = {
 }
 
 
-def build_broker(settings) -> Broker:
-    """Instantiate the broker named by settings.broker."""
-    name = (settings.broker or "mt5").lower()
-
-    if name == "oanda":
-        from .oanda import OandaBroker
-        return OandaBroker(settings.oanda_token, settings.oanda_account,
-                           settings.oanda_env)
-
-    if name == "binance":
-        from .binance import BinanceBroker
-        return BinanceBroker(settings.binance_key, settings.binance_secret,
-                             settings.binance_testnet)
-
-    mt5_classes = {}
-    if name == "exness":
+def _mt5_class(kind: str):
+    if kind == "exness":
         from .exness import ExnessBroker
-        mt5_classes["exness"] = ExnessBroker
-    elif name == "deriv":
+        return ExnessBroker
+    if kind == "deriv":
         from .deriv import DerivBroker
-        mt5_classes["deriv"] = DerivBroker
-    elif name == "vantage":
+        return DerivBroker
+    if kind == "vantage":
         from .vantage import VantageBroker
-        mt5_classes["vantage"] = VantageBroker
+        return VantageBroker
+    from .mt5 import MT5Broker
+    return MT5Broker
 
-    if name in mt5_classes:
-        cls = mt5_classes[name]
-    else:
-        from .mt5 import MT5Broker
-        cls = MT5Broker
-    return cls(settings.mt5_login, settings.mt5_password,
-               settings.mt5_server, settings.mt5_path)
+
+def build_broker_from_config(cfg) -> Broker:
+    """Instantiate one account from a BrokerConfig."""
+    kind = (cfg.kind or "mt5").lower()
+    if kind == "oanda":
+        from .oanda import OandaBroker
+        return OandaBroker(cfg.oanda_token, cfg.oanda_account, cfg.oanda_env)
+    if kind == "binance":
+        from .binance import BinanceBroker
+        return BinanceBroker(cfg.binance_key, cfg.binance_secret, cfg.binance_testnet)
+    return _mt5_class(kind)(cfg.login, cfg.password, cfg.server, cfg.path)
+
+
+def build_broker(settings) -> Broker:
+    """Instantiate the FIRST configured account.
+
+    Kept for the single-account tools (doctor, backtest, symbols). The bot
+    itself uses build_broker_from_config once per account so it can run
+    several at the same time.
+    """
+    return build_broker_from_config(settings.broker_configs()[0])

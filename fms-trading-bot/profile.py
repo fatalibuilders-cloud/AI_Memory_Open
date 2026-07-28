@@ -4,6 +4,7 @@ r"""Manage multiple broker accounts and switch the bot between them.
     .\.venv\Scripts\python.exe profile.py list          # what is configured
     .\.venv\Scripts\python.exe profile.py add hfm       # scaffold a new profile
     .\.venv\Scripts\python.exe profile.py use hfm       # switch the bot to it
+    .\.venv\Scripts\python.exe profile.py use exness,deriv   # run BOTH at once
     .\.venv\Scripts\python.exe profile.py brokers       # known brokers + notes
 
 Each profile keeps its own login, password, server and symbol list, because
@@ -61,7 +62,10 @@ def cmd_list() -> int:
     lines = read_lines()
     env = parse(lines)
     found = profiles(env)
-    active = env.get("ACTIVE_BROKER", "").lower()
+    active_multi = [n.strip().lower()
+                    for n in env.get("ACTIVE_BROKERS", "").split(",") if n.strip()]
+    active = active_multi or ([env["ACTIVE_BROKER"].lower()]
+                             if env.get("ACTIVE_BROKER") else [])
 
     if not found:
         print("No broker profiles configured.\n")
@@ -74,7 +78,7 @@ def cmd_list() -> int:
 
     print(f"Configured broker profiles ({len(found)}):\n")
     for name, data in sorted(found.items()):
-        mark = " <-- ACTIVE" if name == active else ""
+        mark = " <-- ACTIVE" if name in active else ""
         complete = all(data.get(k) for k in ("LOGIN", "PASSWORD", "SERVER"))
         status = "" if complete else "   [INCOMPLETE]"
         print(f"  {name}{mark}{status}")
@@ -82,8 +86,11 @@ def cmd_list() -> int:
         print(f"      server : {data.get('SERVER') or '(not set)'}")
         print(f"      symbols: {data.get('SYMBOLS') or '(falls back to SYMBOLS)'}")
     if not active:
-        print("\nNo ACTIVE_BROKER set — the plain MT5_* settings are in use.")
+        print("\nNo active profile — the plain MT5_* settings are in use.")
         print("Switch with:  python profile.py use <name>")
+    elif len(active) > 1:
+        print(f"\nTrading {len(active)} accounts at once: {', '.join(active)}")
+    print("Run several at once with:  python profile.py use exness,deriv")
     return 0
 
 
@@ -140,37 +147,55 @@ def cmd_add(name: str) -> int:
     return 0
 
 
-def cmd_use(name: str) -> int:
-    name = name.lower()
+def cmd_use(spec: str) -> int:
+    """Activate one profile, or several at once ("exness,deriv")."""
+    names = [n.strip().lower() for n in spec.split(",") if n.strip()]
     lines = read_lines()
     env = parse(lines)
     found = profiles(env)
-    if name not in found:
-        print(f"No profile '{name}'. Configured: {', '.join(sorted(found)) or '(none)'}")
-        print(f"Create it with:  python profile.py add {name}")
-        return 1
-    missing = [k for k in ("LOGIN", "PASSWORD", "SERVER") if not found[name].get(k)]
-    if missing:
-        print(f"Profile '{name}' is missing: {', '.join(missing)}")
-        print("Fill them in with: notepad .env")
-        return 1
 
-    out, seen = [], False
+    for name in names:
+        if name not in found:
+            print(f"No profile '{name}'. Configured: "
+                  f"{', '.join(sorted(found)) or '(none)'}")
+            print(f"Create it with:  python profile.py add {name}")
+            return 1
+        missing = [k for k in ("LOGIN", "PASSWORD", "SERVER")
+                   if not found[name].get(k)]
+        if missing:
+            print(f"Profile '{name}' is missing: {', '.join(missing)}")
+            print("Fill them in with: notepad .env")
+            return 1
+
+    joined = ",".join(names)
+    out, seen_multi, seen_single = [], False, False
     for line in lines:
-        if re.match(r"^\s*ACTIVE_BROKER\s*=", line):
-            out.append(f"ACTIVE_BROKER={name}")
-            seen = True
+        if re.match(r"^\s*ACTIVE_BROKERS\s*=", line):
+            out.append(f"ACTIVE_BROKERS={joined}")
+            seen_multi = True
+        elif re.match(r"^\s*ACTIVE_BROKER\s*=", line):
+            # keep the singular in step so the two can never disagree
+            out.append(f"ACTIVE_BROKER={names[0]}")
+            seen_single = True
         else:
             out.append(line)
-    if not seen:
-        out += ["", "# active broker profile (see profile.py)", f"ACTIVE_BROKER={name}"]
+    if not seen_multi:
+        out += ["", "# accounts to trade — comma-separated runs several at once",
+                f"ACTIVE_BROKERS={joined}"]
+    if not seen_single:
+        out.append(f"ACTIVE_BROKER={names[0]}")
     write(out)
 
-    data = found[name]
-    print(f"Switched to '{name}' (backup in .env.bak).")
-    print(f"  login  : {data['LOGIN']}")
-    print(f"  server : {data['SERVER']}")
-    print(f"  symbols: {data.get('SYMBOLS') or '(falls back to SYMBOLS)'}")
+    print(f"Now trading {len(names)} account(s) (backup in .env.bak):")
+    for name in names:
+        data = found[name]
+        print(f"  {name}")
+        print(f"     login  : {data['LOGIN']}")
+        print(f"     server : {data['SERVER']}")
+        print(f"     symbols: {data.get('SYMBOLS') or '(falls back to SYMBOLS)'}")
+    if len(names) > 1:
+        print("\nEach account keeps its own balance, symbols and daily risk limits.")
+        print("On your phone: /accounts, or scope a command like /positions deriv")
     print("\nRestart the bot to apply:")
     print("  Stop-ScheduledTask -TaskName FMSTradingBot; "
           "Start-ScheduledTask -TaskName FMSTradingBot")

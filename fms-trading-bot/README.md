@@ -198,22 +198,43 @@ the group's real hit rate — the only basis for deciding whether to follow it.
 account, which creates a `signal_session.session` file granting full access
 to your Telegram. It is git-ignored — keep it private, and never share it.
 
-## Multiple brokers
-
-The bot works with any MT5 broker. Keep several accounts configured at once
-and switch between them without re-editing credentials:
+## Multiple brokers — one at a time, or several at once
 
 ```powershell
-.\.venv\Scripts\python.exe profile.py brokers      # known brokers + naming
-.\.venv\Scripts\python.exe profile.py add hfm      # scaffold a profile
-notepad .env                                       # fill in its credentials
-.\.venv\Scripts\python.exe profile.py use hfm      # switch
+.\.venv\Scripts\python.exe profile.py brokers          # known brokers + naming
+.\.venv\Scripts\python.exe profile.py add hfm          # scaffold a profile
+notepad .env                                           # fill in its credentials
+.\.venv\Scripts\python.exe profile.py use hfm          # switch to one
+.\.venv\Scripts\python.exe profile.py use exness,deriv # run BOTH at once
 ```
 
 Each profile carries its own login, password, server **and symbol list**,
 because naming differs per broker — Exness uses `EURUSDm`, most others use
-`EURUSD`. Switching never touches your Telegram settings or strategy tuning,
-and `/status` shows which broker is active.
+`EURUSD`. Switching never touches your Telegram settings or strategy tuning.
+
+### Running two accounts simultaneously
+
+`ACTIVE_BROKERS=exness,deriv` trades both in one process — for example forex
+and gold on Exness during the week, plus crypto or synthetics on Deriv around
+the clock. Every account gets:
+
+- its own broker connection, with that broker's traits (Deriv's FOK filling)
+- its own symbol list
+- **its own risk manager** — daily loss limits and trade caps are per-account,
+  so a bad day on one never silences the other
+- independent reconnection: one broker going down does not stop the rest
+
+One phone remote covers all of them. `/status` reports each account
+separately, `/accounts` lists them, and any command can be scoped by name:
+
+```
+/positions deriv      only that account
+/closeall exness      close one account's positions
+/closeall             close everything, everywhere
+```
+
+Note that this multiplies exposure: two accounts at 0.01 lots is 0.02 lots of
+real risk, and each account's daily loss limit applies to its own balance.
 
 Brokers that accept Kenyan clients, run MT5, and offer Bitcoin:
 

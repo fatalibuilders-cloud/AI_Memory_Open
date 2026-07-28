@@ -92,6 +92,45 @@ def _profile_value(profile: str, key: str, fallback_env: str) -> str:
     return os.environ.get(fallback_env, "").strip()
 
 
+#: Backends that speak MetaTrader 5 and therefore share MT5 credentials.
+MT5_BACKENDS = ("mt5", "exness", "deriv", "vantage")
+
+
+@dataclass
+class BrokerConfig:
+    """One account the bot trades. Several can run at once."""
+    name: str                 # profile name, e.g. "exness"
+    kind: str                 # backend: mt5 | exness | deriv | vantage | oanda | binance
+    symbols: list[str] = field(default_factory=list)
+    login: int = 0
+    password: str = ""
+    server: str = ""
+    path: str = ""
+    oanda_token: str = ""
+    oanda_account: str = ""
+    oanda_env: str = "practice"
+    binance_key: str = ""
+    binance_secret: str = ""
+    binance_testnet: bool = True
+
+    def problems(self) -> list[str]:
+        p = f"BROKER_{self.name.upper()}_"
+        if self.kind in MT5_BACKENDS:
+            if not (self.login and self.password and self.server):
+                return [f"{self.name}: {p}LOGIN / {p}PASSWORD / {p}SERVER incomplete"]
+        elif self.kind == "oanda":
+            if not (self.oanda_token and self.oanda_account):
+                return [f"{self.name}: OANDA_API_TOKEN / OANDA_ACCOUNT_ID missing"]
+        elif self.kind == "binance":
+            if not (self.binance_key and self.binance_secret):
+                return [f"{self.name}: BINANCE_API_KEY / BINANCE_API_SECRET missing"]
+        else:
+            return [f"{self.name}: unknown backend '{self.kind}'"]
+        if not self.symbols:
+            return [f"{self.name}: no symbols ({p}SYMBOLS or SYMBOLS)"]
+        return []
+
+
 @dataclass
 class Settings:
     # --- Telegram remote control ---------------------------------------
@@ -169,6 +208,53 @@ class Settings:
 
     log_level: str = "INFO"
 
+    def broker_configs(self) -> list["BrokerConfig"]:
+        """Every account to trade.
+
+        ACTIVE_BROKERS=exness,deriv runs both at once. ACTIVE_BROKER (singular)
+        and the plain MT5_*/OANDA_*/BINANCE_* variables still work and yield a
+        single account, so existing setups are unaffected.
+        """
+        names = [n.strip().lower()
+                 for n in os.environ.get("ACTIVE_BROKERS", "").split(",") if n.strip()]
+        if not names:
+            names = [self.active_broker] if self.active_broker else []
+
+        if not names:
+            # no profiles: one account from the plain variables
+            return [BrokerConfig(
+                name=self.broker, kind=self.broker, symbols=list(self.symbols),
+                login=self.mt5_login, password=self.mt5_password,
+                server=self.mt5_server, path=self.mt5_path,
+                oanda_token=self.oanda_token, oanda_account=self.oanda_account,
+                oanda_env=self.oanda_env, binance_key=self.binance_key,
+                binance_secret=self.binance_secret,
+                binance_testnet=self.binance_testnet)]
+
+        out = []
+        for name in names:
+            # a profile named after a known backend uses that backend, so
+            # BROKER_DERIV_* automatically gets Deriv's FOK filling
+            kind = os.environ.get(f"BROKER_{name.upper()}_KIND", "").strip().lower()
+            if not kind:
+                kind = name if name in (*MT5_BACKENDS, "oanda", "binance") else self.broker
+            raw_symbols = _profile_value(name, "SYMBOLS", "SYMBOLS")
+            out.append(BrokerConfig(
+                name=name, kind=kind,
+                symbols=[s.strip() for s in raw_symbols.split(",") if s.strip()],
+                login=int(_profile_value(name, "LOGIN", "MT5_LOGIN") or 0),
+                password=_profile_value(name, "PASSWORD", "MT5_PASSWORD"),
+                server=_profile_value(name, "SERVER", "MT5_SERVER"),
+                path=self.mt5_path,
+                oanda_token=_profile_value(name, "OANDA_TOKEN", "OANDA_API_TOKEN"),
+                oanda_account=_profile_value(name, "OANDA_ACCOUNT", "OANDA_ACCOUNT_ID"),
+                oanda_env=self.oanda_env,
+                binance_key=_profile_value(name, "BINANCE_KEY", "BINANCE_API_KEY"),
+                binance_secret=_profile_value(name, "BINANCE_SECRET", "BINANCE_API_SECRET"),
+                binance_testnet=self.binance_testnet,
+            ))
+        return out
+
     @classmethod
     def load(cls, dotenv_path: str | Path = ".env") -> "Settings":
         _load_dotenv(dotenv_path)
@@ -227,6 +313,18 @@ class Settings:
 
     def validate(self) -> list[str]:
         problems = []
+        # Multi-account mode validates each account instead of the single set.
+        if os.environ.get("ACTIVE_BROKERS", "").strip():
+            configs = self.broker_configs()
+            for cfg in configs:
+                problems.extend(cfg.problems())
+            if not self.tg_token:
+                problems.append("TG_BOT_TOKEN missing — create a bot with @BotFather.")
+            if not self.tg_password or len(self.tg_password) < 6:
+                problems.append("TG_PASSWORD missing/too short (min 6 chars).")
+            if self.fixed_lot < 0:
+                problems.append("FIXED_LOT cannot be negative.")
+            return problems
         if not self.tg_token:
             problems.append("TG_BOT_TOKEN missing — create a bot with @BotFather and paste its token.")
         if not self.tg_password or len(self.tg_password) < 6:
