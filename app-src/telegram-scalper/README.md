@@ -98,34 +98,29 @@ trades.
 
 ## Windows quick start
 
-Open **PowerShell** and paste this. It installs Python and Git if they are
-missing, fetches the project, builds the environment, asks for your credentials,
-and runs a self-check:
+Open **PowerShell** and paste this **one line** — nothing else:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass -Force
-$d="$env:USERPROFILE\tgscalper"
-if (!(Test-Path $d)) { git clone --depth 1 https://github.com/fatalibuilders-cloud/AI_Memory_Open.git $d }
-Set-Location "$d\app-src\telegram-scalper"
-.\windows\setup.ps1 -Broker deriv
+irm https://raw.githubusercontent.com/fatalibuilders-cloud/AI_Memory_Open/claude/telegram-scalper-tce5zw/app-src/telegram-scalper/windows/bootstrap.ps1 | iex
 ```
 
-Use `-Broker exness` for an Exness account, or `-Broker default` for a plain
-forex profile. Re-running the script updates an existing install and leaves your
-`.env` alone unless you say otherwise.
+It installs Git and Python if missing, downloads the project, builds the
+environment, asks for your credentials, and runs a self-check. Re-running it
+updates an existing install and leaves your `.env` alone unless you say
+otherwise.
 
-If `git` is not installed yet, the first line fails — run this instead, which
-installs Git first:
+> Everything else in this README is reference material. Copy the line above only
+> — sample output and config snippets are **not** commands, and pasting them into
+> PowerShell just produces parser errors.
+
+For an Exness account, set the profile first:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass -Force
-winget install --id Git.Git --exact --silent --accept-package-agreements --accept-source-agreements
-$env:Path="$env:Path;$env:ProgramFiles\Git\cmd"
-$d="$env:USERPROFILE\tgscalper"
-git clone --depth 1 https://github.com/fatalibuilders-cloud/AI_Memory_Open.git $d
-Set-Location "$d\app-src\telegram-scalper"
-.\windows\setup.ps1 -Broker deriv
+$env:TGSCALPER_BROKER='exness'
 ```
+
+(`deriv` is the default; `default` gives a plain forex profile. Use
+`$env:TGSCALPER_DIR` to change the install folder.)
 
 Then, in order:
 
