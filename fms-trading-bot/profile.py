@@ -125,25 +125,44 @@ def cmd_add(name: str) -> int:
         suffix = meta["suffix"] if meta else ""
         symbols = ",".join(f"{s}{suffix}" for s in ("EURUSD", "XAUUSD", "BTCUSD"))
 
-    block = [
-        "",
-        f"# --- broker profile: {name} ---",
-    ]
+    # If the plain MT5_* variables are filled in and no profile has claimed
+    # them yet, adopt them — that is almost always the account currently
+    # running, and retyping a password by hand invites typos.
+    login = password = server = ""
+    imported = False
+    if not any(p.get("LOGIN") == env.get("MT5_LOGIN")
+               for p in profiles(env).values() if p.get("LOGIN")):
+        if env.get("MT5_LOGIN") and env.get("MT5_PASSWORD") and env.get("MT5_SERVER"):
+            login, password, server = (env["MT5_LOGIN"], env["MT5_PASSWORD"],
+                                       env["MT5_SERVER"])
+            symbols = env.get("SYMBOLS", symbols) or symbols
+            imported = True
+
+    block = ["", f"# --- broker profile: {name} ---"]
     if meta:
         block.append(f"# {meta['note']}")
     block += [
-        f"BROKER_{name.upper()}_LOGIN=",
-        f"BROKER_{name.upper()}_PASSWORD=",
-        f"BROKER_{name.upper()}_SERVER=",
+        f"BROKER_{name.upper()}_LOGIN={login}",
+        f"BROKER_{name.upper()}_PASSWORD={password}",
+        f"BROKER_{name.upper()}_SERVER={server}",
         f"BROKER_{name.upper()}_SYMBOLS={symbols}",
     ]
     write(lines + block)
+
     print(f"Added profile '{name}' to .env (backup in .env.bak).\n")
-    print("Now fill in its credentials:")
-    print("  notepad .env")
-    print(f"\nSuggested symbols: {symbols}")
-    print("  (verify with 'python symbols.py' once connected — names differ per account type)")
-    print(f"\nThen activate it:  python profile.py use {name}")
+    if imported:
+        print(f"Imported the account currently in MT5_* :")
+        print(f"  login  : {login}")
+        print(f"  server : {server}")
+        print(f"  symbols: {symbols}")
+        print(f"\nReady to use:  python profile.py use {name}")
+    else:
+        print("Now fill in its credentials:")
+        print("  notepad .env")
+        print(f"\nSuggested symbols: {symbols}")
+        print("  (verify with 'python symbols.py' once connected — "
+              "names differ per account type)")
+        print(f"\nThen activate it:  python profile.py use {name}")
     return 0
 
 
