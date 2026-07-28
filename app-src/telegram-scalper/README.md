@@ -86,13 +86,95 @@ trades.
 |---|---|
 | Python | 3.10+ |
 | Telegram | API id + hash from <https://my.telegram.org> → *API development tools* |
-| Broker | MetaTrader 5 terminal, logged in, "Algo Trading" enabled |
+| Broker | MetaTrader 5 terminal, logged in, "Algo Trading" enabled. **Exness and Deriv both work with this** — see below. |
 | OS | **Windows** for live MT5 trading (the `MetaTrader5` package is Windows-only). Parser, risk engine, journal and paper mode run anywhere. |
 | Hosting | A **Windows VPS** is the normal home for this — a laptop that sleeps or loses wifi stops copying signals. |
 
 > The bot needs your broker's platform running to trade. "As long as it's
 > connected to my Telegram and I have data" is true for the *reading* half; the
 > *placing* half also needs MT5 up and reachable. A VPS gives you both.
+
+---
+
+## Your broker: Exness and Deriv
+
+**Both are MetaTrader 5 brokers, so neither needs a new adapter.** `provider: mt5`
+covers both. What differs is only the login details and the symbol naming.
+
+### Exness
+
+```yaml
+broker:
+  provider: mt5
+  suffix: ""      # Standard accounts: XAUUSD, EURUSD
+  # suffix: "m"   # Cent/Mini accounts often list XAUUSDm, EURUSDm
+```
+```bash
+# .env
+MT5_LOGIN=12345678
+MT5_PASSWORD=your-mt5-password
+MT5_SERVER=Exness-MT5Real5        # demo servers are Exness-MT5Trial<N>
+```
+
+Use the **MT5 account** credentials from your Exness personal area, not your
+website login. If you are unsure about the suffix, leave it blank — an
+unmatched suffix falls back to the bare name, and `doctor` prints what actually
+resolved.
+
+### Deriv
+
+```yaml
+broker:
+  provider: mt5
+  suffix: ""      # Deriv symbols carry no suffix
+```
+```bash
+# .env
+MT5_LOGIN=987654321
+MT5_PASSWORD=your-mt5-password
+MT5_SERVER=DerivSVG-Server-02     # whatever your MT5 account shows
+```
+
+Same trap, and it catches people constantly: create an **MT5 account** inside the
+Deriv dashboard and use *its* credentials. Your deriv.com website login will not
+work here.
+
+**Synthetic indices are supported.** Deriv lists them with spaces —
+`Volatility 75 Index`, `Boom 500 Index`, `Step Index` — while signal groups write
+`V75`, `vix75`, `boom500`. The resolver maps between the two:
+
+| Group writes | Trades |
+|---|---|
+| `V75`, `vix75`, `vol 75`, `R_75` | Volatility 75 Index |
+| `V10` `V25` `V50` `V100` | the matching Volatility Index |
+| `BOOM 500`, `boom500`, `B1000` | Boom 500 / Boom 1000 Index |
+| `CRASH 1000`, `C500` | Crash 1000 / Crash 500 Index |
+| `Step Index` | Step Index |
+| `J75`, `Jump 75` | Jump 75 Index |
+
+A bare `crash`, `boom` or `step` is deliberately **not** an alias — "market crash
+incoming" and "step by step guide" are ordinary chat, and matching them would
+invent trades out of conversation.
+
+```bash
+python -m tgscalper parse samples/deriv-signals.txt
+```
+
+Two Deriv-specific settings worth changing:
+
+- **Synthetics trade 24/7, weekends included.** The default `risk.hours` is
+  Mon–Fri, so weekend signals get skipped. Widen `days` to all seven if you trade
+  them.
+- **Minimum lots differ from forex.** Boom/Crash start around 0.2 lots, Volatility
+  indices around 0.001. With a small balance the smallest tradable lot can risk
+  more than your `risk_per_trade_pct` allows — the bot refuses that trade rather
+  than silently over-risking, and tells you so in the journal. Paper-trade first
+  and read the skip reasons.
+
+> Deriv also has a native WebSocket API that needs no MT5 terminal and would run
+> on Linux instead of a Windows VPS. It trades multiplier contracts rather than
+> classic MT5 positions, so it is a genuinely different adapter — not built here.
+> Say the word if you want it.
 
 ---
 
@@ -261,8 +343,12 @@ outright rather than silently over-risked.
 - **Novel formats get skipped, not guessed.** When an admin invents a new layout,
   the parser refuses it and logs why. Check `report` and add an alias or open a
   fix rather than loosening the validation.
-- **MT5 only** for live trading today. Other brokers mean writing one adapter
-  against `brokers/base.py` — the engine, parser and risk rules are unchanged.
+- **MT5 only** for live trading today — which covers Exness and Deriv, but a
+  broker without an MT5 bridge means writing one adapter against
+  `brokers/base.py`. The engine, parser and risk rules stay unchanged.
+- **Paper specs for synthetics are approximations.** The dry-run contract sizes
+  for Volatility/Boom/Crash indices are plausible defaults; the live path reads
+  the real specification from your terminal, which is authoritative.
 
 ---
 

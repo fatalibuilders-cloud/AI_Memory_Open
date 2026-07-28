@@ -117,9 +117,13 @@ risk:
 
   # Empty allow_symbols = trade anything that resolves. Narrowing this to the
   # instruments you actually understand is the cheapest risk control there is.
+  # For Deriv synthetics add the short names: V75, V100, BOOM500, CRASH1000,
+  # STEPINDEX, JUMP75.
   allow_symbols: [XAUUSD, EURUSD, GBPUSD, USDJPY, US30, NAS100]
   block_symbols: [BTCUSD, ETHUSD]
 
+  # Deriv synthetic indices trade 24/7, including weekends. If you trade those,
+  # widen this to all seven days — otherwise weekend signals are skipped.
   hours:
     start: "07:00"
     end: "21:00"
@@ -136,15 +140,33 @@ risk:
   fallback_stop_points: 0
 
 broker:
+  # Both Exness and Deriv are MetaTrader 5 brokers, so both use provider: mt5.
+  # What differs between them is only the login details in .env and the symbol
+  # naming below. Run `tgscalper doctor` — it prints exactly what resolves.
   provider: mt5             # mt5 | paper
 
-  # Many brokers suffix their symbols: XAUUSD.m, EURUSDm, US30.cash
+  # --- EXNESS ---------------------------------------------------------------
+  # .env:  MT5_SERVER=Exness-MT5Real<N>   (demo: Exness-MT5Trial<N>)
+  #        MT5_LOGIN / MT5_PASSWORD from your Exness MT5 account
+  # Standard accounts usually list plain names (XAUUSD, EURUSD) -> suffix: ""
+  # Cent/Mini accounts often append "m" (XAUUSDm)               -> suffix: "m"
+  # If unsure leave it blank: an unmatched suffix falls back to the bare name.
+  #
+  # --- DERIV ----------------------------------------------------------------
+  # .env:  MT5_SERVER=DerivSVG-Server-02   (whatever your MT5 account shows)
+  #        MT5_LOGIN / MT5_PASSWORD from your Deriv MT5 account — these are NOT
+  #        your deriv.com website login; create an MT5 account in the Deriv
+  #        dashboard and use its credentials.
+  # Deriv lists synthetics with spaces: "Volatility 75 Index", "Boom 500 Index".
+  # That is handled automatically — groups can write V75, vix75, boom500.
+  # Deriv symbols carry no suffix -> suffix: ""
   suffix: ""
 
   # Last-resort explicit mapping when suffix rules are not enough.
   symbol_overrides:
     # XAUUSD: "GOLD"
     # NAS100: "USTEC.m"
+    # V75: "Volatility 75 Index"      # normally unnecessary, resolved by alias
 
   deviation_points: 20      # max slippage MT5 may accept on a market fill
   magic: 770077             # tags this bot's trades in your account history

@@ -1,0 +1,47 @@
+Deriv synthetic-index formats. Messages are separated by three dashes.
+    tgscalper parse samples/deriv-signals.txt
+Groups write the short names; Deriv MT5 lists them as "Volatility 75 Index",
+"Boom 500 Index" and so on. The resolver maps between the two automatically.
+---
+V75 BUY NOW 250000
+SL 249000
+TP1 252000
+TP2 254000
+---
+VIX75 SELL 251500
+SL 252500
+TP 249500
+---
+Volatility 100 Index BUY 1650.25
+SL 1645.00
+TP 1660.00
+---
+BOOM 500 BUY 12500
+SL 12400
+TP 12700
+---
+CRASH 1000 SELL 9800
+SL 9900
+TP 9600
+---
+Step Index BUY 8945.6
+SL 8940.2
+TP 8955.0
+---
+J75 buy 42500
+sl 42200
+tp 43000
+---
+V25 buy now 2850.40
+SL 2845.00
+TP 2860.00
+---
+SL to BE on V75
+---
+close boom 500
+---
+market crash incoming, be careful today
+---
+boom! great week team 🎉
+---
+step by step guide pinned for new members

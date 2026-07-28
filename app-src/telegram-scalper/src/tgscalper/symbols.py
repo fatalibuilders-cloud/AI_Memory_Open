@@ -30,6 +30,45 @@ DEFAULT_ALIASES: dict[str, list[str]] = {
     "UKOIL": ["BRENT", "BRENTOIL"],
 }
 
+# Deriv's synthetic indices. They trade 24/7 and are the whole point of most
+# Deriv signal groups, but their broker names contain spaces ("Volatility 75
+# Index") while the groups write "V75" or "vix75".
+#
+# Every alias here is deliberately specific. A bare "CRASH", "BOOM" or "STEP"
+# is NOT an alias: "market crash incoming" and "step by step" are ordinary
+# chat, and matching them would invent trades out of conversation.
+DERIV_SYNTHETICS: dict[str, list[str]] = {
+    **{
+        f"V{n}": [
+            f"VOLATILITY {n} INDEX",
+            f"VOLATILITY {n}",
+            f"VOL {n}",
+            f"VIX {n}",
+            f"VIX{n}",
+            f"V-{n}",
+            f"R_{n}",
+        ]
+        for n in (10, 25, 50, 75, 100)
+    },
+    **{
+        f"BOOM{n}": [f"BOOM {n} INDEX", f"BOOM {n}", f"B{n}", f"BOOM-{n}"]
+        for n in (300, 500, 1000)
+    },
+    **{
+        f"CRASH{n}": [f"CRASH {n} INDEX", f"CRASH {n}", f"C{n}", f"CRASH-{n}"]
+        for n in (300, 500, 1000)
+    },
+    **{
+        f"JUMP{n}": [f"JUMP {n} INDEX", f"JUMP {n}", f"J{n}"]
+        for n in (10, 25, 50, 75, 100)
+    },
+    "STEPINDEX": ["STEP INDEX", "STEPINDEX", "STEP-INDEX"],
+    "RANGEBREAK100": ["RANGE BREAK 100 INDEX", "RANGE BREAK 100", "RB100"],
+    "RANGEBREAK200": ["RANGE BREAK 200 INDEX", "RANGE BREAK 200", "RB200"],
+}
+
+DEFAULT_ALIASES.update(DERIV_SYNTHETICS)
+
 # Straight six-letter FX pairs are matched structurally rather than listed.
 _FX_MAJORS = {"USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU", "XAG"}
 _FX_MINORS = _FX_MAJORS | {"SEK", "NOK", "DKK", "SGD", "HKD", "ZAR", "TRY", "MXN", "PLN", "CZK", "HUF", "CNH"}
@@ -129,11 +168,15 @@ class SymbolResolver:
             candidates.append(canonical + self.suffix)
         candidates.append(canonical)
         for spelling in self.aliases.get(canonical, []):
-            spelling = _norm(spelling).replace("/", "").replace("-", "").replace(" ", "")
-            if spelling:
+            spaced = _norm(spelling).replace("/", "").replace("-", " ").strip()
+            if not spaced:
+                continue
+            # Deriv lists synthetics as "Volatility 75 Index" — spaces and all —
+            # so both the spaced and the squashed form have to be candidates.
+            for variant in (spaced, spaced.replace(" ", "")):
                 if self.suffix:
-                    candidates.append(spelling + self.suffix)
-                candidates.append(spelling)
+                    candidates.append(variant + self.suffix)
+                candidates.append(variant)
 
         if not self.available:
             return candidates[0]

@@ -111,6 +111,29 @@ class TestOpenSignals:
         assert parsed.stop_loss == 2344
         assert parsed.take_profits == [2360]
 
+    def test_deriv_volatility_index(self):
+        parsed = signal("V75 BUY NOW 250000\nSL 249000\nTP 252000")
+        assert parsed.symbol == "V75"
+        assert parsed.side is Side.BUY
+        assert parsed.entry == 250000
+
+    def test_boom_index_digits_are_not_read_as_the_price(self):
+        # "BOOM 500" must be masked, exactly like "US30".
+        parsed = signal("BOOM 500 BUY 12500 SL 12400 TP 12700")
+        assert parsed.symbol == "BOOM500"
+        assert parsed.entry == 12500  # not 500
+
+    def test_crash_index_sell(self):
+        parsed = signal("CRASH 1000 SELL 9800\nSL 9900\nTP 9600")
+        assert parsed.symbol == "CRASH1000"
+        assert parsed.side is Side.SELL
+        assert parsed.stop_loss == 9900
+
+    def test_step_index_with_decimals(self):
+        parsed = signal("Step Index BUY 8945.6 SL 8940.2 TP 8955.0")
+        assert parsed.symbol == "STEPINDEX"
+        assert parsed.entry == 8945.6
+
     def test_duplicate_target_restated_in_footer(self):
         parsed = signal("BUY GOLD 2350\nSL 2344\nTP1 2360\nTP2 2370\nRemember TP1 2360 is key")
         assert parsed.take_profits == [2360, 2370]
