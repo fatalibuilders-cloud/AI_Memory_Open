@@ -47,6 +47,7 @@ class TelegramRemote:
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._failed_logins: dict[int, list[float]] = {}
+        self._conflicts = 0
         self._load_state()
 
     # -- persistence -----------------------------------------------------
@@ -111,10 +112,25 @@ class TelegramRemote:
                     except Exception:
                         log.exception("Error handling %r", text)
             except Exception as exc:
-                if "timed out" in str(exc).lower():
+                text = str(exc)
+                if "timed out" in text.lower():
                     # routine long-poll timeout on a slow network — just re-poll
                     log.debug("Long-poll timed out, re-polling.")
                     continue
+                if "409" in text:
+                    # Telegram allows ONE getUpdates consumer per token.
+                    self._conflicts += 1
+                    if self._conflicts in (1, 20, 100):
+                        log.error(
+                            "Telegram 409 Conflict: another process is polling this "
+                            "bot token. Phone commands will NOT work until it stops. "
+                            "Usually an orphaned bot process — on Windows: "
+                            "Get-Process python | Stop-Process -Force, then start the "
+                            "task once. If you run a second bot, give it its own "
+                            "token from @BotFather.")
+                    time.sleep(10)
+                    continue
+                self._conflicts = 0
                 log.warning("Polling error (%s), retrying in 5s...", exc)
                 time.sleep(5)
 
