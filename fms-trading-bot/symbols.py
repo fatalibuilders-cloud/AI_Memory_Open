@@ -4,6 +4,10 @@ r"""List the symbols your broker account actually offers.
     .\.venv\Scripts\python.exe symbols.py              # everything, grouped
     .\.venv\Scripts\python.exe symbols.py BTC          # only names containing BTC
     .\.venv\Scripts\python.exe symbols.py --tradeable  # skip disabled symbols
+    .\.venv\Scripts\python.exe symbols.py BTC --account deriv   # a specific account
+
+With several accounts active (ACTIVE_BROKERS), the first one is checked
+unless --account names another.
 
 Use the exact names it prints in SYMBOLS in your .env — they are
 case-sensitive and broker-specific (Exness adds an 'm' suffix on some
@@ -53,13 +57,35 @@ def list_symbols(backend: str, broker) -> list[tuple[str, bool]]:
 
 
 def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    tradeable_only = "--tradeable" in sys.argv
+    argv = sys.argv[1:]
+    tradeable_only = "--tradeable" in argv
+    account = None
+    if "--account" in argv:
+        i = argv.index("--account")
+        if i + 1 < len(argv):
+            account = argv[i + 1].lower()
+            del argv[i:i + 2]
+    args = [a for a in argv if not a.startswith("--")]
     needle = args[0].upper() if args else None
 
     settings = Settings.load()
-    from fmsbot.broker import build_broker
-    broker = build_broker(settings)
+    configs = settings.broker_configs()
+    if account:
+        matches = [c for c in configs if c.name.lower() == account]
+        if not matches:
+            print(f"No account '{account}'. Active: "
+                  f"{', '.join(c.name for c in configs)}", file=sys.stderr)
+            return 1
+        cfg = matches[0]
+    else:
+        cfg = configs[0]
+        if len(configs) > 1:
+            print(f"Checking account '{cfg.name}' "
+                  f"(others: {', '.join(c.name for c in configs[1:])} "
+                  f"— use --account <name>)\n")
+
+    from fmsbot.broker import build_broker_from_config
+    broker = build_broker_from_config(cfg)
     broker.connect()
     try:
         rows = []
