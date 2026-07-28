@@ -247,26 +247,51 @@ class Engine:
             order_type = OrderType.LIMIT if signal.entry > market_price else OrderType.STOP
         return order_type, signal.entry, signal.entry
 
-    def _slippage_reason(
-        self, signal: Signal, info: SymbolInfo, reference: float
-    ) -> str:
+    def _slippage_reason(self, signal: Signal, info: SymbolInfo, reference: float) -> str:
         """Refuse a market fill once price has run past the posted entry.
 
         Copying a signal always arrives late; this is the guard against entering
         a move that has already happened.
+
+        Two limits, either of which can be disabled with 0:
+
+        * `max_entry_slippage_pct_of_stop` — how far price has run, as a share of
+          the trade's own stop distance. This is the one to prefer: it means the
+          same thing on gold, EURUSD and Volatility 75 without retuning, because
+          the signal's own stop sets the scale.
+        * `max_entry_slippage_points` — a raw point distance. Precise, but
+          instrument-specific: 150 points is $1.50, which is a sane limit on gold
+          and a meaningless one on an index priced at 250,000.
         """
-        limit = self.config.execution.max_entry_slippage_points
-        if limit <= 0 or signal.entry is None or not reference or info.point <= 0:
+        execution = self.config.execution
+        if signal.entry is None or not reference or info.point <= 0:
             return ""
-        if self.config.execution.entry.lower() != "market":
+        if execution.entry.lower() != "market":
             return ""
-        # Adverse means the market moved in the trade's favour before we got in:
-        # higher for a buy, lower for a sell — i.e. a worse entry than posted.
-        adverse_points = (reference - signal.entry) * signal.side.sign / info.point
-        if adverse_points > limit:
+
+        # Adverse means price moved the trade's way before we got in — i.e. we
+        # would be entering worse than the admin did.
+        adverse = (reference - signal.entry) * signal.side.sign
+        if adverse <= 0:
+            return ""
+
+        stop = signal.stop_loss
+        pct_limit = execution.max_entry_slippage_pct_of_stop
+        if pct_limit > 0 and stop is not None:
+            distance = abs(signal.entry - stop)
+            if distance > 0:
+                used = adverse / distance * 100
+                if used > pct_limit:
+                    return (
+                        f"price already ran {used:.0f}% of the way to the stop before entry "
+                        f"(limit {pct_limit:.0f}%) — the move is gone"
+                    )
+
+        point_limit = execution.max_entry_slippage_points
+        if point_limit > 0 and adverse / info.point > point_limit:
             return (
-                f"price already moved {adverse_points:.0f} points past the posted entry "
-                f"{signal.entry} (limit {limit:.0f})"
+                f"price already moved {adverse / info.point:.0f} points past the posted "
+                f"entry {signal.entry} (limit {point_limit:.0f})"
             )
         return ""
 

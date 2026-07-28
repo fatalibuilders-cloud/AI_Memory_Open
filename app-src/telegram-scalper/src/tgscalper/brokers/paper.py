@@ -39,13 +39,15 @@ _SPECS: list[tuple[str, int, float, float, float, float]] = [
     (r"^(US30|GER40|UK100|SPX500|NAS100|US100|USTEC)", 1, 0.1, 0.1, 0.01, 0.01),
     (r"^(BTC|ETH)", 2, 0.01, 0.01, 0.01, 0.01),
     (r"^(USOIL|UKOIL|WTI|BRENT)", 2, 0.01, 1.0, 0.01, 0.01),  # 1000 bbl/lot
-    # --- Deriv synthetics: minimum lots differ sharply from forex, which is
+    # --- Deriv synthetics. Contract size is 1, i.e. ~1 unit of account currency
+    # per 1.0 index point per lot, so tick_value equals tick_size. Minimum lots
+    # differ sharply between families (Boom/Crash ~0.2, Volatility ~0.001) —
     # exactly the sort of thing a dry run should surface before you go live.
-    (r"^(V\d+|VOLATILITY\d+INDEX|VIX\d+|R_?\d+)", 2, 0.01, 1.0, 0.001, 0.001),
-    (r"^(BOOM\d+|CRASH\d+)(INDEX)?", 2, 0.01, 1.0, 0.2, 0.01),
+    (r"^(V\d+|VOLATILITY\d+INDEX|VIX\d+|R_?\d+)", 2, 0.01, 0.01, 0.001, 0.001),
+    (r"^(BOOM\d+|CRASH\d+)(INDEX)?", 2, 0.01, 0.01, 0.2, 0.01),
     (r"^STEPINDEX", 1, 0.1, 0.1, 0.1, 0.1),
-    (r"^JUMP\d+(INDEX)?", 2, 0.01, 1.0, 0.01, 0.01),
-    (r"^RANGEBREAK\d+", 4, 0.0001, 1.0, 0.01, 0.01),
+    (r"^JUMP\d+(INDEX)?", 2, 0.01, 0.01, 0.01, 0.01),
+    (r"^RANGEBREAK\d+", 4, 0.0001, 0.0001, 0.01, 0.01),
     (r"^[A-Z]{3}JPY", 3, 0.001, 0.67, 0.01, 0.01),  # ~100k JPY/pip, USD-ish
     (r"^[A-Z]{6}", 5, 0.00001, 1.0, 0.01, 0.01),    # 100k units/lot
 ]

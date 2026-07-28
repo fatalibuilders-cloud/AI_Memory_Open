@@ -121,6 +121,7 @@ class TestOpening:
 
     def test_slippage_guard_skips_a_move_that_already_ran(self, setup):
         engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 0
         config.execution.max_entry_slippage_points = 100  # $1.00 on gold
         # Signal says buy 2350 but the market is already 2355.
         broker.seed_price("XAUUSD", 2355.0)
@@ -130,6 +131,80 @@ class TestOpening:
         )
         assert not decision.accepted
         assert "already moved" in decision.reason
+
+
+class TestSlippageAsShareOfStop:
+    """The instrument-agnostic guard: how far price ran, relative to the stop."""
+
+    def test_a_prompt_fill_is_allowed(self, setup):
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 50
+        # Entry 2350, stop 2344 ($6 stop). Market at 2351 = 17% of the stop.
+        broker.seed_price("XAUUSD", 2351.0)
+        assert post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360").accepted
+
+    def test_a_move_that_ran_most_of_the_way_is_skipped(self, setup):
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 50
+        # Market at 2354 = 67% of the $6 stop already gone.
+        broker.seed_price("XAUUSD", 2354.0)
+        decision = post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360")
+        assert not decision.accepted
+        assert "the move is gone" in decision.reason
+
+    def test_price_moving_against_the_signal_is_not_slippage(self, setup):
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 50
+        # Market at 2348: a *better* entry than posted. Never a reason to skip.
+        broker.seed_price("XAUUSD", 2348.0)
+        assert post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360").accepted
+
+    def test_sell_side(self, setup):
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 50
+        # Sell posted at 2350 with a 2356 stop; market already down at 2346.
+        broker.seed_price("XAUUSD", 2346.0)
+        decision = post(engine, "GOLD SELL 2350\nSL 2356\nTP 2340")
+        assert not decision.accepted
+        assert "the move is gone" in decision.reason
+
+    def test_the_same_setting_works_on_a_synthetic_index(self, setup):
+        """The reason this guard is stop-relative.
+
+        A points limit tuned for gold ($1.50) would reject every V75 signal,
+        since V75 trades near 250,000 and moves that far instantly.
+        """
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 50
+        config.risk.allow_symbols = []
+        # Entry 250000, stop 249000 (1000-wide). Market at 250200 = 20% used.
+        broker.seed_price("V75", 250200.0)
+        assert post(engine, "V75 BUY 250000\nSL 249000\nTP 252000").accepted
+
+    def test_synthetic_that_did_run_too_far_is_skipped(self, setup):
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 50
+        config.risk.allow_symbols = []
+        # Market at 250700 = 70% of the 1000-wide stop already gone.
+        broker.seed_price("V75", 250700.0)
+        decision = post(engine, "V75 BUY 250000\nSL 249000\nTP 252000")
+        assert not decision.accepted
+        assert "the move is gone" in decision.reason
+
+    def test_disabled_by_zero(self, setup):
+        engine, broker, _, config = setup
+        config.execution.max_entry_slippage_pct_of_stop = 0
+        config.execution.max_entry_slippage_points = 0
+        broker.seed_price("XAUUSD", 2355.0)
+        assert post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360").accepted
+
+    def test_pending_orders_are_exempt(self, setup):
+        engine, broker, _, config = setup
+        config.execution.entry = "as_stated"
+        config.execution.max_entry_slippage_pct_of_stop = 1
+        broker.seed_price("XAUUSD", 2354.0)
+        # A pending order sits and waits for its price; slippage is irrelevant.
+        assert post(engine, "BUY LIMIT GOLD @ 2350\nSL 2344\nTP 2360").accepted
 
 
 class TestManagement:
@@ -237,6 +312,49 @@ class TestJournalIntegration:
         for text in ["", "   ", "🔥🔥🔥", "SL SL SL TP TP", "BUY " * 200]:
             decision = engine.handle(text, MessageRef(chat_id=CHAT_ID, message_id=1))
             assert not decision.accepted
+
+
+class TestDerivSyntheticSpecs:
+    """Paper specs for synthetics. Approximations, but they must not mislead."""
+
+    def test_volatility_and_boom_have_different_minimum_lots(self):
+        broker = PaperBroker()
+        volatility = broker.symbol_info("Volatility 75 Index")
+        boom = broker.symbol_info("Boom 500 Index")
+        # This gap is the point: 0.2 lots of Boom is a very different risk to
+        # 0.001 lots of V75, and a dry run should show that before you go live.
+        assert volatility.volume_min == 0.001
+        assert boom.volume_min == 0.2
+
+    def test_contract_size_is_one_unit_per_index_point(self):
+        broker = PaperBroker()
+        for name in ("Volatility 75 Index", "Boom 500 Index", "Crash 1000 Index"):
+            info = broker.symbol_info(name)
+            assert info.value_per_price_unit() == pytest.approx(1.0), name
+
+    def test_short_and_long_names_get_the_same_spec(self):
+        broker = PaperBroker()
+        assert broker.symbol_info("V75").volume_min == broker.symbol_info(
+            "Volatility 75 Index"
+        ).volume_min
+
+    def test_a_synthetic_signal_sizes_and_places(self, setup):
+        engine, broker, _, config = setup
+        config.risk.allow_symbols = []
+        decision = post(engine, "V75 BUY 250000\nSL 249000\nTP 252000")
+        assert decision.accepted
+        position = broker.positions()[0]
+        # $100 budget / (~1000-wide stop * $1 per point) ≈ 0.1 lots, less the
+        # spread, and always rounded down onto the 0.001 step — never above.
+        assert 0.09 <= position.volume <= 0.1
+        assert position.symbol == "V75"
+
+    def test_boom_signal_respects_the_larger_minimum_lot(self, setup):
+        engine, broker, _, config = setup
+        config.risk.allow_symbols = []
+        decision = post(engine, "BOOM 500 BUY 12500\nSL 12400\nTP 12700")
+        assert decision.accepted
+        assert broker.positions()[0].volume >= 0.2
 
 
 class TestPaperBrokerSafety:

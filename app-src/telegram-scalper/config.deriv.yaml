@@ -1,0 +1,117 @@
+# Deriv MT5 profile — tuned for synthetic indices (Volatility, Boom, Crash, Step).
+#
+# Use it directly:
+#     copy config.deriv.yaml config.yaml     (PowerShell: Copy-Item)
+# then edit the group ids under telegram.groups.
+#
+# Credentials go in .env, never here. For Deriv that means the login of an
+# MT5 account created inside the Deriv dashboard — NOT your deriv.com website
+# login:
+#     MT5_LOGIN=987654321
+#     MT5_PASSWORD=<that MT5 account's password>
+#     MT5_SERVER=<exactly as shown on the account, e.g. Deriv-Server-02>
+
+telegram:
+  session_name: tgscalper
+  session_dir: data
+  admin_only: true
+  notify_to: me
+  notify_skips: false
+
+  max_groups: 5
+  groups:
+    # Replace these with your own — get the ids from: tgscalper chats
+    - id: -1001234567890
+      title: "Synthetics VIP"
+      enabled: true
+      senders: []
+      risk_multiplier: 1.0
+
+    - id: -1009876543210
+      title: "V75 Scalps"
+      enabled: true
+      senders: []
+      risk_multiplier: 0.5
+
+execution:
+  mode: paper                 # switch to live only after paper-trading a while
+  entry: market
+  tp_mode: first
+  max_tps: 3
+  require_stop_loss: true
+
+  # Measured against the signal's own stop distance, so one value is correct
+  # for V75 at 250,000 and for gold at 2,350 alike. A points-based limit is
+  # NOT usable across synthetics — 150 points is $1.50, which V75 covers
+  # instantly, so it would reject every signal.
+  max_entry_slippage_pct_of_stop: 50
+  max_entry_slippage_points: 0
+
+  paper_balance: 10000
+
+risk:
+  risk_per_trade_pct: 1.0
+  fixed_lot: null
+
+  # Synthetics move fast and lot values are large. Keep this low until the
+  # journal shows you what your groups actually produce.
+  max_lot: 1.0
+
+  max_open_trades: 4
+  max_open_per_symbol: 1
+  max_daily_loss_pct: 5.0
+  max_signals_per_hour: 12
+
+  # Synthetic point values differ wildly per family, so a single points-based
+  # minimum is not meaningful across them. Left disabled; the parser's own
+  # sanity checks still reject inverted or implausible levels.
+  min_stop_points: 0
+
+  # Synthetic spreads are wide and vary by family (Boom/Crash especially).
+  # Disabled by default — set it per-instrument only if you trade just one.
+  max_spread_points: 0
+
+  dedupe_window_minutes: 30
+
+  # Short names; the resolver maps them onto Deriv's "Volatility 75 Index" etc.
+  # Trim this to the instruments you actually understand.
+  allow_symbols:
+    - V10
+    - V25
+    - V50
+    - V75
+    - V100
+    - BOOM500
+    - BOOM1000
+    - CRASH500
+    - CRASH1000
+    - STEPINDEX
+  block_symbols: []
+
+  # Synthetic indices trade 24/7, weekends included — that is the main reason
+  # people trade them, so the window is open all week.
+  hours:
+    start: "00:00"
+    end: "23:59"
+    days: [MON, TUE, WED, THU, FRI, SAT, SUN]
+
+  breakeven_offset_points: 0
+  partial_close_default: 0.5
+  fallback_stop_points: 0
+
+broker:
+  provider: mt5
+  suffix: ""                  # Deriv symbols carry no suffix
+  symbol_overrides: {}        # resolved by alias; add entries only if doctor says otherwise
+
+  # Synthetics move faster than forex, so a 20-point deviation causes needless
+  # rejections. Raise it if you see "Requote"/"Invalid price" in the log.
+  deviation_points: 200
+  magic: 770077
+
+journal:
+  path: data/journal.sqlite
+
+logging:
+  level: INFO
+  file: logs/tgscalper.log

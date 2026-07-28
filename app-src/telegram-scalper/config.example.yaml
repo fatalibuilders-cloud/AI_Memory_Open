@@ -84,9 +84,15 @@ execution:
   # Refuse any signal that arrives without a stop loss. Keep this true.
   require_stop_loss: true
 
-  # Skip the trade if price has already run this many points past the posted
-  # entry — the move is gone. 0 disables. For gold, 100 points = $1.00.
-  max_entry_slippage_points: 150
+  # Skip the trade if price already ran past the posted entry — the move is
+  # gone. Measured as a share of the signal's own stop distance, so the same
+  # value is correct for gold, EURUSD and Volatility 75 alike. 0 disables.
+  max_entry_slippage_pct_of_stop: 50
+
+  # The same guard in raw points. Precise but instrument-specific: 150 points
+  # is $1.50 — sensible on gold, meaningless on an index priced at 250,000.
+  # Leave at 0 unless you trade a single instrument. 0 disables.
+  max_entry_slippage_points: 0
 
   paper_balance: 10000
 

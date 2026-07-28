@@ -84,9 +84,16 @@ class ExecutionConfig:
     tp_mode: str = "first"
     max_tps: int = 3
     require_stop_loss: bool = True
-    # Refuse a market entry if price has already run this far past the posted
-    # entry (in points) — the move is gone and you would be buying the top.
-    max_entry_slippage_points: float = 0.0  # 0 disables the check
+    # Refuse a market entry once price has run past the posted entry — the move
+    # is gone and you would be buying the top. Either limit can be disabled
+    # with 0; when both are set, whichever trips first wins.
+    #
+    # Measured as a share of the signal's own stop distance. Instrument-agnostic,
+    # so one value works for gold, EURUSD and Volatility 75 alike. Prefer this.
+    max_entry_slippage_pct_of_stop: float = 50.0
+    # Measured in raw points. Precise but instrument-specific: 150 points is
+    # $1.50, sensible on gold and meaningless on an index priced at 250,000.
+    max_entry_slippage_points: float = 0.0
     paper_balance: float = 10_000.0
     # Set by load(): live needs the config flag AND the env acknowledgement.
     live_enabled: bool = False
@@ -222,6 +229,7 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
             "max_tps",
             "require_stop_loss",
             "max_entry_slippage_points",
+            "max_entry_slippage_pct_of_stop",
             "paper_balance",
         )
     )
@@ -316,6 +324,8 @@ def _validate(config: Config) -> None:
         errors.append("execution.entry must be 'market' or 'as_stated'")
     if config.execution.tp_mode.lower() not in {"first", "last", "split"}:
         errors.append("execution.tp_mode must be 'first', 'last' or 'split'")
+    if not 0 <= config.execution.max_entry_slippage_pct_of_stop <= 500:
+        errors.append("execution.max_entry_slippage_pct_of_stop must be between 0 and 500")
     if not 0 < config.risk.risk_per_trade_pct <= 20:
         errors.append("risk.risk_per_trade_pct must be between 0 and 20")
     if config.risk.fixed_lot is not None and config.risk.fixed_lot <= 0:

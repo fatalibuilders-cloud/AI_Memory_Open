@@ -96,6 +96,66 @@ trades.
 
 ---
 
+## Windows quick start
+
+Open **PowerShell** and paste this. It installs Python and Git if they are
+missing, fetches the project, builds the environment, asks for your credentials,
+and runs a self-check:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+$d="$env:USERPROFILE\tgscalper"
+if (!(Test-Path $d)) { git clone --depth 1 https://github.com/fatalibuilders-cloud/AI_Memory_Open.git $d }
+Set-Location "$d\app-src\telegram-scalper"
+.\windows\setup.ps1 -Broker deriv
+```
+
+Use `-Broker exness` for an Exness account, or `-Broker default` for a plain
+forex profile. Re-running the script updates an existing install and leaves your
+`.env` alone unless you say otherwise.
+
+If `git` is not installed yet, the first line fails — run this instead, which
+installs Git first:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+winget install --id Git.Git --exact --silent --accept-package-agreements --accept-source-agreements
+$env:Path="$env:Path;$env:ProgramFiles\Git\cmd"
+$d="$env:USERPROFILE\tgscalper"
+git clone --depth 1 https://github.com/fatalibuilders-cloud/AI_Memory_Open.git $d
+Set-Location "$d\app-src\telegram-scalper"
+.\windows\setup.ps1 -Broker deriv
+```
+
+Then, in order:
+
+```powershell
+.\windows\run.ps1 chats            # 1. list your groups and their ids
+notepad config.yaml                # 2. put up to 5 ids under telegram.groups
+.\windows\run.ps1 symbols          # 3. check your broker's symbol names
+.\windows\run.ps1 run              # 4. watch it on PAPER for a few days
+.\windows\run.ps1 report --days 3  #    then read what it would have done
+```
+
+To keep it running on a VPS across reboots:
+
+```powershell
+.\windows\autostart.ps1            # register a scheduled task (logon + auto-restart)
+Get-Content .\logs\tgscalper.log -Wait -Tail 40
+```
+
+MetaTrader 5 must also be running and logged in with **Algo Trading** enabled —
+set MT5 to start with Windows too, or the bot will read Telegram and have nowhere
+to send orders.
+
+| Script | Does |
+|---|---|
+| `windows\setup.ps1` | Full install: prerequisites, venv, dependencies, config, `.env`, self-check |
+| `windows\run.ps1` | Runs any command through the venv — `run.ps1 doctor`, `run.ps1 run`, … |
+| `windows\autostart.ps1` | Registers/removes the scheduled task (`-Remove` to undo) |
+
+---
+
 ## Your broker: Exness and Deriv
 
 **Both are MetaTrader 5 brokers, so neither needs a new adapter.** `provider: mt5`
@@ -180,14 +240,18 @@ Two Deriv-specific settings worth changing:
 
 ## Setup
 
+> **On Windows, skip this section** — `windows\setup.ps1` does all of it for you.
+> See [Windows quick start](#windows-quick-start) below.
+
 ```bash
 cd app-src/telegram-scalper
 python -m venv .venv && . .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -e .                                   # required: the package lives in src/
 pip install MetaTrader5                            # Windows only, for live trading
 
 cp .env.example .env                               # fill in credentials
-cp config.example.yaml config.yaml                 # choose your groups and risk
+cp config.example.yaml config.yaml                 # or config.deriv.yaml for Deriv
 ```
 
 **1. Credentials into `.env`** — Telegram api id/hash, phone, MT5 login/password/
@@ -283,12 +347,25 @@ sending real orders on its own.
 
 ```
 python -m tgscalper doctor                    check config, credentials, broker
+python -m tgscalper symbols [--search vol]    inspect the broker's symbol names
 python -m tgscalper chats [--search gold]     list chats with their ids
 python -m tgscalper admins <chat>             list a chat's admin ids
 python -m tgscalper parse <file>              parse messages, no broker involved
 python -m tgscalper dryrun <file>             run them through the paper broker
 python -m tgscalper run                       start listening
 python -m tgscalper report [--days 7]         summarise the journal
+```
+
+On Windows use `.\windows\run.ps1 <command>`, which picks up the venv for you.
+
+`symbols` is the one to reach for whenever an instrument will not trade — it
+prints your terminal's own symbol strings rather than what anyone assumes they
+are:
+
+```
+  V75          -> Volatility 75 Index
+  BOOM500      -> Boom 500 Index
+  NAS100       -> NOT TRADABLE on this account
 ```
 
 `parse` and `dryrun` read a file of messages separated by `---` lines. Paste real

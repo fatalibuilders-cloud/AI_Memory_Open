@@ -152,6 +152,64 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 1 if problems else 0
 
 
+def cmd_symbols(args: argparse.Namespace) -> int:
+    """Show what the broker lists, and what the bot's names resolve to.
+
+    The fastest way to settle suffix/override questions: it prints the
+    terminal's own symbol strings rather than what anyone assumes they are.
+    """
+    from .symbols import SymbolResolver
+
+    config = load_config(args.config)
+    broker = build_broker(config)
+    broker.connect()
+    available = broker.available_symbols()
+
+    if not available:
+        print(
+            f"broker '{broker.name}' does not expose a symbol list "
+            "(paper mode accepts anything). Connect the real broker to inspect it."
+        )
+        broker.close()
+        return 0
+
+    if args.search:
+        needle = args.search.lower()
+        matches = [name for name in available if needle in name.lower()]
+        print(f"{len(matches)} of {len(available)} symbols match {args.search!r}:")
+        for name in sorted(matches):
+            print(f"  {name}")
+        broker.close()
+        return 0
+
+    resolver = SymbolResolver(
+        suffix=config.broker.suffix,
+        overrides=config.broker.symbol_overrides,
+        aliases=config.aliases,
+    )
+    resolver.load_available(available)
+    print(f"broker lists {len(available)} symbols. How the bot's names map onto them:\n")
+    probes = args.probe or [
+        "GOLD", "EURUSD", "GBPUSD", "USDJPY", "US30", "NAS100",
+        "V75", "V100", "BOOM500", "CRASH1000", "STEPINDEX",
+    ]
+    unresolved: list[str] = []
+    for probe in probes:
+        resolved = resolver.resolve(probe)
+        print(f"  {probe:<12} -> {resolved or 'NOT TRADABLE on this account'}")
+        if not resolved:
+            unresolved.append(probe)
+    if unresolved:
+        print(
+            "\nAnything 'NOT TRADABLE' is either absent from your account type or "
+            "named differently.\nRun with --search to hunt for it, e.g.:"
+            f"\n    tgscalper symbols --search {unresolved[0][:4].lower()}"
+            "\nthen set broker.suffix or a broker.symbol_overrides entry."
+        )
+    broker.close()
+    return 0
+
+
 def cmd_chats(args: argparse.Namespace) -> int:
     config = load_config(args.config)
 
@@ -337,6 +395,13 @@ def build_parser() -> argparse.ArgumentParser:
         func=cmd_doctor
     )
 
+    symbols = sub.add_parser("symbols", help="inspect the broker's symbol names")
+    symbols.add_argument("--search", default="", help="list broker symbols containing this text")
+    symbols.add_argument(
+        "--probe", nargs="*", default=None, help="check specific names, e.g. --probe V75 GOLD"
+    )
+    symbols.set_defaults(func=cmd_symbols)
+
     chats = sub.add_parser("chats", help="list chats with their ids")
     chats.add_argument("--search", default="", help="filter by title")
     chats.set_defaults(func=cmd_chats)
@@ -375,7 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command in {"doctor", "chats", "admins", "parse", "report"}:
+    if args.command in {"doctor", "chats", "admins", "parse", "report", "symbols"}:
         setup_logging(args.log_level or "WARNING", None)
     try:
         return int(args.func(args))
