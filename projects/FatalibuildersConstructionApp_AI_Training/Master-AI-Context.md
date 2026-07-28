@@ -32,7 +32,9 @@ Full context trail: staging archive at `projects/staging/FatalibuildersConstruct
 
 ## 2. Technical Stack
 
-Mobile-first **PWA** · Next.js (React) + TypeScript + Tailwind · Next.js API routes (Node) · PostgreSQL · S3-compatible object storage · TypeScript calc rule modules per code profile · SVG→PDF/DXF drawings (R2) · three.js renders (R2) · PDF/xlsx document generation · Paddle-or-LemonSqueezy + M-Pesa gateway · Vercel/Railway/Fly.io hosting · GitHub CI/CD. Details: architecture doc §2.
+Mobile-first **PWA** · Next.js (React) + TypeScript + Tailwind · Next.js API routes (Node) · PostgreSQL · S3-compatible object storage · TypeScript calc rule modules per code profile · SVG→PDF/DXF drawings (R2) · three.js renders (R2) · PDF/xlsx document generation · **Paddle** (chosen) + M-Pesa gateway · Vercel/Railway/Fly.io hosting · GitHub CI/CD. Details: architecture doc §2.
+
+**Design system (2026-07-23):** navy `#1e3a5f` (brand-600) + amber `#b45309` (accent-600 CTA) — professional construction palette matching the owner's banner. Tokens in `src/app/globals.css` `@theme` (brand-50…900, accent-50…700); `Logo` component (building mark). Applied across every screen; green/red/WhatsApp colors kept for semantic actions.
 
 ---
 
