@@ -1,0 +1,141 @@
+<#
+.SYNOPSIS
+    Fills in .env by asking questions, one at a time.
+
+.DESCRIPTION
+    Use this when setup.ps1's prompts were skipped, or when a credential
+    changes. Existing values are kept unless you type a new one, so it is safe
+    to re-run just to fix a single field.
+
+    Everything is typed at a prompt rather than pasted as a command, so
+    PowerShell never tries to interpret your api hash as code.
+
+.EXAMPLE
+    .\windows\credentials.ps1
+    .\windows\credentials.ps1 -TelegramOnly
+#>
+
+[CmdletBinding()]
+param(
+    [switch]$TelegramOnly,
+    [switch]$BrokerOnly,
+    [switch]$SkipDoctor
+)
+
+$ErrorActionPreference = 'Stop'
+
+$projectDir = Split-Path -Parent $PSScriptRoot
+$envPath = Join-Path $projectDir '.env'
+
+# ---------------------------------------------------------- read what exists
+$values = [ordered]@{}
+if (Test-Path $envPath) {
+    foreach ($line in Get-Content $envPath) {
+        if ($line -match '^\s*([A-Z0-9_]+)\s*=\s*(.*)$') {
+            $values[$Matches[1]] = $Matches[2]
+        }
+    }
+    Write-Host "Editing $envPath" -ForegroundColor Cyan
+} else {
+    Write-Host "Creating $envPath" -ForegroundColor Cyan
+}
+
+function Ask {
+    param(
+        [string]$Key,
+        [string]$Label,
+        [switch]$Secret
+    )
+    $current = $values[$Key]
+    $shown = if ($current) {
+        if ($Secret) { '(set - press Enter to keep)' } else { "(current: $current)" }
+    } else { '(empty)' }
+
+    Write-Host ''
+    Write-Host "  $Label" -ForegroundColor White
+    Write-Host "  $shown" -ForegroundColor DarkGray
+    $answer = Read-Host "  $Key"
+
+    if ([string]::IsNullOrWhiteSpace($answer)) { return }   # keep what was there
+    $values[$Key] = $answer.Trim()
+}
+
+Write-Host @'
+
+Type each value and press Enter. Press Enter on its own to keep the current
+value. Pasting into a prompt is safe - PowerShell will not try to run it.
+'@ -ForegroundColor DarkGray
+
+# ------------------------------------------------------------------ Telegram
+if (-not $BrokerOnly) {
+    Write-Host "`n--- TELEGRAM -------------------------------------------------" -ForegroundColor Yellow
+    Write-Host @'
+  Get these from https://my.telegram.org
+    1. Log in with your phone number and the code Telegram sends you
+    2. Open "API development tools"
+    3. Create an app (any name, e.g. "signals") if you have not already
+    4. Copy App api_id and App api_hash from that page
+'@ -ForegroundColor DarkGray
+
+    Ask -Key 'TG_API_ID'   -Label 'App api_id (a number, ~8 digits)'
+    Ask -Key 'TG_API_HASH' -Label 'App api_hash (32 letters and digits)'
+    Ask -Key 'TG_PHONE'    -Label 'Your phone number with country code, e.g. +254700000000'
+    Ask -Key 'TG_2FA_PASSWORD' -Label 'Telegram 2FA password - leave empty unless you set one' -Secret
+}
+
+# -------------------------------------------------------------------- Broker
+if (-not $TelegramOnly) {
+    Write-Host "`n--- BROKER (MetaTrader 5) ------------------------------------" -ForegroundColor Yellow
+    Write-Host @'
+  Use your MT5 TRADING ACCOUNT, not the broker website login.
+    Exness: personal area -> your MT5 account number and its password
+    Deriv : dashboard -> MT5 -> the account created there
+'@ -ForegroundColor DarkGray
+
+    Ask -Key 'MT5_LOGIN'    -Label 'MT5 account number'
+    Ask -Key 'MT5_PASSWORD' -Label 'MT5 password' -Secret
+    Ask -Key 'MT5_SERVER'   -Label 'MT5 server name, exactly as shown (e.g. Exness-MT5Real5)'
+
+    if (-not $values['MT5_TERMINAL_PATH']) {
+        foreach ($guess in @(
+            "$env:ProgramFiles\MetaTrader 5\terminal64.exe",
+            "$env:ProgramFiles\Exness MT5\terminal64.exe",
+            "$env:ProgramFiles\Exness Technologies Ltd\terminal64.exe",
+            "$env:ProgramFiles\Deriv MT5\terminal64.exe",
+            "${env:ProgramFiles(x86)}\MetaTrader 5\terminal64.exe"
+        )) {
+            if (Test-Path $guess) {
+                $values['MT5_TERMINAL_PATH'] = $guess
+                Write-Host "`n  Found MT5: $guess" -ForegroundColor Green
+                break
+            }
+        }
+    }
+}
+
+# --------------------------------------------------------------------- write
+foreach ($key in @('TG_API_ID','TG_API_HASH','TG_PHONE','TG_2FA_PASSWORD',
+                   'MT5_LOGIN','MT5_PASSWORD','MT5_SERVER','MT5_TERMINAL_PATH',
+                   'TGSCALPER_ALLOW_LIVE')) {
+    if (-not $values.Contains($key)) { $values[$key] = '' }
+}
+
+$lines = @(
+    '# Written by windows\credentials.ps1. Treat this file as secret.',
+    ''
+)
+foreach ($key in $values.Keys) { $lines += "$key=$($values[$key])" }
+Set-Content -Path $envPath -Value $lines -Encoding UTF8
+
+Write-Host "`nSaved $envPath" -ForegroundColor Green
+
+$missing = @('TG_API_ID','TG_API_HASH','TG_PHONE') | Where-Object { -not $values[$_] }
+if ($missing) {
+    Write-Host "Still empty: $($missing -join ', ')" -ForegroundColor Yellow
+    Write-Host 'Telegram will not connect until those are filled in.' -ForegroundColor Yellow
+}
+
+if (-not $SkipDoctor) {
+    Write-Host "`nRe-checking..." -ForegroundColor Cyan
+    & (Join-Path $projectDir 'windows\run.ps1') doctor
+}
