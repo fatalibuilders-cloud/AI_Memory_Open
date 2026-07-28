@@ -1,0 +1,163 @@
+# Copy to config.yaml and edit. No secrets in here — credentials live in .env.
+#
+# Get the group ids by running:  tgscalper chats
+# Get the admin ids by running:  tgscalper admins -1001234567890
+
+telegram:
+  session_name: tgscalper
+  session_dir: data
+
+  # Only act on posts from chat admins. Signal groups are full of chatty
+  # members; this is the single most effective noise filter. Leave it on.
+  admin_only: true
+
+  # Where trade receipts are sent. "me" = your own Saved Messages.
+  notify_to: me
+  notify_skips: false        # set true while tuning, to see what got ignored
+
+  # At most this many groups may be enabled at once.
+  max_groups: 5
+
+  # List as many candidate groups as you like — only the ones with
+  # `enabled: true` are watched, and no more than max_groups of them.
+  # To swap a group out, set `enabled: false` and enable another; nothing is
+  # lost, so you can rotate which five you trade without retyping ids.
+  #
+  # `id` is preferred (works for private groups); `username` works for public ones.
+  groups:
+    - id: -1001234567890
+      title: "Gold Signals VIP"
+      enabled: true
+      # Empty senders = whoever admin_only allows. Fill it in to trade only
+      # specific admins (recommended once you know who posts the signals).
+      senders: []
+      risk_multiplier: 1.0
+
+    - id: -1009876543210
+      title: "FX Scalps"
+      enabled: true
+      senders: []
+      # Half size while this group is still on probation.
+      risk_multiplier: 0.5
+
+    - id: -1001111111111
+      title: "Indices Room"
+      enabled: true
+      senders: []
+      risk_multiplier: 1.0
+
+    - id: -1002222222222
+      title: "London Session Signals"
+      enabled: true
+      senders: []
+      risk_multiplier: 1.0
+
+    - username: somepublicsignals
+      title: "Public Forex Signals"
+      enabled: true
+      senders: []
+      risk_multiplier: 0.5
+
+    # --- benched: still configured, not currently watched ---
+    - id: -1003333333333
+      title: "Crypto Calls"
+      enabled: false
+      senders: []
+      risk_multiplier: 1.0
+
+execution:
+  # paper = simulate everything (default and strongly recommended first).
+  # live  = send real orders. ALSO requires TGSCALPER_ALLOW_LIVE in .env.
+  mode: paper
+
+  # market    = fill immediately at the current price (right for scalping —
+  #             you are already seconds behind the admin's post)
+  # as_stated = place a pending order at the price in the message
+  entry: market
+
+  # first = one position at TP1 (tightest target, highest hit rate)
+  # last  = one position at the furthest target
+  # split = one position per target, size divided between them
+  tp_mode: first
+  max_tps: 3
+
+  # Refuse any signal that arrives without a stop loss. Keep this true.
+  require_stop_loss: true
+
+  # Skip the trade if price has already run this many points past the posted
+  # entry — the move is gone. 0 disables. For gold, 100 points = $1.00.
+  max_entry_slippage_points: 150
+
+  paper_balance: 10000
+
+risk:
+  # Percent of balance risked per signal, sized from the stop distance.
+  risk_per_trade_pct: 1.0
+
+  # Set a number here to ignore percentage sizing and always trade that size.
+  fixed_lot: null
+
+  max_lot: 1.0
+  max_open_trades: 5
+  max_open_per_symbol: 1
+
+  # Stop opening new trades for the rest of the day after this drawdown.
+  max_daily_loss_pct: 5.0
+  max_signals_per_hour: 10
+
+  # Reject absurdly tight stops (likely a misread price). For gold,
+  # 100 points = $1.00. 0 disables.
+  min_stop_points: 50
+
+  # Reject entries when the spread is abnormally wide (news, rollover).
+  max_spread_points: 60
+
+  # Ignore the same setup reposted or cross-posted within this window.
+  dedupe_window_minutes: 30
+
+  # Empty allow_symbols = trade anything that resolves. Narrowing this to the
+  # instruments you actually understand is the cheapest risk control there is.
+  allow_symbols: [XAUUSD, EURUSD, GBPUSD, USDJPY, US30, NAS100]
+  block_symbols: [BTCUSD, ETHUSD]
+
+  hours:
+    start: "07:00"
+    end: "21:00"
+    days: [MON, TUE, WED, THU, FRI]
+
+  # Extra points beyond entry when moving to break-even, to cover costs.
+  breakeven_offset_points: 20
+
+  # Used when an admin says "close half" without a number.
+  partial_close_default: 0.5
+
+  # Emergency stop, in points, if a signal has no stop and require_stop_loss
+  # is off. 0 means never trade without a stop.
+  fallback_stop_points: 0
+
+broker:
+  provider: mt5             # mt5 | paper
+
+  # Many brokers suffix their symbols: XAUUSD.m, EURUSDm, US30.cash
+  suffix: ""
+
+  # Last-resort explicit mapping when suffix rules are not enough.
+  symbol_overrides:
+    # XAUUSD: "GOLD"
+    # NAS100: "USTEC.m"
+
+  deviation_points: 20      # max slippage MT5 may accept on a market fill
+  magic: 770077             # tags this bot's trades in your account history
+
+symbols:
+  # Extra spellings your groups use, merged into the built-in table.
+  aliases:
+    XAUUSD: ["GOLDIE", "XAUUSD.P"]
+    # US30: ["DOW30"]
+
+journal:
+  path: data/journal.sqlite
+
+logging:
+  level: INFO
+  file: logs/tgscalper.log

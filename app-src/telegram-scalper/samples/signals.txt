@@ -1,0 +1,60 @@
+Messages are separated by a line of three dashes. Feed this file to:
+    tgscalper parse samples/signals.txt
+    tgscalper dryrun samples/signals.txt --ephemeral
+Then replace it with real posts copied out of your own groups — that is how you
+find the formats your admins actually use before risking money on them.
+---
+🔥 GOLD BUY NOW 2350.5
+SL 2344
+TP1 2355
+TP2 2360
+TP3 2370
+---
+BUY XAUUSD @ 2350-2352
+SL: 2344
+TP: 2355, 2360, 2370
+---
+SELL LIMIT EURUSD
+Entry: 1.0850
+SL 1.0880
+TP 1.0800
+---
+XAUUSD SELL 2350
+SL 2356
+TP1 2345 TP2 2340
+---
+BUY US30 44250
+SL 44100
+TP 44500
+---
+gold buy 2350 sl 44 tp 60
+---
+SELL GBP/JPY 188.50 SL 189.00 TP 187.50
+---
+Buy gold now
+sl 2344
+tp 2360
+---
+SL to BE now guys 👍
+---
+Close half on gold, secure some profit
+---
+Move SL to 2352
+---
+close all trades
+---
+Signal cancelled, delete the pending order
+---
+TP1 hit 🎉🎉 congrats team
+---
+Good morning everyone. Market is quiet ahead of NFP, be careful today.
+---
+Analysis: gold looking bullish on H4, watch the 2350 zone for a reaction
+---
+BUY GOLD 2350
+SL 2360
+TP 2370
+---
+BUY GOLD 2350
+SL 2344
+TP 9999

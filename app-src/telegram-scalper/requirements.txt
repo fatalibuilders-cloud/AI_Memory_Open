@@ -1,0 +1,13 @@
+# Core runtime
+telethon>=1.36,<2.0        # MTProto client — logs in as YOUR Telegram account (not a bot token)
+PyYAML>=6.0
+python-dotenv>=1.0
+
+# Broker adapter (Windows only — MetaTrader 5 terminal required).
+# Install separately on the trading machine:
+#   pip install MetaTrader5
+# It is intentionally NOT listed here so the parser/risk/journal test suite
+# and the paper broker run on Linux and macOS too.
+
+# Dev
+pytest>=8.0
