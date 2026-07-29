@@ -1,0 +1,188 @@
+# TeleScalper — cTrader cBot
+
+A cTrader Automate cBot that does on cTrader what the TeleScalper_bot spec does on MT5:
+it reads trading signals from your Telegram groups, validates them, executes them on the
+connected cTrader account and manages them automatically (break even + partial close at
+TP1, remainder to TP2), with Telegram notifications for every action.
+
+Once built, it produces a single `TeleScalper.algo` file — that's the file you upload with
+the **Upload** button in the cTrader mobile app (Algo tab), or that appears automatically
+in your Algo list if you build it in cTrader Desktop while signed in with your cTrader ID.
+
+---
+
+## 1. What it does
+
+| Rule | Behaviour |
+| --- | --- |
+| Signal sources | Up to 5 Telegram chats (groups, channels or DMs), selected by chat ID |
+| Valid signals only | A message is traded only if it contains a tradable **symbol**, a **direction**, a **stop loss** and at least **one take profit**. Everything else is ignored. |
+| Execution | Market order the moment the signal is validated |
+| Position size | Fixed lots (default **0.01**), or optional risk-% sizing off the SL distance |
+| Trade cap | Max open trades (default **10**), plus a per-symbol cap (default 3) |
+| No duplicates | The same symbol/direction/entry/SL/TP1 combination is never traded twice |
+| Break even | SL moves to entry (+ optional buffer) at TP1, and/or after a configurable pip profit |
+| Partial profit | Closes **50%** (configurable) at TP1, the remainder runs to TP2 with SL at break even |
+| Final target | TP2 is attached to the position as its take profit, so it closes even if the bot restarts |
+| Notifications | Telegram messages on start/stop, new trade, break even, TP1 taken, trade closed, and every skip reason |
+| Admin commands | `/status`, `/positions`, `/start`, `/stop`, `/trading on\|off`, `/closeall`, `/help` |
+
+Safety checks before every entry: market open, spread limit, max entry deviation from the
+signal price, SL/TP verified to be on the correct side of the *live* price, volume within
+the symbol's min/max, and levels re-validated after any implausible number is discarded.
+
+### Signal format
+
+The parser is tolerant — all of these are accepted:
+
+```
+XAUUSD                          GOLD SELL NOW @ 2354,50        #EURUSD Buy Limit 1.08210
+BUY                             SL 2360,50                     Stop Loss 1.07410
+Entry: 2354.50                  TP1 2348,50                    Take Profit 1 : 1.08810
+SL: 2346.50                     TP2 2340,00                    Take Profit 2 : 1.09410
+TP1: 2364.50
+TP2: 2374.50
+```
+
+Also handled: `US30 BUY 41,250.5 | SL: 41,050.0 | TP: 41,450.0`, `S/L` and `T/P` labels,
+`TARGET 2:` as TP2, comma decimals (`2354,50`), thousands separators (`41,250.5`), and
+`GOLD`/`NAS100`/`USTEC`/`DOW`-style aliases mapped to your broker's symbol names.
+
+Messages without SL or without any TP are **ignored** — as are messages older than
+`Ignore signals older than` minutes (default 10), so a restart never fires off stale trades.
+
+---
+
+## 2. Build it (pick one)
+
+The repo holds the source; cTrader runs a compiled `.algo`. Any of these three routes
+produces that file.
+
+### Route A — cTrader Desktop (no tooling needed, recommended)
+
+1. Open cTrader Desktop → **Automate** → **cBots** → **New cBot**.
+2. Delete the template code, paste the whole of
+   [`TeleScalper/TeleScalper.cs`](TeleScalper/TeleScalper.cs), save as `TeleScalper`.
+3. Press **Build**. On success the `.algo` is written to
+   `Documents/cAlgo/Sources/Robots/TeleScalper/bin/…/TeleScalper.algo`.
+4. Signed in with your cTrader ID, the cBot syncs to your cTrader account automatically —
+   open the mobile app's **Algo** tab and it is already listed. Otherwise copy the `.algo`
+   to your phone and use **Upload**.
+
+> The `[Robot(AccessRights = AccessRights.FullAccess)]` attribute is required (the bot calls
+> `api.telegram.org`). cTrader asks you to confirm that access on first run.
+
+### Route B — command line, any OS with the .NET SDK
+
+```bash
+cd projects/cTrader-TeleScalper/TeleScalper
+dotnet build -c Release
+# -> bin/Release/net6.0/TeleScalper.algo
+```
+
+Needs .NET SDK 6.0 or newer; the `cTrader.Automate` NuGet package does the `.algo` packaging.
+
+### Route C — GitHub Actions (no local tooling at all)
+
+Run the **Build cTrader algo** workflow (Actions tab → *Build cTrader algo* → *Run workflow*).
+Download the `TeleScalper-algo` artifact from the finished run, unzip it, and upload
+`TeleScalper.algo` from the mobile app.
+
+---
+
+## 3. Telegram setup (5 minutes)
+
+1. **Create the bot** — message [@BotFather](https://t.me/BotFather), `/newbot`, follow the
+   prompts, copy the token (`123456789:AA…`). Keep it private; it is the password to the bot.
+2. **Add the bot to each signal group/channel.** For groups, also send `/setprivacy` →
+   *Disable* to BotFather so the bot can see all messages, not just commands.
+   (Telegram bots cannot read a chat they are not a member of — there is no way around that.)
+3. **Get the chat IDs** — open
+   `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` in a browser after a message was
+   posted in the group, and read `result[].message.chat.id`. Group IDs are negative
+   (`-1001234567890`).
+4. **Get your own chat ID** the same way (send the bot a DM first) — that is the
+   `Admin / notify chat ID`, where notifications go and the only chat whose commands are obeyed.
+
+---
+
+## 4. Run it
+
+Add an instance (mobile: **Algo** → TeleScalper → *Add instance*; desktop: Automate →
+cBots → TeleScalper → *+*), fill in the parameters, then press ▶.
+
+Any symbol/timeframe works for the instance — the bot trades the symbols named in the
+signals, not the chart symbol. A 1-minute chart on a liquid pair is a fine host.
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| Bot token | — | From BotFather. Required. |
+| Signal chat IDs | — | Comma separated, max 5. Required. |
+| Admin / notify chat ID | — | Your own chat ID. Notifications + commands. |
+| Poll interval (seconds) | 3 | Telegram long-poll timeout |
+| Ignore signals older than | 10 min | 0 disables the age filter |
+| Enable trading | true | Off = signals are reported but not traded |
+| Lot size | 0.01 | Used unless risk-% sizing is on |
+| Size by risk % / Risk % | off / 1.0 | Sizes from balance and SL distance instead |
+| Max open trades | 10 | Counts only this bot's positions |
+| Max open trades per symbol | 3 | |
+| Max spread (pips) | 0 (off) | Skip entries when the spread is wider |
+| Max entry deviation (pips) | 0 (off) | Skip when price has already run from the signal entry |
+| Symbol whitelist | empty (all) | e.g. `XAUUSD,EURUSD,US30` |
+| Broker symbol suffix | empty | e.g. `.r` if your broker names symbols `XAUUSD.r` |
+| Extra symbol map | empty | `SIGNAL=BROKER` pairs, e.g. `GOLD=XAUUSD,US30=US30.cash` |
+| Trade label | TeleScalper | Positions are found/managed by this label |
+| Close % at TP1 | 50 | 0 disables partial closing |
+| If partial close impossible | LetRunToTp2 | At 0.01 lots a 50% close is often impossible — either let it run to TP2 with SL at break even, or close fully at TP1 |
+| Move SL to break even at TP1 | true | |
+| Break even trigger (pips) | 0 (off) | Independent, earlier break-even trigger |
+| Break even buffer (pips) | 0.5 | Where "break even" sits relative to entry |
+| Verbose logging | true | Every rejected signal is logged with its reason |
+
+### First run checklist
+
+1. Demo account, `Enable trading` **off**, start the instance.
+2. Confirm the `✅ TeleScalper started` Telegram message and send `/status`.
+3. Post a test signal in the signal group; the log should show it parsed (or the exact
+   reason it was rejected).
+4. Turn `Enable trading` on, restart the instance, and watch the first live-fire trade on
+   demo end to end (entry → TP1 partial → break even → TP2).
+
+---
+
+## 5. Limits worth knowing before you trust it with money
+
+- **Cloud hosting and network access.** Instances marked with the cloud icon run on cTrader
+  Cloud rather than your device. If outbound HTTPS is restricted there, the bot logs
+  `Telegram poll error` and reads nothing — run it on cTrader Desktop (or a VPS) instead.
+  Everything else works identically in both places.
+- **Telegram bots only see chats they belong to**, with privacy mode disabled. A copier for
+  channels you can't add a bot to would need a user-account client (MTProto), which is a
+  different tool and against Telegram's rules for some use cases.
+- **The parser is heuristic.** It refuses anything it cannot read cleanly, and it double-checks
+  every level against the live price before sending an order — but a badly malformed signal is
+  skipped, not guessed at. Read the log after your first day and tune with `Extra symbol map`.
+- **Partial closes need volume to split.** At the 0.01-lot minimum there is nothing to halve;
+  choose `CloseFullAtTp1` if you would rather bank TP1 than run to TP2 in that case.
+- **Restart behaviour.** The bot re-adopts its own open positions (by label, reading TP levels
+  back out of the position comment). If the stop is already at or beyond entry it assumes TP1
+  was handled. Positions opened by hand or by another bot are never touched.
+- **Not backtestable in any meaningful way.** Live Telegram input means the strategy tester
+  will show nothing; validate on demo instead.
+
+---
+
+## 6. Files
+
+```
+projects/cTrader-TeleScalper/
+├── README.md                      this file
+├── TeleScalper/
+│   ├── TeleScalper.cs             the cBot (single file, paste-ready)
+│   └── TeleScalper.csproj         net6.0 + cTrader.Automate 1.0.19 → TeleScalper.algo
+└── docs/
+    └── SIGNAL-FORMAT.md           parser rules, accepted formats, rejection reasons
+```
+
+The source compiles clean against `cAlgo.API` (net6.0) from `cTrader.Automate` 1.0.19, and
+the signal parser was checked against the sample formats listed above.

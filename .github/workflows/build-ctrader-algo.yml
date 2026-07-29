@@ -1,0 +1,39 @@
+name: Build cTrader algo
+
+# Produces the uploadable TeleScalper.algo without needing any local tooling:
+# run the workflow, then download the "TeleScalper-algo" artifact from the run.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'projects/cTrader-TeleScalper/**'
+      - '.github/workflows/build-ctrader-algo.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+
+      - name: Build cBot
+        working-directory: projects/cTrader-TeleScalper/TeleScalper
+        run: dotnet build -c Release
+
+      - name: Show build output
+        working-directory: projects/cTrader-TeleScalper/TeleScalper
+        run: find bin -type f \( -name '*.algo' -o -name '*.dll' \) -print
+
+      - name: Upload .algo
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeleScalper-algo
+          path: projects/cTrader-TeleScalper/TeleScalper/bin/Release/**/*.algo
+          if-no-files-found: error
