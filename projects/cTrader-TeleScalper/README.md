@@ -5,9 +5,9 @@ it reads trading signals from your Telegram groups, validates them, executes the
 connected cTrader account and manages them automatically (break even + partial close at
 TP1, remainder to TP2), with Telegram notifications for every action.
 
-Once built, it produces a single `TeleScalper.algo` file — that's the file you upload with
-the **Upload** button in the cTrader mobile app (Algo tab), or that appears automatically
-in your Algo list if you build it in cTrader Desktop while signed in with your cTrader ID.
+The ready-to-use file is **[`dist/TeleScalper.algo`](dist/TeleScalper.algo)** — download it
+and load it with the **Upload** button in the cTrader mobile app (Algo tab), or drop it into
+cTrader Desktop. The source it was built from is in `TeleScalper/`.
 
 ---
 
@@ -53,12 +53,28 @@ Messages without SL or without any TP are **ignored** — as are messages older 
 
 ---
 
-## 2. Build it (pick one)
+## 2. Get the `.algo`
 
-The repo holds the source; cTrader runs a compiled `.algo`. Any of these three routes
-produces that file.
+**The built file is in this repo: [`dist/TeleScalper.algo`](dist/TeleScalper.algo)** (35 KB).
+Download it and upload it — nothing to build.
 
-### Route A — cTrader Desktop (no tooling needed, recommended)
+- **Mobile:** cTrader app → **Algo** tab → **Upload** → pick `TeleScalper.algo`.
+- **Desktop:** Automate → cBots → drop the file in, or copy it to
+  `Documents/cAlgo/Robots/`. Signed in with your cTrader ID it then syncs to your other
+  devices.
+
+It was built from `TeleScalper/TeleScalper.cs` with the official `cTrader.Automate` 1.0.19
+SDK targeting `net6.0`, and the packaged metadata was verified to expose one Robot type
+(`cAlgo.Robots.TeleScalper`, FullTrust, TimeZone UTC) with all 23 parameters in their
+Telegram / Trading / Management / Diagnostics groups.
+
+`sha256: 713ec9c939f6782abe7e7e05847498b6ca6163abcf39b8a6904d58df7be77119`
+
+### Rebuilding it yourself (optional)
+
+If you change the source, any of these regenerates the `.algo`.
+
+#### Route A — cTrader Desktop (no tooling needed)
 
 1. Open cTrader Desktop → **Automate** → **cBots** → **New cBot**.
 2. Delete the template code, paste the whole of
@@ -72,7 +88,7 @@ produces that file.
 > The `[Robot(AccessRights = AccessRights.FullAccess)]` attribute is required (the bot calls
 > `api.telegram.org`). cTrader asks you to confirm that access on first run.
 
-### Route B — command line, any OS with the .NET SDK
+#### Route B — command line, any OS with the .NET SDK
 
 ```bash
 cd projects/cTrader-TeleScalper/TeleScalper
@@ -82,7 +98,7 @@ dotnet build -c Release
 
 Needs .NET SDK 6.0 or newer; the `cTrader.Automate` NuGet package does the `.algo` packaging.
 
-### Route C — GitHub Actions (no local tooling at all)
+#### Route C — GitHub Actions (no local tooling at all)
 
 Run the **Build cTrader algo** workflow (Actions tab → *Build cTrader algo* → *Run workflow*).
 Download the `TeleScalper-algo` artifact from the finished run, unzip it, and upload
@@ -177,6 +193,8 @@ signals, not the chart symbol. A 1-minute chart on a liquid pair is a fine host.
 ```
 projects/cTrader-TeleScalper/
 ├── README.md                      this file
+├── dist/
+│   └── TeleScalper.algo           built, ready to upload to cTrader
 ├── TeleScalper/
 │   ├── TeleScalper.cs             the cBot (single file, paste-ready)
 │   └── TeleScalper.csproj         net6.0 + cTrader.Automate 1.0.19 → TeleScalper.algo
