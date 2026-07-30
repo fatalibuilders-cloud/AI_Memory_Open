@@ -120,12 +120,15 @@ foreach ($key in @('TG_API_ID','TG_API_HASH','TG_PHONE','TG_2FA_PASSWORD',
     if (-not $values.Contains($key)) { $values[$key] = '' }
 }
 
-$lines = @(
-    '# Written by windows\credentials.ps1. Treat this file as secret.',
-    ''
-)
-foreach ($key in $values.Keys) { $lines += "$key=$($values[$key])" }
-Set-Content -Path $envPath -Value $lines -Encoding UTF8
+$lines = [System.Collections.Generic.List[string]]::new()
+$lines.Add('# Written by windows\credentials.ps1. Treat this file as secret.')
+$lines.Add('')
+foreach ($key in $values.Keys) { $lines.Add("$key=$($values[$key])") }
+
+# WriteAllLines writes UTF-8 with no byte-order mark. Windows PowerShell 5.1's
+# `Set-Content -Encoding UTF8` prepends a BOM, which turns the first key into
+# an unreadable name for any parser that is not expecting it.
+[System.IO.File]::WriteAllLines($envPath, $lines, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "`nSaved $envPath" -ForegroundColor Green
 

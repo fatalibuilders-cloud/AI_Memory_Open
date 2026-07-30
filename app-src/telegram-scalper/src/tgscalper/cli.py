@@ -46,14 +46,104 @@ def setup_logging(level: str = "INFO", log_file: Optional[str] = None) -> None:
     logging.getLogger("telethon").setLevel(logging.WARNING)
 
 
-def load_config(path: str) -> config_module.Config:
+# Where the .env actually came from, so `doctor` can report it. Silence about
+# this is what makes a missing or misplaced .env so hard to diagnose.
+ENV_SOURCE: str = "not loaded"
+
+
+def load_env(explicit: Optional[str] = None) -> None:
+    """Load .env, looking in the obvious places and saying which one won.
+
+    `load_dotenv()` with no arguments walks up from *this file's* directory,
+    not the working directory, so a .env sitting right next to the user is
+    quietly ignored. Both locations are checked here, cwd first.
+    """
+    global ENV_SOURCE
     try:
         from dotenv import load_dotenv
-
-        load_dotenv()
     except ImportError:
-        pass  # python-dotenv is optional; real env vars still work
+        ENV_SOURCE = (
+            "python-dotenv is NOT installed, so .env was ignored entirely "
+            "(fix: pip install python-dotenv)"
+        )
+        return
+
+    candidates: list[Path] = []
+    if explicit:
+        candidates.append(Path(explicit))
+    candidates.append(Path.cwd() / ".env")
+    # The project root, two levels above src/tgscalper/cli.py.
+    candidates.append(Path(__file__).resolve().parents[2] / ".env")
+
+    for candidate in candidates:
+        if candidate.is_file():
+            load_dotenv(candidate, override=False)
+            ENV_SOURCE = str(candidate)
+            return
+    ENV_SOURCE = f"no .env found (looked in {', '.join(str(c) for c in candidates)})"
+
+
+def load_config(path: str, env_path: Optional[str] = None) -> config_module.Config:
+    load_env(env_path)
     return config_module.load(path)
+
+
+def _diagnose_env_file() -> list[str]:
+    """Explain *why* the credentials did not load, rather than just that they didn't.
+
+    Nearly every report of this comes down to one of three things, none of
+    which is obvious from the outside: the editor appended .txt to the
+    filename, the values were pasted with quotes, or the file is somewhere
+    other than the folder the bot runs from.
+    """
+    notes: list[str] = []
+    cwd = Path.cwd()
+    # Inspect whatever load_env actually resolved; fall back to the cwd copy.
+    env_path = Path(ENV_SOURCE) if Path(ENV_SOURCE).is_file() else cwd / ".env"
+
+    if not env_path.exists():
+        notes.append(f"no .env file in {cwd}")
+        # Notepad silently appends .txt unless the name is quoted when saving.
+        strays = sorted(
+            path.name
+            for path in cwd.glob(".env*")
+            if path.name != ".env" and path.name != ".env.example"
+        )
+        if strays:
+            notes.append(
+                f"found {', '.join(strays)} instead — Notepad added an extension. "
+                f"Rename it: Rename-Item {strays[0]} .env"
+            )
+        else:
+            notes.append("create it by running: .\\windows\\credentials.ps1")
+        return notes
+
+    try:
+        text = env_path.read_text(encoding="utf-8-sig")
+    except OSError as exc:
+        notes.append(f".env exists but could not be read: {exc}")
+        return notes
+
+    keys: dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        keys[key.strip()] = value.strip()
+
+    if "TG_API_ID" not in keys:
+        notes.append(f"{env_path} has no TG_API_ID line at all")
+    elif not keys["TG_API_ID"]:
+        notes.append(f"{env_path} has TG_API_ID but nothing after the '='")
+    elif not keys["TG_API_ID"].isdigit():
+        notes.append(
+            f"TG_API_ID is {keys['TG_API_ID']!r}, which is not a plain number — "
+            "remove any quotes or spaces; it should look like TG_API_ID=12345678"
+        )
+    if not keys.get("TG_API_HASH"):
+        notes.append(f"{env_path} has no usable TG_API_HASH value")
+    return notes
 
 
 def _split_messages(raw: str) -> list[str]:
@@ -70,15 +160,18 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     notes: list[str] = []
 
     try:
-        config = load_config(args.config)
+        config = load_config(args.config, getattr(args, "env", None))
     except Exception as exc:
         print(f"config: FAILED — {exc}")
         return 1
     print(f"config: ok ({args.config})")
 
+    print(f"env file: {ENV_SOURCE}")
+
     telegram = config.telegram
     if not telegram.api_id or not telegram.api_hash:
         problems.append("TG_API_ID / TG_API_HASH not set in .env")
+        problems.extend(_diagnose_env_file())
     else:
         print(f"telegram credentials: present (api_id {telegram.api_id})")
     session = Path(f"{config.session_path}.session")
@@ -160,7 +253,7 @@ def cmd_symbols(args: argparse.Namespace) -> int:
     """
     from .symbols import SymbolResolver
 
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
     broker = build_broker(config)
     broker.connect()
     available = broker.available_symbols()
@@ -211,7 +304,7 @@ def cmd_symbols(args: argparse.Namespace) -> int:
 
 
 def cmd_chats(args: argparse.Namespace) -> int:
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
 
     async def run() -> None:
         from .listener import TelegramListener
@@ -235,7 +328,7 @@ def cmd_chats(args: argparse.Namespace) -> int:
 
 
 def cmd_admins(args: argparse.Namespace) -> int:
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
 
     async def run() -> None:
         from telethon.tl.types import ChannelParticipantsAdmins
@@ -261,7 +354,7 @@ def cmd_admins(args: argparse.Namespace) -> int:
 
 
 def cmd_parse(args: argparse.Namespace) -> int:
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
     raw = Path(args.file).read_text(encoding="utf-8") if args.file != "-" else sys.stdin.read()
     messages = _split_messages(raw)
     accepted = 0
@@ -284,7 +377,7 @@ def cmd_parse(args: argparse.Namespace) -> int:
 
 
 def cmd_dryrun(args: argparse.Namespace) -> int:
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
     setup_logging(args.log_level or config.log_level, None)
     # A dry run never touches the real broker, whatever config.yaml says.
     config.execution.live_enabled = False
@@ -325,7 +418,7 @@ def cmd_dryrun(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
     setup_logging(args.log_level or config.log_level, config.log_file)
 
     journal = Journal(config.journal_path)
@@ -355,7 +448,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_report(args: argparse.Namespace) -> int:
-    config = load_config(args.config)
+    config = load_config(args.config, getattr(args, "env", None))
     journal = Journal(config.journal_path)
     summary = journal.summary(days=args.days)
     print(f"last {summary['days']} day(s)")
@@ -388,6 +481,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="Copy trade signals from your Telegram groups to your broker.",
     )
     parser.add_argument("--config", default="config.yaml", help="path to config.yaml")
+    parser.add_argument(
+        "--env", default=None, help="path to the .env file (default: ./.env, then the project root)"
+    )
     parser.add_argument("--log-level", default=None, help="DEBUG, INFO, WARNING, ERROR")
     sub = parser.add_subparsers(dest="command", required=True)
 

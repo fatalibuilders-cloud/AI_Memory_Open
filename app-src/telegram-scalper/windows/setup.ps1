@@ -232,7 +232,9 @@ MT5_TERMINAL_PATH=$terminal
 # *and* config.yaml has execution.mode: live.
 TGSCALPER_ALLOW_LIVE=
 "@
-    Set-Content -Path '.env' -Value $envBody -Encoding UTF8
+    # UTF-8 without a BOM; see the note in windows\credentials.ps1.
+    [System.IO.File]::WriteAllText(
+        (Join-Path $projectDir '.env'), $envBody, [System.Text.UTF8Encoding]::new($false))
     Write-Ok '.env written'
 }
 
