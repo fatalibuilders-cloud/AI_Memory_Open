@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -132,6 +133,19 @@ def _diagnose_env_file() -> list[str]:
         key, _, value = line.partition("=")
         keys[key.strip()] = value.strip()
 
+    for key in ("TG_API_ID", "TG_API_HASH"):
+        if _looks_like_bot_token(keys.get(key, "")):
+            notes.append(
+                f"{key} holds a BotFather bot token (the '123456:ABC-DEF...' shape). "
+                "That is a different credential and cannot work here: a bot only sees "
+                "messages in chats it has been added to, so it can never read someone "
+                "else's signal group. What is needed instead is an api_id and api_hash "
+                "from https://my.telegram.org -> API development tools, which identify "
+                "the app your own account signs in through. Revoke that token in "
+                "@BotFather, since it has been sitting in a plain text file."
+            )
+            return notes
+
     if "TG_API_ID" not in keys:
         notes.append(f"{env_path} has no TG_API_ID line at all")
     elif not keys["TG_API_ID"]:
@@ -144,6 +158,16 @@ def _diagnose_env_file() -> list[str]:
     if not keys.get("TG_API_HASH"):
         notes.append(f"{env_path} has no usable TG_API_HASH value")
     return notes
+
+
+def _looks_like_bot_token(value: str) -> bool:
+    """Detect a BotFather token: digits, a colon, then a long secret.
+
+    Easily the most common wrong answer, because "Telegram bot" naturally
+    leads people to @BotFather. Worth naming explicitly rather than reporting
+    a generic format complaint.
+    """
+    return bool(re.fullmatch(r"\d{6,}:[A-Za-z0-9_-]{30,}", value.strip()))
 
 
 def _split_messages(raw: str) -> list[str]:
