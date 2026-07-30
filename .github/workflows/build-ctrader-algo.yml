@@ -23,17 +23,17 @@ jobs:
             6.0.x
             8.0.x
 
-      - name: Build cBot
-        working-directory: projects/cTrader-TeleScalper/TeleScalper
-        run: dotnet build -c Release
+      - name: Build cBots
+        run: |
+          dotnet build -c Release projects/cTrader-TeleScalper/TeleScalper/TeleScalper.csproj
+          dotnet build -c Release projects/cTrader-TeleScalper/TeleScalperPro/TeleScalperPro.csproj
 
       - name: Show build output
-        working-directory: projects/cTrader-TeleScalper/TeleScalper
-        run: find bin -type f \( -name '*.algo' -o -name '*.dll' \) -print
+        run: find projects/cTrader-TeleScalper -type f -name '*.algo' -print
 
-      - name: Upload .algo
+      - name: Upload .algo files
         uses: actions/upload-artifact@v4
         with:
           name: TeleScalper-algo
-          path: projects/cTrader-TeleScalper/TeleScalper/bin/Release/**/*.algo
+          path: projects/cTrader-TeleScalper/**/bin/Release/**/*.algo
           if-no-files-found: error

@@ -9,6 +9,10 @@ The ready-to-use file is **[`dist/TeleScalper.algo`](dist/TeleScalper.algo)** �
 and load it with the **Upload** button in the cTrader mobile app (Algo tab), or drop it into
 cTrader Desktop. The source it was built from is in `TeleScalper/`.
 
+There is also an aggressive variant — **[`dist/TeleScalperPro.algo`](dist/TeleScalperPro.algo)**:
+risk-% sizing, laddered multi-entry, trailing runner, pyramiding, and a daily loss limit.
+See [section 6](#6-telescalper-pro--the-aggressive-variant).
+
 ---
 
 ## 1. What it does
@@ -188,19 +192,84 @@ signals, not the chart symbol. A 1-minute chart on a liquid pair is a fine host.
 
 ---
 
-## 6. Files
+## 6. TeleScalper **PRO** — the aggressive variant
+
+**[`dist/TeleScalperPro.algo`](dist/TeleScalperPro.algo)** — same Telegram signal engine,
+tuned to press winners much harder. Upload it exactly like the standard one; the two are
+separate cBots and can run side by side (they use different trade labels, so neither
+touches the other's positions).
+
+`sha256: b04ef13be48782f827091b410ed0c84bdc55059a21490b13eaa89b2b8aedb6fc`
+
+| | TeleScalper | TeleScalper **PRO** |
+| --- | --- | --- |
+| Size per signal | 0.01 lots fixed | **2% risk** off the SL distance (or fixed lots) |
+| Entries per signal | 1 | **3 laddered entries** (up to 5) |
+| Targets | TP1 partial, TP2 final | **one target per entry**; missing targets extrapolated at 1.5R steps |
+| Runner | remainder to TP2 | last entry rides the furthest target with a **trailing stop** |
+| Stop management | break even at TP1 | break even once *any* entry banks profit, then trail at 0.75R once 1R in profit |
+| Adding to winners | never | **pyramids** 1 add at +1R, sized 0.5×, protected at group break even |
+| After a stop-out | nothing | optional **recovery re-entry**, 1.5× size, capped (default **off**) |
+| Trade caps | 10 total / 3 per symbol | 20 total / 9 per symbol |
+| Signals without SL | rejected | optional **fallback SL in pips** (default still rejects) |
+| Risk brakes | none | **daily loss limit 10%** + **max 12% total open risk**, both enforced before every entry |
+
+### What "aggressive" costs you
+
+Three entries at 2% risk is roughly **6× the exposure per signal** of the standard bot, and
+pyramiding adds more on top. A losing streak draws the account down proportionally faster —
+that is the whole point of the setting, so size it deliberately:
+
+- The **daily loss limit** (default 10% of the day's starting balance) locks out new trades
+  for the rest of the day once equity drops through it. `/unlock` overrides it, `/status`
+  shows the day's P/L. It resets on the next server day.
+- **Max total open risk** (default 12%) refuses new signals while the open book already
+  risks that much. It is an estimate from stop distance × pip value, not an exact figure.
+- **Recovery re-entries are off by default.** Turning them on is martingale behaviour:
+  each step multiplies size by 1.5× after a loss, capped at 3 steps. Leave it at 0 unless
+  you have specifically decided you want that risk profile.
+
+Start on demo with `Risk %` at 0.5, `Entries per signal` at 2 and pyramiding off, watch a
+few signals run end to end, then scale up to taste.
+
+### PRO-only parameters
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| Sizing mode | RiskPercent | Or FixedLots if you prefer a flat size |
+| Risk % of balance per signal | 2.0 | Split across the ladder, not per entry |
+| Entries per signal (ladder) | 3 | Trimmed automatically if volume can't be split |
+| Extra target step (R multiples) | 1.5 | Used when the signal has fewer TPs than entries |
+| Trail start / distance (R) | 1.0 / 0.75 | 0 start disables trailing |
+| Pyramid adds / trigger / size | 1 / 1.0R / 0.5× | 0 adds disables pyramiding |
+| Recovery re-entries / multiplier | 0 / 1.5× | **Off by default** — martingale when enabled |
+| Daily loss limit % | 10 | 0 disables the lock |
+| Max total risk % open at once | 12 | 0 disables the check |
+| Fallback SL (pips) | 0 | 0 = a signal without SL is still rejected |
+
+Extra command: `/unlock` clears the daily loss lock and resets the balance baseline.
+
+---
+
+## 7. Files
 
 ```
 projects/cTrader-TeleScalper/
 ├── README.md                      this file
 ├── dist/
-│   └── TeleScalper.algo           built, ready to upload to cTrader
+│   ├── TeleScalper.algo           built, ready to upload to cTrader
+│   └── TeleScalperPro.algo        aggressive variant, ready to upload
 ├── TeleScalper/
 │   ├── TeleScalper.cs             the cBot (single file, paste-ready)
 │   └── TeleScalper.csproj         net6.0 + cTrader.Automate 1.0.19 → TeleScalper.algo
+├── TeleScalperPro/
+│   ├── TeleScalperPro.cs          the aggressive cBot
+│   └── TeleScalperPro.csproj      → TeleScalperPro.algo
 └── docs/
     └── SIGNAL-FORMAT.md           parser rules, accepted formats, rejection reasons
 ```
 
-The source compiles clean against `cAlgo.API` (net6.0) from `cTrader.Automate` 1.0.19, and
-the signal parser was checked against the sample formats listed above.
+Both bots compile clean against `cAlgo.API` (net6.0) from `cTrader.Automate` 1.0.19, share
+the same signal parser (checked against the sample formats listed above), and their packaged
+metadata was verified after bundling — one Robot type each, FullTrust, 23 and 31 parameters
+respectively.
