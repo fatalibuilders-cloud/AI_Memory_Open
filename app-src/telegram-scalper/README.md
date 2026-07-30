@@ -96,6 +96,48 @@ trades.
 
 ---
 
+## The control bot
+
+You can drive all of this from a Telegram chat instead of PowerShell. Create a
+bot with @BotFather, put its token in `.env` as `TG_BOT_TOKEN`, and you get:
+
+| Command | Does |
+|---|---|
+| `/status` | mode, balance, open positions and their P&L, today's counts, uptime |
+| `/selectgroup` | lists your groups as tappable buttons — tap to start/stop copying, capped at 5 |
+| `/groups` | which groups are being copied right now |
+| `/pause` `/resume` | stop opening new trades; trades already open are still managed |
+| `/trades` | recent decisions, including what was ignored and why |
+| `/risk` | sizing and limits currently in force |
+
+Trade receipts are pushed to that chat as they happen.
+
+**Two Telegram connections run side by side, and the difference matters:**
+
+- Your **account** (user client) reads the signal groups. Only it can — this is
+  the whole reason the project logs in as you.
+- The **bot** is the control panel. It never reads a signal. Pointing a bot
+  token at your groups and expecting it to see them will not work, no matter how
+  it is configured.
+
+So the bot token is an *addition*, never a replacement: `TG_API_ID` and
+`TG_API_HASH` are still required.
+
+**The bot obeys exactly one user id.** Set `TG_OWNER_ID` in `.env` (or
+`control_bot.owner_id` in `config.yaml`) to your own id — find it by messaging
+@userinfobot. Without it the bot refuses to start, because an open bot attached
+to a live trading account takes orders from whoever finds it. Commands from any
+other id are refused and logged.
+
+Groups chosen with `/selectgroup` are stored in `data/groups.json` and override
+the `telegram.groups` list, so your commented `config.yaml` is never rewritten.
+Delete that file to go back to the YAML.
+
+Live trading cannot be switched on from chat — that still needs
+`execution.mode: live` plus the `.env` acknowledgement, deliberately.
+
+---
+
 ## Windows quick start
 
 Open **PowerShell** and paste this **one line** — nothing else:

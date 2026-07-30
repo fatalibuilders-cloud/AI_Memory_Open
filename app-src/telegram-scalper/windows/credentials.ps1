@@ -81,6 +81,22 @@ if (-not $BrokerOnly) {
     Ask -Key 'TG_API_HASH' -Label 'App api_hash (32 letters and digits)'
     Ask -Key 'TG_PHONE'    -Label 'Your phone number with country code, e.g. +254700000000'
     Ask -Key 'TG_2FA_PASSWORD' -Label 'Telegram 2FA password - leave empty unless you set one' -Secret
+
+    Write-Host "`n--- CONTROL BOT (optional) -----------------------------------" -ForegroundColor Yellow
+    Write-Host @'
+  A @BotFather bot you chat with to run the copier: /status, /selectgroup,
+  /pause. It is the control panel only - it cannot read your signal groups,
+  because no bot can read a chat it has not been added to. Your account
+  login above still does the listening.
+
+  Leave both blank to skip and drive everything from PowerShell instead.
+    Token: @BotFather -> /mybots -> your bot -> API Token
+    Your user id: message @userinfobot, or send /start to your own bot and
+    read the id back from its reply.
+'@ -ForegroundColor DarkGray
+
+    Ask -Key 'TG_BOT_TOKEN' -Label 'Bot token (looks like 8739513225:AAHq...)' -Secret
+    Ask -Key 'TG_OWNER_ID'  -Label 'Your Telegram user id (digits only) - the ONLY user the bot obeys'
 }
 
 # -------------------------------------------------------------------- Broker
@@ -115,6 +131,7 @@ if (-not $TelegramOnly) {
 
 # --------------------------------------------------------------------- write
 foreach ($key in @('TG_API_ID','TG_API_HASH','TG_PHONE','TG_2FA_PASSWORD',
+                   'TG_BOT_TOKEN','TG_OWNER_ID',
                    'MT5_LOGIN','MT5_PASSWORD','MT5_SERVER','MT5_TERMINAL_PATH',
                    'TGSCALPER_ALLOW_LIVE')) {
     if (-not $values.Contains($key)) { $values[$key] = '' }

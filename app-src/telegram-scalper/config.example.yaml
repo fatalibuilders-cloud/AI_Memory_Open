@@ -65,6 +65,22 @@ telegram:
       senders: []
       risk_multiplier: 1.0
 
+# The bot you chat with to run all of this: /status, /selectgroup, /pause.
+# It is a control panel, NOT the thing that reads your groups — no bot can read
+# a chat it has not been added to. The account login above still does that.
+control_bot:
+  # Turns on automatically if TG_BOT_TOKEN is set in .env. Set false to keep it
+  # off even with a token present.
+  # enabled: true
+
+  # The ONLY Telegram user id the bot obeys. Without it the bot refuses to
+  # start, because an open bot wired to a live account takes orders from anyone.
+  # Can also be set as TG_OWNER_ID in .env. Find yours via @userinfobot.
+  # owner_id: 123456789
+
+  notify: true          # message you when a trade is placed
+  notify_skips: false   # also when a signal is ignored (noisy, useful at first)
+
 execution:
   # paper = simulate everything (default and strongly recommended first).
   # live  = send real orders. ALSO requires TGSCALPER_ALLOW_LIVE in .env.

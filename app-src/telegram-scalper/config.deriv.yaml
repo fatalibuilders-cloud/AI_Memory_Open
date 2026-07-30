@@ -33,6 +33,14 @@ telegram:
       senders: []
       risk_multiplier: 0.5
 
+# Chat with the copier instead of using PowerShell: /status, /selectgroup, /pause.
+# Turns on automatically when TG_BOT_TOKEN is set in .env. The bot is a control
+# panel only — your account login above is what reads the signal groups.
+control_bot:
+  # owner_id: 123456789     # or TG_OWNER_ID in .env; the only user it obeys
+  notify: true
+  notify_skips: false
+
 execution:
   mode: paper                 # switch to live only after paper-trading a while
   entry: market

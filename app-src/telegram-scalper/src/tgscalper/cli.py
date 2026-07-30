@@ -204,9 +204,34 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     else:
         notes.append(f"no session yet at {session} — run `tgscalper run` once to log in")
 
+    bot = config.control_bot
+    if bot.enabled:
+        print(
+            f"control bot: enabled, owner {bot.owner_id}, "
+            f"token {'present' if bot.token else 'MISSING'}"
+        )
+    else:
+        notes.append(
+            "control bot disabled — set control_bot.enabled: true in config.yaml to "
+            "drive it from Telegram with /start and /selectgroup"
+        )
+
+    from .groupstate import GroupSelection, selection_path
+
+    selection = GroupSelection.load(selection_path(config))
+    if selection and selection.enabled:
+        print(
+            f"group selection: {len(selection.enabled)} group(s) chosen via "
+            f"/selectgroup ({selection_path(config)}) — these override config.yaml"
+        )
+        config.telegram.groups = selection.to_groups()
+
     groups = telegram.enabled_groups
     if not groups:
-        problems.append("no groups configured under telegram.groups in config.yaml")
+        problems.append(
+            "no groups selected — send /selectgroup to your bot, or list them "
+            "under telegram.groups in config.yaml"
+        )
     else:
         idle = len(telegram.groups) - len(groups)
         print(
@@ -445,6 +470,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     config = load_config(args.config, getattr(args, "env", None))
     setup_logging(args.log_level or config.log_level, config.log_file)
 
+    from .groupstate import apply_selection
+
+    apply_selection(config)  # /selectgroup choices win over config.yaml
+
     journal = Journal(config.journal_path)
     broker = build_broker(config)
     engine = Engine(config, broker, journal)
@@ -452,9 +481,17 @@ def cmd_run(args: argparse.Namespace) -> int:
     if config.execution.live_enabled:
         log.warning("LIVE TRADING ENABLED — real orders will be placed on %s", config.broker.provider)
 
+    control_bot = None
+    if config.control_bot.enabled:
+        from .controlbot import ControlBot
+
+        control_bot = ControlBot(config, engine, journal)
+
     from .listener import TelegramListener
 
-    listener = TelegramListener(config, engine)
+    listener = TelegramListener(config, engine, control_bot)
+    if control_bot is not None:
+        control_bot.listener = listener
     try:
         engine.start()
         asyncio.run(listener.run())
@@ -465,6 +502,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         journal.record_event("crash", str(exc))
         return 1
     finally:
+        if control_bot is not None:
+            try:
+                asyncio.run(control_bot.stop())
+            except Exception:
+                pass
         engine.stop()
         journal.record_event("stop", "listener shut down")
         journal.close()

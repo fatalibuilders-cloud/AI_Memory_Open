@@ -39,9 +39,10 @@ def _import_telethon() -> tuple[Any, Any, Any]:
 
 
 class TelegramListener:
-    def __init__(self, config: Config, engine: Engine) -> None:
+    def __init__(self, config: Config, engine: Engine, control_bot: Any = None) -> None:
         self.config = config
         self.engine = engine
+        self.control_bot = control_bot
         self.client: Any = None
         # chat_id -> the GroupConfig that produced it
         self._groups: dict[int, GroupConfig] = {}
@@ -195,10 +196,17 @@ class TelegramListener:
         await self._notify(decision, group)
 
     async def _notify(self, decision: Decision, group: GroupConfig) -> None:
+        bot = self.control_bot
+        settings = self.config.control_bot
+        # With a control bot running, receipts belong in that chat — it is where
+        # the user is already looking.
+        use_bot = bot is not None and settings.enabled and settings.notify
         target = self.config.telegram.notify_to
-        if not target:
+
+        if not use_bot and not target:
             return
-        if not decision.accepted and not self.config.telegram.notify_skips:
+        want_skips = settings.notify_skips if use_bot else self.config.telegram.notify_skips
+        if not decision.accepted and not want_skips:
             return
 
         signal = decision.signal
@@ -220,6 +228,9 @@ class TelegramListener:
         else:
             body = f"skipped ({group.title}): {decision.reason}"
 
+        if use_bot:
+            await bot.notify(body)
+            return
         try:
             await self.client.send_message(target, body)
         except Exception as exc:
@@ -230,7 +241,30 @@ class TelegramListener:
     async def run(self) -> None:
         _, events, _ = _import_telethon()
         await self.connect()
-        await self.resolve_groups()
+
+        # The control bot comes up before the groups are resolved, so that a
+        # first-time user with nothing selected can still send /selectgroup.
+        if self.control_bot is not None:
+            try:
+                await self.control_bot.start()
+            except Exception as exc:
+                log.error("control bot failed to start: %s", exc)
+                self.control_bot = None
+
+        try:
+            await self.resolve_groups()
+        except RuntimeError:
+            if self.control_bot is None:
+                raise
+            # No groups chosen yet is a normal first run when there is a bot to
+            # choose them with; idle instead of exiting.
+            log.warning("no groups selected yet — send /selectgroup to your bot")
+            await self.control_bot.notify(
+                "No groups are selected yet.\nSend /selectgroup to choose which "
+                "ones to copy."
+            )
+            await self.client.run_until_disconnected()
+            return
         self.engine.journal.record_event("listener_start", f"{len(self._groups)} chat ids watched")
 
         chats = list(self._groups.keys())

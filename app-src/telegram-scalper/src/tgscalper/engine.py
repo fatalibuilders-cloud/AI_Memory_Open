@@ -48,7 +48,10 @@ class Engine:
             overrides=config.broker.symbol_overrides,
             aliases=config.aliases,
         )
-        self._halted_reason = ""
+        # Set by /pause. Stops new entries only: managing trades that are
+        # already open must keep working, exactly like the daily-loss halt.
+        self.paused = False
+        self.paused_reason = ""
 
     # --- lifecycle ---
 
@@ -117,6 +120,12 @@ class Engine:
     def _handle_open(
         self, signal: Signal, source: Optional[MessageRef], group: Optional[GroupConfig]
     ) -> Decision:
+        if self.paused:
+            reason = f"paused{f' ({self.paused_reason})' if self.paused_reason else ''}"
+            self.journal.record_signal(signal, accepted=False, reason=reason)
+            log.info("ignored %s: %s", signal.summary(), reason)
+            return Decision(accepted=False, reason=reason, signal=signal)
+
         broker_symbol = self.resolver.resolve(signal.symbol)
         if broker_symbol is None:
             reason = (

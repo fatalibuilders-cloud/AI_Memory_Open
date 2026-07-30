@@ -71,6 +71,26 @@ class TelegramConfig:
 
 
 @dataclass
+class ControlBotConfig:
+    """The @BotFather bot you chat with to drive the copier.
+
+    Strictly a control surface. It cannot read your signal groups — no bot can
+    read a chat it has not been added to — so the user client still does the
+    listening. This is the panel, not the engine.
+    """
+
+    enabled: bool = False
+    # Only this Telegram user id may issue commands. Without it the bot answers
+    # anyone who finds it, which for something wired to a live account is
+    # unacceptable — so an unset owner means the bot refuses to start.
+    owner_id: Optional[int] = None
+    # Push a receipt to the owner for every trade placed.
+    notify: bool = True
+    notify_skips: bool = False
+    token: str = ""  # from TG_BOT_TOKEN, never config.yaml
+
+
+@dataclass
 class ExecutionConfig:
     mode: str = "paper"  # "paper" | "live"
     # "market" ignores the posted entry price and fills now (correct for
@@ -160,6 +180,7 @@ class BrokerConfig:
 @dataclass
 class Config:
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    control_bot: ControlBotConfig = field(default_factory=ControlBotConfig)
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
     broker: BrokerConfig = field(default_factory=BrokerConfig)
@@ -220,6 +241,10 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
     )
     telegram.groups = groups
 
+    control_bot = ControlBotConfig(
+        **_pick(raw.get("control_bot") or {}, "enabled", "owner_id", "notify", "notify_skips")
+    )
+
     execution = ExecutionConfig(
         **_pick(
             raw.get("execution") or {},
@@ -278,6 +303,7 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
 
     config = Config(
         telegram=telegram,
+        control_bot=control_bot,
         execution=execution,
         risk=risk,
         broker=broker,
@@ -293,6 +319,16 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
     config.telegram.api_hash = env.get("TG_API_HASH", "").strip()
     config.telegram.phone = env.get("TG_PHONE", "").strip()
     config.telegram.twofa_password = env.get("TG_2FA_PASSWORD", "")
+    config.control_bot.token = env.get("TG_BOT_TOKEN", "").strip()
+    # The owner id may come from either place, so the whole bot can be set up
+    # from .env alone. config.yaml wins if both are present.
+    owner_env = env.get("TG_OWNER_ID", "").strip()
+    if config.control_bot.owner_id is None and owner_env.lstrip("-").isdigit():
+        config.control_bot.owner_id = int(owner_env)
+    # A token present in .env implies the bot is wanted, unless config.yaml
+    # explicitly says otherwise.
+    if config.control_bot.token and (raw.get("control_bot") or {}).get("enabled") is None:
+        config.control_bot.enabled = True
     config.broker.login = env.get("MT5_LOGIN", "").strip()
     config.broker.password = env.get("MT5_PASSWORD", "")
     config.broker.server = env.get("MT5_SERVER", "").strip()
@@ -347,6 +383,22 @@ def _validate(config: Config) -> None:
                 f"(they stay in config.yaml, ready to switch back on). "
                 f"Currently enabled: {listed}"
             )
+    if config.control_bot.enabled:
+        # An unowned control bot answers whoever finds it. Wired to a live
+        # trading account, that is not a warning-level problem.
+        if not config.control_bot.owner_id:
+            errors.append(
+                "control_bot.enabled is true but control_bot.owner_id is not set. "
+                "Set it to your own Telegram user id — without it the bot would take "
+                "orders from anyone who messages it. Get the id by sending /start to "
+                "your bot once with owner_id left blank; the log prints who tried."
+            )
+        if not config.control_bot.token:
+            errors.append(
+                "control_bot.enabled is true but TG_BOT_TOKEN is not set in .env "
+                "(get it from @BotFather -> /mybots -> your bot -> API Token)"
+            )
+
     keys: set[str] = set()
     for group in config.telegram.groups:
         if group.key in keys:
