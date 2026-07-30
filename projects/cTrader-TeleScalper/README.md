@@ -72,7 +72,7 @@ SDK targeting `net6.0`, and the packaged metadata was verified to expose one Rob
 (`cAlgo.Robots.TeleScalper`, FullTrust, TimeZone UTC) with all 23 parameters in their
 Telegram / Trading / Management / Diagnostics groups.
 
-`sha256: 713ec9c939f6782abe7e7e05847498b6ca6163abcf39b8a6904d58df7be77119`
+`sha256: ad9917a68967c8e0d381c14a56fb7c90c962ea2e2444935aa7f8358aa702c768`
 
 ### Rebuilding it yourself (optional)
 
@@ -199,7 +199,7 @@ tuned to press winners much harder. Upload it exactly like the standard one; the
 separate cBots and can run side by side (they use different trade labels, so neither
 touches the other's positions).
 
-`sha256: b04ef13be48782f827091b410ed0c84bdc55059a21490b13eaa89b2b8aedb6fc`
+`sha256: a29f4912968940ab30b5bc053ebce4cded7251563bf64510837ac08a3c576bd5`
 
 | | TeleScalper | TeleScalper **PRO** |
 | --- | --- | --- |
@@ -251,7 +251,48 @@ Extra command: `/unlock` clears the daily loss lock and resets the balance basel
 
 ---
 
-## 7. Files
+## 7. Settings files (presets) — and the XML question
+
+**cTrader has no XML upload format.** The only file the platform's Upload button accepts is
+a compiled `.algo`. Settings presets use the `.cbotset` extension, and despite what the name
+suggests they are **JSON**, not XML — the SDK deserialises them with Newtonsoft JSON into a
+`{ "Parameters": { … } }` object keyed by the cBot's property names. That is verified from
+cTrader's own `Core.AlgoFormat` parser, not guessed.
+
+So the preset files here are `.cbotset`:
+
+```
+TeleScalper/presets/                    TeleScalperPro/presets/
+├── 1 - Dry run (no trading).cbotset    ├── 1 - Dry run (no trading).cbotset
+├── 2 - Standard 0.01 lots.cbotset      ├── 2 - Cautious start.cbotset
+├── 3 - Gold and indices only.cbotset   ├── 3 - Aggressive (default).cbotset
+└── 4 - Risk based 1 percent.cbotset    └── 4 - Max aggression.cbotset
+```
+
+**They are already inside the `.algo` files.** Both bundles were rebuilt with the presets
+embedded, so after uploading, the preset dropdown in the instance settings lists all four —
+pick one, fill in your bot token and chat IDs, and start. Nothing extra to upload.
+
+To use them as standalone files instead (or to edit one), drop the `.cbotset` next to the
+cBot in `Documents/cAlgo/Sources/Robots/<bot>/` and load it from the same dropdown.
+
+| Preset | What it sets |
+| --- | --- |
+| **TeleScalper** 1 – Dry run | Trading off; signals are parsed and reported only. Start here. |
+| **TeleScalper** 2 – Standard | The documented defaults: 0.01 lots, 10 trades, 50% at TP1 |
+| **TeleScalper** 3 – Gold and indices | Whitelist XAUUSD/US30/NAS100/US500, 50-pip spread cap, break even at +30 pips, 2 trades per symbol |
+| **TeleScalper** 4 – Risk based | 1% risk sizing, skips entries more than 30 pips from the signal price |
+| **PRO** 1 – Dry run | Trading off |
+| **PRO** 2 – Cautious start | 0.5% risk, 2 entries, no pyramiding, 5% daily loss lock, 4% open-risk cap |
+| **PRO** 3 – Aggressive | The PRO defaults: 2% risk, 3 entries, 1 pyramid add |
+| **PRO** 4 – Max aggression | 3.5% risk, 5 entries, 2 pyramid adds at 0.75×, wider trail, 25% open-risk cap. Recovery re-entries stay off. |
+
+Every preset ships with an empty bot token and empty chat IDs — fill those in per instance;
+they are the only two values you must set by hand.
+
+---
+
+## 8. Files
 
 ```
 projects/cTrader-TeleScalper/
@@ -261,10 +302,12 @@ projects/cTrader-TeleScalper/
 │   └── TeleScalperPro.algo        aggressive variant, ready to upload
 ├── TeleScalper/
 │   ├── TeleScalper.cs             the cBot (single file, paste-ready)
-│   └── TeleScalper.csproj         net6.0 + cTrader.Automate 1.0.19 → TeleScalper.algo
+│   ├── TeleScalper.csproj         net6.0 + cTrader.Automate 1.0.19 → TeleScalper.algo
+│   └── presets/*.cbotset          settings presets, bundled into the .algo
 ├── TeleScalperPro/
 │   ├── TeleScalperPro.cs          the aggressive cBot
-│   └── TeleScalperPro.csproj      → TeleScalperPro.algo
+│   ├── TeleScalperPro.csproj      → TeleScalperPro.algo
+│   └── presets/*.cbotset          settings presets, bundled into the .algo
 └── docs/
     └── SIGNAL-FORMAT.md           parser rules, accepted formats, rejection reasons
 ```
@@ -272,4 +315,4 @@ projects/cTrader-TeleScalper/
 Both bots compile clean against `cAlgo.API` (net6.0) from `cTrader.Automate` 1.0.19, share
 the same signal parser (checked against the sample formats listed above), and their packaged
 metadata was verified after bundling — one Robot type each, FullTrust, 23 and 31 parameters
-respectively.
+respectively, plus four embedded settings presets each.

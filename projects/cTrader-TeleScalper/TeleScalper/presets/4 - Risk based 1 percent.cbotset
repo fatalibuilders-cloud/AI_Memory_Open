@@ -1,0 +1,27 @@
+{
+  "Parameters": {
+    "BotToken": "",
+    "SignalChatIds": "",
+    "NotifyChatId": "",
+    "PollSeconds": 3,
+    "MaxSignalAgeMinutes": 10,
+    "EnableTrading": true,
+    "LotSize": 0.01,
+    "UseRiskPercent": true,
+    "RiskPercent": 1.0,
+    "MaxOpenTrades": 10,
+    "MaxTradesPerSymbol": 3,
+    "MaxSpreadPips": 0.0,
+    "MaxEntryDeviationPips": 30.0,
+    "SymbolWhitelist": "",
+    "SymbolSuffix": "",
+    "SymbolMap": "",
+    "TradeLabel": "TeleScalper",
+    "PartialClosePercent": 50.0,
+    "PartialFallback": 0,
+    "BreakEvenAtTp1": true,
+    "BreakEvenTriggerPips": 0.0,
+    "BreakEvenBufferPips": 0.5,
+    "VerboseLogging": true
+  }
+}

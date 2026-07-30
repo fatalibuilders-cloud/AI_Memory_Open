@@ -1,0 +1,27 @@
+{
+  "Parameters": {
+    "BotToken": "",
+    "SignalChatIds": "",
+    "NotifyChatId": "",
+    "PollSeconds": 3,
+    "MaxSignalAgeMinutes": 10,
+    "EnableTrading": true,
+    "LotSize": 0.01,
+    "UseRiskPercent": false,
+    "RiskPercent": 1.0,
+    "MaxOpenTrades": 10,
+    "MaxTradesPerSymbol": 2,
+    "MaxSpreadPips": 50.0,
+    "MaxEntryDeviationPips": 0.0,
+    "SymbolWhitelist": "XAUUSD,US30,NAS100,US500",
+    "SymbolSuffix": "",
+    "SymbolMap": "",
+    "TradeLabel": "TeleScalper",
+    "PartialClosePercent": 50.0,
+    "PartialFallback": 0,
+    "BreakEvenAtTp1": true,
+    "BreakEvenTriggerPips": 30.0,
+    "BreakEvenBufferPips": 0.5,
+    "VerboseLogging": true
+  }
+}
