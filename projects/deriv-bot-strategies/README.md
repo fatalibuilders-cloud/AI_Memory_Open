@@ -1,6 +1,6 @@
 # Deriv Bot strategies (XML)
 
-Two strategy files for **Deriv Bot** — [bot.deriv.com](https://bot.deriv.com) — the Blockly
+Strategy files for **Deriv Bot** — [bot.deriv.com](https://bot.deriv.com) — the Blockly
 bot builder that shows *"Importing XML files from Binary Bot and other third-party platforms
 may take longer"* on its import dialog.
 
@@ -8,6 +8,8 @@ may take longer"* on its import dialog.
 | --- | --- |
 | [`TeleScalper-Deriv-Safe.xml`](TeleScalper-Deriv-Safe.xml) | Flat stake, session take-profit / stop-loss, stops after 3 losses in a row |
 | [`TeleScalper-Deriv-Aggressive.xml`](TeleScalper-Deriv-Aggressive.xml) | Martingale after a loss (2.1×, capped at 4 steps), wider session limits |
+| [`TeleScalper-Deriv-DataRun.xml`](TeleScalper-Deriv-DataRun.xml) | Measurement build — same logic, limits widened so it collects hours of data without halting |
+| [`analyse-results.py`](analyse-results.py) | Turns a Deriv transactions CSV into win rate vs break-even, noise band, streaks, halts, and an equity-curve chart |
 
 > **These are for Deriv Bot, not cTrader.** The two platforms share nothing: cTrader runs
 > compiled `.algo` cBots (see [`../cTrader-TeleScalper`](../cTrader-TeleScalper)), Deriv Bot
@@ -92,6 +94,37 @@ throw at runtime.
 
 ---
 
+## Running a measurement session
+
+`TeleScalper-Deriv-DataRun.xml` exists because the Safe file is built to protect an account,
+not to collect data: its 3-losses-in-a-row rule halts the bot every few minutes, so a long
+run turns into constant restarting. The data build changes four numbers and nothing else:
+
+| Variable | Safe | DataRun | Why |
+| --- | --- | --- | --- |
+| `max losses in a row` | 3 | 15 | 15 straight losses is a 1-in-33,000 event — effectively never halts |
+| `take profit` | 10 | 100 | Room to run for hours |
+| `stop loss` | 10 | 100 | Still bounded — the run ends rather than bleeding indefinitely |
+| duration | 5 ticks | 1 tick | Matches the first run, and gives the most independent samples per hour |
+
+Stake stays flat at 1.00. **Demo account only** — this is a measurement, not a trading setup.
+
+At roughly one trade every 8–11 seconds you get about **400 trades an hour**. Three hours is
+~1,200 trades, where the −4%-per-trade expectation predicts about **−48**, with a 1σ spread of
+±33. So a typical honest outcome lands somewhere between −114 and +18. If the curve finishes
+well above that band, that is the interesting result worth chasing.
+
+Then export and analyse:
+
+1. Deriv → **Reports** → **Statement** → download CSV (or use the bot's own export).
+2. `python3 analyse-results.py Transactions_*.csv --chart equity.png --martingale`
+
+It prints the win rate against the break-even rate implied by your payout, how many sigma the
+result sits from expectation, streaks, every point where the bot halted itself, and — with
+`--martingale` — what the same sequence of wins and losses would have done with the
+aggressive file's stake escalation. The chart plots your equity against the expectation line
+inside a ±2σ cone, which is the quickest way to see whether a run is edge or luck.
+
 ## How these were validated
 
 Both files were checked against Deriv Bot's own source (`deriv-com/deriv-app`,
@@ -108,6 +141,17 @@ Both files were checked against Deriv Bot's own source (`deriv-com/deriv-app`,
 - `is_dbot="true"` / `collection="false"` match what Deriv's own `save()` writes, which is
   what its importer expects for a full strategy
 
-What that does **not** cover: neither strategy has been run on a Deriv account, so the
-behaviour on live ticks — fill quality, how the momentum rule performs, whether the limits
-trigger where you expect — is unverified. Run the safe one on demo first.
+What that does **not** cover: how the momentum rule performs. The Safe file has now been
+run on demo (see the run log below) — it imported, traded, and halted on its loss guard
+exactly as designed, but 26 trades say nothing about profitability, and on a random-number
+synthetic index there is no edge for a tick-direction rule to find.
+
+---
+
+## Run log
+
+| Date | File | Trades | Win rate | Net | Verdict |
+| --- | --- | --- | --- | --- | --- |
+| 2026-07-30 19:06–19:11 | Safe (duration edited to 1 tick) | 26 | 53.85% | +0.88 | +0.39σ from expectation — noise. Loss guard fired correctly at 3 consecutive losses, twice. |
+
+Raw data and charts live in [`results/`](results/).
