@@ -79,6 +79,18 @@ def main() -> int:
     equity = broker.equity()
     print(f"  {OK} connected — balance {balance:.2f}, equity {equity:.2f}")
 
+    # The single most common reason a working bot never trades.
+    if settings.broker in ("mt5", "exness", "deriv", "vantage"):
+        term = broker.mt5.terminal_info()
+        if term is not None and not getattr(term, "trade_allowed", True):
+            print(f"  {BAD} ALGO TRADING IS OFF in the MT5 terminal.")
+            print( "        Every order will be rejected with 'AutoTrading disabled "
+                   "by client' (10027).")
+            print( "        Fix: click the 'Algo Trading' toolbar button in MT5 so "
+                   "it turns green.")
+        else:
+            print(f"  {OK} algo trading enabled in the terminal")
+
     open_positions = broker.positions()
     print(f"  open positions: {len(open_positions)}")
     for p in open_positions:
