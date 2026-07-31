@@ -67,10 +67,41 @@ class BrokerSession:
         log.warning("[%s] %s unavailable, skipping it: %s", self.name, symbol, exc)
 
 
+class MultiTerminalError(RuntimeError):
+    """More than one MetaTrader 5 account was requested in one process."""
+
+
+def check_mt5_conflict(configs) -> None:
+    """Reject two MT5 accounts in one process.
+
+    The MetaTrader5 python package drives ONE terminal, and initialising it
+    with a second login switches that terminal's account rather than opening
+    a parallel connection. Both sessions then read and trade the same
+    account while reporting different names — silently wrong, so refuse it.
+    """
+    from .config import MT5_BACKENDS
+    mt5_accounts = [c for c in configs if c.kind in MT5_BACKENDS]
+    if len(mt5_accounts) > 1:
+        names = ", ".join(c.name for c in mt5_accounts)
+        raise MultiTerminalError(
+            f"{len(mt5_accounts)} MetaTrader 5 accounts requested ({names}), but one "
+            f"process can only drive one MT5 terminal — the second login switches "
+            f"the terminal instead of adding a connection, so both would trade the "
+            f"SAME account.\n"
+            f"  Pick one:  python profile.py use {mt5_accounts[0].name}\n"
+            f"  To trade several MT5 brokers at once, run a second copy of the bot "
+            f"in its own folder, with its own portable MT5 terminal and its own "
+            f"Telegram token.\n"
+            f"  An MT5 account CAN run alongside oanda or binance accounts, since "
+            f"those use their own APIs.")
+
+
 def build_sessions(settings: Settings) -> list[BrokerSession]:
     from .broker import build_broker_from_config
+    configs = settings.broker_configs()
+    check_mt5_conflict(configs)
     sessions = []
-    for cfg in settings.broker_configs():
+    for cfg in configs:
         sessions.append(BrokerSession(
             name=cfg.name, cfg=cfg,
             broker=build_broker_from_config(cfg),

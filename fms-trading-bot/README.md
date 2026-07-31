@@ -236,6 +236,31 @@ separately, `/accounts` lists them, and any command can be scoped by name:
 Note that this multiplies exposure: two accounts at 0.01 lots is 0.02 lots of
 real risk, and each account's daily loss limit applies to its own balance.
 
+**Only one MetaTrader 5 account per bot.** The MetaTrader5 python package
+drives a single terminal, and logging in with a second account *switches*
+that terminal rather than opening a parallel connection — both sessions
+would then read and trade the same account while reporting different names.
+The bot refuses this combination at startup. Valid combinations:
+
+| Combination | Works |
+|---|---|
+| one MT5 account (exness *or* deriv *or* vantage) | ✅ |
+| MT5 + `binance` | ✅ separate APIs |
+| MT5 + `oanda` | ✅ separate APIs |
+| `oanda` + `binance` | ✅ |
+| exness + deriv (two MT5) | ❌ refused |
+
+To trade two MT5 brokers simultaneously, run a second copy of the bot in its
+own folder, with its own **portable** MT5 terminal installation and its own
+Telegram bot token.
+
+### Nothing trades? Check Algo Trading first
+
+If orders are rejected with `AutoTrading disabled by client (10027)`, the
+**Algo Trading** button in the MT5 toolbar is off. Click it until it is
+green. `doctor.py` checks this explicitly, and the bot warns at startup —
+this is the most common reason a correctly configured bot never trades.
+
 Brokers that accept Kenyan clients, run MT5, and offer Bitcoin:
 
 | Broker | Crypto | Notes |

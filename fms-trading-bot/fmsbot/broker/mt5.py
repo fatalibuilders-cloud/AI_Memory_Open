@@ -20,6 +20,27 @@ log = logging.getLogger("fmsbot.mt5")
 _TIMEFRAMES = {"M1": 1, "M5": 5, "M15": 15, "M30": 30, "H1": 16385, "H4": 16388, "D1": 16408}
 
 
+#: Rejection codes that have a specific, actionable cause.
+_RETCODE_HELP = {
+    10027: ("AutoTrading is switched OFF in the MetaTrader 5 terminal. "
+            "Click the 'Algo Trading' button in the toolbar so it turns green "
+            "(or Tools -> Options -> Expert Advisors -> Allow algorithmic trading). "
+            "NOTHING will trade until you do."),
+    10018: "The market for this symbol is closed right now.",
+    10019: "Not enough money in the account for this volume.",
+    10014: "Invalid volume — below the symbol's minimum or off its step size.",
+    10016: "Invalid stops — SL/TP too close to price for this symbol.",
+    10030: ("Unsupported filling mode for this broker. The bot picks one per "
+            "symbol; if this persists the symbol may be trade-disabled."),
+    10006: "The broker rejected the request.",
+}
+
+
+def _explain(retcode) -> str:
+    help_text = _RETCODE_HELP.get(retcode)
+    return f"\n  -> {help_text}" if help_text else ""
+
+
 def _mt5():
     try:
         import MetaTrader5 as mt5  # noqa: PLC0415 — optional, Windows-only
@@ -63,6 +84,11 @@ class MT5Broker(Broker):
         if info is None:
             raise BrokerError(f"MT5 login failed: {mt5.last_error()}")
         self.mt5 = mt5
+        term = mt5.terminal_info()
+        if term is not None and not getattr(term, "trade_allowed", True):
+            log.error("ALGO TRADING IS OFF in the MT5 terminal — every order will be "
+                      "rejected with 10027. Click the 'Algo Trading' toolbar button "
+                      "so it turns green.")
         # wait until the terminal is actually connected to the trade server —
         # market-data calls fail with 'Terminal: Call failed' before that
         deadline = time.time() + 20
@@ -216,9 +242,10 @@ class MT5Broker(Broker):
         }
         result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            retcode = getattr(result, "retcode", None)
+            comment = getattr(result, "comment", mt5.last_error())
             raise BrokerError(
-                f"Order rejected ({getattr(result, 'retcode', '?')}): "
-                f"{getattr(result, 'comment', mt5.last_error())}")
+                f"Order rejected ({retcode}): {comment}{_explain(retcode)}")
         return OrderReceipt(
             ticket=int(result.order), symbol=symbol, side=side,
             volume=float(result.volume), price=float(result.price),
