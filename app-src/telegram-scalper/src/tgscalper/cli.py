@@ -126,12 +126,25 @@ def _diagnose_env_file() -> list[str]:
         return notes
 
     keys: dict[str, str] = {}
-    for line in text.splitlines():
+    malformed: list[int] = []
+    for number, line in enumerate(text.splitlines(), start=1):
         line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            # python-dotenv reports these only as "could not parse statement
+            # starting at line N", which does not say what to do about it.
+            malformed.append(number)
             continue
         key, _, value = line.partition("=")
         keys[key.strip()] = value.strip()
+
+    if malformed:
+        notes.append(
+            f"{env_path} has no '=' on line(s) {', '.join(str(n) for n in malformed)} — "
+            "every line must be KEY=value or start with #. That is what the "
+            "'python-dotenv could not parse' warning refers to."
+        )
 
     for key in ("TG_API_ID", "TG_API_HASH"):
         if _looks_like_bot_token(keys.get(key, "")):
@@ -210,10 +223,16 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             f"control bot: enabled, owner {bot.owner_id}, "
             f"token {'present' if bot.token else 'MISSING'}"
         )
+    elif bot.token and not bot.owner_id:
+        problems.append(
+            "TG_BOT_TOKEN is set but TG_OWNER_ID is not, so the control bot stays off. "
+            "Message @userinfobot to get your Telegram user id, then put it in .env as "
+            "TG_OWNER_ID — the bot obeys that id and no other."
+        )
     else:
         notes.append(
-            "control bot disabled — set control_bot.enabled: true in config.yaml to "
-            "drive it from Telegram with /start and /selectgroup"
+            "control bot off — set TG_BOT_TOKEN and TG_OWNER_ID in .env to drive it "
+            "from Telegram with /status and /selectgroup"
         )
 
     from .groupstate import GroupSelection, selection_path

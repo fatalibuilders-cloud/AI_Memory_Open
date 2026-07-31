@@ -40,24 +40,81 @@ if (Test-Path $envPath) {
     Write-Host "Creating $envPath" -ForegroundColor Cyan
 }
 
+function Test-BotToken {
+    param([string]$Value)
+    return $Value -match '^\d{6,}:[A-Za-z0-9_-]{30,}$'
+}
+
 function Ask {
     param(
         [string]$Key,
         [string]$Label,
-        [switch]$Secret
+        [switch]$Secret,
+        # Returns '' when the value is acceptable, or the reason it is not.
+        [scriptblock]$Validate
     )
     $current = $values[$Key]
-    $shown = if ($current) {
-        if ($Secret) { '(set - press Enter to keep)' } else { "(current: $current)" }
-    } else { '(empty)' }
 
-    Write-Host ''
-    Write-Host "  $Label" -ForegroundColor White
-    Write-Host "  $shown" -ForegroundColor DarkGray
-    $answer = Read-Host "  $Key"
+    # A value already on disk that fails validation must not be keepable —
+    # otherwise pressing Enter silently preserves the mistake, which is exactly
+    # how a bot token survived in TG_API_ID through several passes.
+    $currentBad = ''
+    if ($current -and $Validate) { $currentBad = & $Validate $current }
 
-    if ([string]::IsNullOrWhiteSpace($answer)) { return }   # keep what was there
-    $values[$Key] = $answer.Trim()
+    while ($true) {
+        $shown = if (-not $current) { '(empty)' }
+                 elseif ($currentBad) { "(current value is INVALID: $currentBad)" }
+                 elseif ($Secret)     { '(set - press Enter to keep)' }
+                 else                 { "(current: $current)" }
+
+        Write-Host ''
+        Write-Host "  $Label" -ForegroundColor White
+        Write-Host "  $shown" -ForegroundColor $(if ($currentBad) { 'Red' } else { 'DarkGray' })
+        if ($currentBad) {
+            Write-Host '  Enter a correct value - the old one cannot be kept.' -ForegroundColor Yellow
+        }
+        $answer = Read-Host "  $Key"
+
+        if ([string]::IsNullOrWhiteSpace($answer)) {
+            if (-not $currentBad) { return }        # keep what was there
+            Write-Host '  Skipping leaves this broken.' -ForegroundColor Yellow
+            $again = Read-Host '  Type SKIP to leave it anyway, or press Enter to try again'
+            if ($again -eq 'SKIP') { return }
+            continue
+        }
+
+        $answer = $answer.Trim()
+        if ($Validate) {
+            $problem = & $Validate $answer
+            if ($problem) {
+                Write-Host "  Not accepted: $problem" -ForegroundColor Red
+                continue
+            }
+        }
+        $values[$Key] = $answer
+        return
+    }
+}
+
+# Catches the single most common mistake: pasting a BotFather token where the
+# api_id belongs. They are unrelated credentials that look equally official.
+$ValidateApiId = {
+    param($v)
+    if (Test-BotToken $v) {
+        return 'that is a BotFather BOT TOKEN (it has a colon). The api_id is just digits, from my.telegram.org'
+    }
+    if ($v -notmatch '^\d+$') { return 'the api_id is digits only, no colon, no quotes' }
+    if ($v.Length -lt 5)      { return 'too short to be an api_id' }
+    return ''
+}
+
+$ValidateApiHash = {
+    param($v)
+    if (Test-BotToken $v) { return 'that is a BotFather bot token, not the api_hash' }
+    if ($v -notmatch '^[0-9a-fA-F]{32}$') {
+        return 'the api_hash is exactly 32 letters/digits from my.telegram.org'
+    }
+    return ''
 }
 
 Write-Host @'
@@ -77,8 +134,8 @@ if (-not $BrokerOnly) {
     4. Copy App api_id and App api_hash from that page
 '@ -ForegroundColor DarkGray
 
-    Ask -Key 'TG_API_ID'   -Label 'App api_id (a number, ~8 digits)'
-    Ask -Key 'TG_API_HASH' -Label 'App api_hash (32 letters and digits)'
+    Ask -Key 'TG_API_ID'   -Label 'App api_id (a number, ~8 digits, NO colon)' -Validate $ValidateApiId
+    Ask -Key 'TG_API_HASH' -Label 'App api_hash (32 letters and digits)' -Validate $ValidateApiHash
     Ask -Key 'TG_PHONE'    -Label 'Your phone number with country code, e.g. +254700000000'
     Ask -Key 'TG_2FA_PASSWORD' -Label 'Telegram 2FA password - leave empty unless you set one' -Secret
 

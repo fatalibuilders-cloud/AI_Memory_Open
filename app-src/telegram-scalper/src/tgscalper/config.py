@@ -325,9 +325,15 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
     owner_env = env.get("TG_OWNER_ID", "").strip()
     if config.control_bot.owner_id is None and owner_env.lstrip("-").isdigit():
         config.control_bot.owner_id = int(owner_env)
-    # A token present in .env implies the bot is wanted, unless config.yaml
-    # explicitly says otherwise.
-    if config.control_bot.token and (raw.get("control_bot") or {}).get("enabled") is None:
+    # A token in .env implies the bot is wanted — but only auto-enable once an
+    # owner is known. Turning it on without one would fail validation and take
+    # the whole config down with it, hiding every other diagnostic behind a
+    # fatal error. Left off, `doctor` can explain what is missing instead.
+    if (
+        config.control_bot.token
+        and config.control_bot.owner_id
+        and (raw.get("control_bot") or {}).get("enabled") is None
+    ):
         config.control_bot.enabled = True
     config.broker.login = env.get("MT5_LOGIN", "").strip()
     config.broker.password = env.get("MT5_PASSWORD", "")
