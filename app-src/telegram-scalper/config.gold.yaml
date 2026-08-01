@@ -1,0 +1,95 @@
+# Gold-only profile — for following several XAUUSD signal groups at once.
+#
+# Apply it without losing your group selection:
+#     Copy-Item config.gold.yaml config.yaml -Force
+# Groups chosen with /selectgroup live in data\groups.json and override
+# whatever this file says, so swapping profiles never loses them.
+
+telegram:
+  session_name: tgscalper
+  session_dir: data
+  admin_only: true
+  notify_to: me
+  notify_skips: false
+  max_groups: 5
+
+  # Deliberately empty: /selectgroup is in charge. Anything listed here is
+  # ignored while data\groups.json exists.
+  groups: []
+
+control_bot:
+  notify: true
+  # Turn this on for the first few days. Seeing *why* a message was ignored is
+  # how you learn whether a group's format is understood — silence teaches
+  # you nothing.
+  notify_skips: true
+
+execution:
+  mode: paper
+  entry: market
+  tp_mode: first          # one position at TP1: tightest target, best hit rate
+  max_tps: 3
+  require_stop_loss: true
+
+  # Measured against the signal's own stop, so it stays sensible whatever the
+  # instrument. Half the stop distance is a reasonable "the move has gone".
+  max_entry_slippage_pct_of_stop: 50
+  max_entry_slippage_points: 0
+
+  paper_balance: 10000
+
+risk:
+  risk_per_trade_pct: 1.0
+
+  # Three groups all calling gold is the defining feature of this setup, and
+  # the main hazard: without a cap you can end up in the same trade three
+  # times over and take 3% of risk on one move.
+  max_open_per_symbol: 1
+  max_open_trades: 3
+
+  # Same setup posted by two groups within half an hour counts once.
+  dedupe_window_minutes: 45
+
+  max_lot: 1.0
+  max_daily_loss_pct: 5.0
+  max_signals_per_hour: 10
+
+  # 50 points = $0.50 on gold. Anything tighter is almost certainly a misread
+  # price rather than a real scalp.
+  min_stop_points: 50
+
+  # Gold spreads widen hard at rollover and on news. 100 points = $1.00.
+  max_spread_points: 100
+
+  allow_symbols: [XAUUSD]
+  block_symbols: []
+
+  # Gold trades nearly around the clock on weekdays, and these groups post at
+  # all hours — a 07:00-21:00 window would silently drop overnight calls.
+  # Times are your computer's local clock. Weekends stay excluded because the
+  # market is shut.
+  hours:
+    start: "00:00"
+    end: "23:59"
+    days: [MON, TUE, WED, THU, FRI]
+
+  # 20 points = $0.20 past entry, enough to cover costs when an admin says
+  # "SL to BE".
+  breakeven_offset_points: 20
+  partial_close_default: 0.5
+  fallback_stop_points: 0
+
+broker:
+  provider: mt5
+  suffix: ""
+  symbol_overrides: {}
+  # Gold moves fast; 20 points ($0.20) causes needless rejections.
+  deviation_points: 50
+  magic: 770077
+
+journal:
+  path: data/journal.sqlite
+
+logging:
+  level: INFO
+  file: logs/tgscalper.log
