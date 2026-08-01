@@ -139,8 +139,7 @@ def _explain_rejected_token(config: Config, report: Report) -> None:
         report.note("That token looks wrong before Deriv even sees it:")
         for problem in problems:
             report.note(f"  - {problem}")
-        report.note("")
-        report.note("Fix it in .env, save, and run this again.")
+        _where_to_get_a_token(report)
         return
 
     # Shape is plausible, so the value itself is the issue.
@@ -150,11 +149,28 @@ def _explain_rejected_token(config: Config, report: Report) -> None:
     report.note("  1. It was copied only partly - re-copy the whole string.")
     report.note("  2. It was deleted or regenerated on Deriv since you copied it.")
     report.note("  3. You copied the token's NAME rather than the token itself.")
-    report.note("     The token is the long code in the table, not the label you")
-    report.note("     typed when creating it.")
+    _where_to_get_a_token(report)
+
+
+def _where_to_get_a_token(report: Report) -> None:
+    """Exact navigation to the API token page. Vague directions are why the
+    wrong credential gets pasted in the first place."""
     report.note("")
-    report.note("Create a fresh one: deriv.com > Settings > API token")
-    report.note("Tick Read and Trade only. Copy the code from the token table.")
+    report.note("Get the right token here:")
+    report.note("    https://app.deriv.com/account/api-token")
+    report.note("")
+    report.note("  1. Check the account switcher, top right. It must show a")
+    report.note("     Demo / Virtual account, not Real.")
+    report.note("  2. Under 'Create new token', tick Read and Trade only.")
+    report.note("     Leave Payments and Admin unticked.")
+    report.note("  3. Type any name, click Create.")
+    report.note("  4. A row appears in the table below. Copy the value in the")
+    report.note("     TOKEN column - a short code, about 15 characters.")
+    report.note("     Do NOT copy the Name column, and do not use anything")
+    report.note("     from developers.deriv.com - those are app credentials,")
+    report.note("     which are a different thing entirely.")
+    report.note("")
+    report.note("Paste it into .env after DERIV_API_TOKEN=  then save and re-run.")
 
 
 async def _account_checks(api: DerivAPI, config: Config, account: dict, report: Report) -> None:

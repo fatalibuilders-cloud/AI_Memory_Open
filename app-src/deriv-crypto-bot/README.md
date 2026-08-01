@@ -108,7 +108,7 @@ Either script creates a virtual environment, installs everything, runs the test 
 
 ### Step 3 — Get a Deriv API token
 
-In your Deriv account: switch to your **virtual (demo)** account, go to **Settings → API token**, and create one with the **Read** and **Trade** scopes ticked — *not* Payments, *not* Admin. The bot never needs those, and withholding them means a leaked token cannot move money out of your account.
+Go to **[app.deriv.com/account/api-token](https://app.deriv.com/account/api-token)**. Switch to your **Demo / Virtual** account using the switcher at the top right, then create a token with the **Read** and **Trade** scopes ticked — *not* Payments, *not* Admin. The bot never needs those, and withholding them means a leaked token cannot move money out of your account.
 
 Open `.env` and paste the token in after the `=`:
 
@@ -119,6 +119,8 @@ DERIV_API_TOKEN=your_token_here
 ```
 
 > `.env` is git-ignored. Never commit it — the token in it can trade your account.
+
+> **Copy the right thing.** The token is the short code (about 15 characters) in the **Token** column of the table that appears *after* you click Create — not the Name you typed, and not anything from `developers.deriv.com`. Those are app credentials, a different thing entirely, and they are much longer. The preflight check flags a wrong-length value and tells you so.
 
 ### Step 4 — Check it
 
@@ -345,7 +347,7 @@ pip install pytest
 python -m pytest
 ```
 
-266 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
+269 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
 
 ---
 

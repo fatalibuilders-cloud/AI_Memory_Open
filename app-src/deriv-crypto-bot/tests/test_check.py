@@ -164,8 +164,11 @@ class TestConnectionFailures:
         asyncio.run(run_checks(config, report))
         out = capsys.readouterr().out.lower()
         assert report.failures
-        assert "api token" in out
+        # The exact page, not a vague "go to settings" — pointing at the wrong
+        # page is how the wrong credential gets pasted in the first place.
+        assert "https://app.deriv.com/account/api-token" in out
         assert "read and trade only" in out
+        assert "demo / virtual" in out
 
     def test_invalid_token_reports_length_without_leaking_it(self, monkeypatch, capsys):
         config, api, report = build(

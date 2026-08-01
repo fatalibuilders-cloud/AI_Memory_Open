@@ -209,7 +209,22 @@ class TestTokenInspection:
         assert any("URL" in p for p in envfile.inspect_token("https://deriv.com/token"))
 
     def test_an_overlong_value_is_caught(self):
-        assert any("longer" in p for p in envfile.inspect_token("a" * 200))
+        problems = envfile.inspect_token("a" * 200)
+        assert any("different kind of credential" in p for p in problems)
+
+    def test_a_68_character_credential_is_caught(self):
+        # The owner pasted a 68-character value; a Deriv API token is ~15.
+        problems = envfile.inspect_token("pa" + "x" * 64 + "40")
+        assert any("68 characters" in p for p in problems)
+        assert any("developers.deriv.com" in p for p in problems)
+
+    def test_a_normal_token_is_not_flagged_as_overlong(self):
+        assert envfile.inspect_token("a1b2C3d4E5f6G7h") == []
+
+    def test_the_boundary_is_above_typical_tokens(self):
+        # 20 characters is unusual but plausible; 40 is not a Deriv token.
+        assert envfile.inspect_token("a" * 20) == []
+        assert envfile.inspect_token("a" * 40) != []
 
     def test_surrounding_whitespace_is_tolerated(self):
         # config strips this already; it must not be reported as a problem.

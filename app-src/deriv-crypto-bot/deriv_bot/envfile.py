@@ -231,10 +231,15 @@ def inspect_token(token: str) -> list[str]:
             f"It is only {len(clean)} characters. Deriv tokens are around "
             f"{_TYPICAL_TOKEN_LENGTH} - this looks like a partial copy."
         )
-    elif len(clean) > 64:
+    elif len(clean) > 30:
         problems.append(
-            f"It is {len(clean)} characters, far longer than a Deriv token. "
-            "You may have copied more than the token field."
+            f"It is {len(clean)} characters. A Deriv API token is around "
+            f"{_TYPICAL_TOKEN_LENGTH}, so this is a different kind of "
+            "credential - an OAuth token, app secret, or session value."
+        )
+        problems.append(
+            "App credentials from developers.deriv.com are NOT API tokens. "
+            "The token you need comes from your account settings instead."
         )
 
     if not clean.replace("-", "").replace("_", "").isalnum():
