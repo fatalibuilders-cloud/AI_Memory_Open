@@ -179,6 +179,73 @@ def diagnose() -> list[str]:
     return lines
 
 
+# Deriv API tokens are short fixed-length alphanumeric strings. The exact
+# length is not contractual, so this is a plausibility band rather than a rule.
+_TYPICAL_TOKEN_LENGTH = 15
+_PLACEHOLDERS = {
+    "your_token_here",
+    "your_actual_value_here",
+    "youractualvaluehere",
+    "token",
+    "changeme",
+    "xxx",
+}
+
+
+def mask(token: str) -> str:
+    """A token preview safe to show on screen or paste into a chat."""
+    clean = token.strip()
+    if len(clean) <= 4:
+        return "*" * len(clean)
+    return f"{clean[:2]}{'*' * (len(clean) - 4)}{clean[-2:]}"
+
+
+def inspect_token(token: str) -> list[str]:
+    """Flag shapes that suggest a mis-copied token.
+
+    Deriv only ever says "the token is invalid", which is true for a revoked
+    token, a partial paste, and a copied token *name* alike. These heuristics
+    separate those cases without the value ever leaving the machine.
+    """
+    problems: list[str] = []
+    clean = token.strip()
+
+    if clean.lower() in _PLACEHOLDERS or clean.lower().startswith("your_"):
+        problems.append("It is still the placeholder text, not a real token.")
+        return problems
+
+    if any(ch.isspace() for ch in clean):
+        problems.append(
+            "It contains a space. A token has none - the paste was probably "
+            "incomplete or picked up surrounding text."
+        )
+
+    if clean[:1] in {'"', "'"} or clean[-1:] in {'"', "'"}:
+        problems.append("It is wrapped in quotes. Remove them - the value needs no quotes.")
+
+    if clean.startswith("http") or "deriv.com" in clean.lower():
+        problems.append("It looks like a URL. Copy the token value itself, not a link.")
+
+    if len(clean) < 10:
+        problems.append(
+            f"It is only {len(clean)} characters. Deriv tokens are around "
+            f"{_TYPICAL_TOKEN_LENGTH} - this looks like a partial copy."
+        )
+    elif len(clean) > 64:
+        problems.append(
+            f"It is {len(clean)} characters, far longer than a Deriv token. "
+            "You may have copied more than the token field."
+        )
+
+    if not clean.replace("-", "").replace("_", "").isalnum():
+        problems.append(
+            "It contains punctuation a Deriv token would not have - check for "
+            "a trailing comment or stray characters on the line."
+        )
+
+    return problems
+
+
 def explain(error: Exception) -> str:
     """A complete, printable explanation for a configuration failure."""
     parts = ["", f"  Configuration error: {error}", ""]

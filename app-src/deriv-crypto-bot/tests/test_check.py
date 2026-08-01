@@ -165,7 +165,26 @@ class TestConnectionFailures:
         out = capsys.readouterr().out.lower()
         assert report.failures
         assert "api token" in out
-        assert "not payments" in out
+        assert "read and trade only" in out
+
+    def test_invalid_token_reports_length_without_leaking_it(self, monkeypatch, capsys):
+        config, api, report = build(
+            monkeypatch, [crypto("cryBTCUSD")], signalling_candles(), api_token="s3cr3tT0kenXyz"
+        )
+        api.connect_error = DerivError("InvalidToken", "token is invalid")
+        asyncio.run(run_checks(config, report))
+        out = capsys.readouterr().out
+        assert "14 characters" in out
+        assert "s3cr3tT0kenXyz" not in out
+
+    def test_a_malformed_token_is_diagnosed_before_blaming_deriv(self, monkeypatch, capsys):
+        config, api, report = build(
+            monkeypatch, [crypto("cryBTCUSD")], signalling_candles(), api_token="abc"
+        )
+        api.connect_error = DerivError("InvalidToken", "token is invalid")
+        asyncio.run(run_checks(config, report))
+        out = capsys.readouterr().out
+        assert "partial copy" in out
 
     def test_network_failure_is_reported_clearly(self, monkeypatch, capsys):
         config, api, report = build(monkeypatch, [crypto("cryBTCUSD")], signalling_candles())

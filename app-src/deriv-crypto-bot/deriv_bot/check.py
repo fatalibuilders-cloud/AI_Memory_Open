@@ -103,8 +103,7 @@ async def run_checks(config: Config, report: Report) -> None:
     except DerivError as exc:
         if exc.code in {"InvalidToken", "AuthorizationRequired"}:
             report.fail("Token rejected by Deriv", exc.message)
-            report.note("Create a new token: Deriv > Settings > API token")
-            report.note("Scopes needed: Read and Trade. Not Payments, not Admin.")
+            _explain_rejected_token(config, report)
         else:
             report.fail(f"Deriv returned an error ({exc.code})", exc.message)
         return
@@ -127,6 +126,35 @@ async def run_checks(config: Config, report: Report) -> None:
         await _universe_checks(api, config, report)
     finally:
         await api.close()
+
+
+def _explain_rejected_token(config: Config, report: Report) -> None:
+    """Deriv says only "the token is invalid" for every cause. Narrow it down."""
+    token = config.api_token
+    report.note(f"The bot sent: {envfile.mask(token)}  ({len(token.strip())} characters)")
+
+    problems = envfile.inspect_token(token)
+    if problems:
+        report.note("")
+        report.note("That token looks wrong before Deriv even sees it:")
+        for problem in problems:
+            report.note(f"  - {problem}")
+        report.note("")
+        report.note("Fix it in .env, save, and run this again.")
+        return
+
+    # Shape is plausible, so the value itself is the issue.
+    report.note("")
+    report.note("The token's shape looks fine, so it is the value Deriv rejects.")
+    report.note("Most likely, in order:")
+    report.note("  1. It was copied only partly - re-copy the whole string.")
+    report.note("  2. It was deleted or regenerated on Deriv since you copied it.")
+    report.note("  3. You copied the token's NAME rather than the token itself.")
+    report.note("     The token is the long code in the table, not the label you")
+    report.note("     typed when creating it.")
+    report.note("")
+    report.note("Create a fresh one: deriv.com > Settings > API token")
+    report.note("Tick Read and Trade only. Copy the code from the token table.")
 
 
 async def _account_checks(api: DerivAPI, config: Config, account: dict, report: Report) -> None:

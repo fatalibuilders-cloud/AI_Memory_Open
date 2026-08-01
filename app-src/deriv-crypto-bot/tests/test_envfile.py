@@ -168,3 +168,52 @@ class TestLoading:
         monkeypatch.setenv("DERIV_API_TOKEN", "from-shell")
         envfile.load()
         assert os.environ["DERIV_API_TOKEN"] == "from-shell"
+
+
+class TestMask:
+    def test_shows_only_the_ends(self):
+        assert envfile.mask("a1b2c3d4e5f6g7h") == "a1***********7h"
+
+    def test_very_short_values_are_fully_hidden(self):
+        assert envfile.mask("abc") == "***"
+        assert envfile.mask("") == ""
+
+    def test_length_is_preserved_so_a_partial_paste_is_visible(self):
+        assert len(envfile.mask("a" * 15)) == 15
+
+    def test_the_middle_never_leaks(self):
+        secret = "aXSECRETMIDDLEXz"
+        assert "SECRET" not in envfile.mask(secret)
+
+
+class TestTokenInspection:
+    def test_a_plausible_token_raises_nothing(self):
+        assert envfile.inspect_token("a1b2C3d4E5f6G7h") == []
+
+    def test_placeholder_is_caught_first(self):
+        problems = envfile.inspect_token("your_token_here")
+        assert len(problems) == 1
+        assert "placeholder" in problems[0]
+
+    def test_partial_paste_is_caught_by_length(self):
+        problems = envfile.inspect_token("a1b2c3")
+        assert any("partial copy" in p for p in problems)
+
+    def test_internal_space_is_caught(self):
+        assert any("space" in p for p in envfile.inspect_token("my trading token"))
+
+    def test_quotes_are_caught(self):
+        assert any("quotes" in p for p in envfile.inspect_token('"a1b2C3d4E5f6G7h"'))
+
+    def test_a_url_is_caught(self):
+        assert any("URL" in p for p in envfile.inspect_token("https://deriv.com/token"))
+
+    def test_an_overlong_value_is_caught(self):
+        assert any("longer" in p for p in envfile.inspect_token("a" * 200))
+
+    def test_surrounding_whitespace_is_tolerated(self):
+        # config strips this already; it must not be reported as a problem.
+        assert envfile.inspect_token("  a1b2C3d4E5f6G7h  ") == []
+
+    def test_hyphens_and_underscores_are_allowed(self):
+        assert envfile.inspect_token("a1b2-C3d4_E5f6G") == []
