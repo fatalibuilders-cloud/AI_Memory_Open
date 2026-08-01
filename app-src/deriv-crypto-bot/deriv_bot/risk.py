@@ -12,6 +12,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime
 
 from .config import Config
 from .state import StateStore
@@ -60,13 +61,15 @@ class RiskManager:
 
     # -- limit evaluation -------------------------------------------------
 
-    def refresh_daily_limits(self) -> None:
+    def refresh_daily_limits(self, now: "datetime | None" = None) -> None:
         """Roll the day over at UTC midnight and halt if a limit is breached.
 
         Called once per cycle so limits are enforced even when no signal fires.
+        `now` overrides the clock, which lets the backtester run the same limit
+        logic against historical timestamps.
         """
         daily = self.store.daily
-        if daily.roll_over_if_needed():
+        if daily.roll_over_if_needed(now):
             log.info("UTC day rolled over to %s — daily counters reset", daily.day)
             self.store.save()
 

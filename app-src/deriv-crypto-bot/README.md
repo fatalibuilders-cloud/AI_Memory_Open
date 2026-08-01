@@ -84,7 +84,11 @@ Open `.env` and set `DERIV_APP_ID` and `DERIV_API_TOKEN`. Everything else has a 
 
 > `.env` is git-ignored. Never commit it — the token in it can trade your account.
 
-### 4. Watch it think before it trades
+### 4. Backtest it
+
+See [Backtesting](#backtesting) below. Do this before anything else — it costs nothing and tells you whether the strategy is worth running at all.
+
+### 5. Watch it think before it trades
 
 ```bash
 DERIV_DRY_RUN=true python -m deriv_bot
@@ -92,13 +96,53 @@ DERIV_DRY_RUN=true python -m deriv_bot
 
 Dry run does everything except buy: it finds signals and prices real contracts, and logs what it *would* have done. This is the best way to understand its behaviour. Leave it running for a few hours.
 
-### 5. Run it
+### 6. Run it
 
 ```bash
 python -m deriv_bot
 ```
 
 Stop with `Ctrl+C` — it finishes the current cycle and shuts down cleanly.
+
+---
+
+## Backtesting
+
+Before running the bot with money, test the strategy on historical prices:
+
+```bash
+# Download 30 days of 1-minute candles and replay them
+python -m deriv_bot.backtest --symbol cryBTCUSD --days 30 --save-candles btc.json
+
+# Re-run on the saved file (no network, instant)
+python -m deriv_bot.backtest --from-file btc.json --symbol cryBTCUSD
+```
+
+The backtester drives the **same** strategy and risk code the live bot uses, over a trailing window of exactly `CANDLE_COUNT` candles — which is what the live bot fetches each cycle. So a result reflects the bot's real decision path, not a separate reimplementation of it.
+
+The number to look at is **breakeven win rate**:
+
+```
+  Trades               144  (74W / 70L)
+  Win rate             51.4%
+  Breakeven win rate   54.1%   <-- must beat this
+```
+
+With a 0.85 payout, a win gains 0.85 and a loss costs 1.00. That means you need to be right **54.1%** of the time just to break even. A 51% win rate is not "almost profitable" — it is a losing strategy. The report says so plainly.
+
+### What the backtest cannot tell you
+
+**The payout ratio is an assumption, not a measurement.** Deriv prices each contract from live volatility at the moment of purchase, and that price is not recoverable from historical candles. The backtest applies one fixed ratio (`--payout-ratio`, default 0.85) to every trade. This is the single largest source of error in the result.
+
+Three further gaps, all of which flatter the results:
+
+- no spread or slippage is modelled,
+- contracts settle from the candle close at expiry, ignoring what happened inside the candle,
+- an exact tie is scored as a loss (correct for Deriv's rules) but measured against candle closes rather than ticks.
+
+**Treat a backtest that barely clears breakeven as a losing strategy.** And run several — one period is not evidence.
+
+For reference: replaying the default settings over a synthetic random walk (a market with no exploitable pattern by construction) produces a 51.4% win rate and a net loss. That is the correct and expected answer, and a useful sanity check that the tool is not flattering anything.
 
 ---
 
@@ -172,7 +216,7 @@ pip install pytest
 python -m pytest
 ```
 
-148 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, and full trading cycles against a fake Deriv API. No network access needed.
+183 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, and the backtester's accounting. No network access needed.
 
 ---
 
@@ -188,7 +232,8 @@ deriv_bot/
 ├── strategy.py     Signal generation — swap this to change behaviour
 ├── risk.py         Limits and position sizing
 ├── state.py        Durable daily counters and the trade journal
-└── trader.py       The loop that ties it together
+├── trader.py       The loop that ties it together
+└── backtest.py     Replays history through the same strategy and risk code
 ```
 
 Two design choices worth explaining:
@@ -203,7 +248,7 @@ Two design choices worth explaining:
 
 Being explicit about this matters more than the feature list:
 
-- **No backtesting.** You cannot evaluate the strategy on historical data before running it. It has not been proven profitable, by me or by anyone.
+- **The strategy is not proven profitable.** Backtesting exists (above), but it has not been run against enough real history, on enough symbols, over enough periods, to establish an edge — and on random-walk data it correctly shows a loss. Assume no edge until your own testing says otherwise.
 - **No stop-loss on an open position.** These contracts settle at a fixed time; the bot cannot exit early. Risk per trade is bounded by the stake, which is the design.
 - **No position sizing based on conviction.** Every trade is the same size.
 - **Deriv's contract minimums apply.** For some symbols the shortest available contract may be longer than your `TRADE_DURATION`; the bot clamps to what is allowed and logs it.

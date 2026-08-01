@@ -53,12 +53,18 @@ class DailyState:
 
 
 class StateStore:
-    """Loads and atomically persists DailyState, and appends the trade journal."""
+    """Loads and atomically persists DailyState, and appends the trade journal.
 
-    def __init__(self, state_path: str, journal_path: str) -> None:
+    With `persist=False` nothing touches the disk — used by the backtester, so
+    that a simulation drives the same accounting code as the live bot without
+    writing files or inheriting a previous run's counters.
+    """
+
+    def __init__(self, state_path: str, journal_path: str, *, persist: bool = True) -> None:
         self.state_path = state_path
         self.journal_path = journal_path
-        self.daily = self._load()
+        self.persist = persist
+        self.daily = self._load() if persist else DailyState()
 
     def _load(self) -> DailyState:
         try:
@@ -75,6 +81,8 @@ class StateStore:
 
     def save(self) -> None:
         """Write state atomically so a crash mid-write cannot corrupt it."""
+        if not self.persist:
+            return
         directory = os.path.dirname(os.path.abspath(self.state_path))
         os.makedirs(directory, exist_ok=True)
         handle = tempfile.NamedTemporaryFile(
@@ -96,6 +104,8 @@ class StateStore:
 
     def journal(self, event: dict) -> None:
         """Append one event to the trade journal. Never raises into the trade loop."""
+        if not self.persist:
+            return
         record = {"ts": datetime.now(timezone.utc).isoformat(), **event}
         try:
             os.makedirs(os.path.dirname(os.path.abspath(self.journal_path)), exist_ok=True)

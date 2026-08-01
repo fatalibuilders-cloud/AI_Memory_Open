@@ -26,9 +26,17 @@
 - **Tests**: 148 tests, all passing, no network required — indicator maths, the crypto-only filter, every risk limit, state durability across restarts, and full trading cycles against a fake Deriv API.
 - **Documentation**: README written for a first-time builder per the standing communication decision — plain language, an explicit risk section up front, a control table for a running bot, and a candid limitations section.
 
+**Build — backtesting (follow-up in the same session)**
+
+- Added `deriv_bot/backtest.py`, closing the gap flagged earlier in this session. It replays historical candles through the **same** `strategy.evaluate` and `risk.RiskManager` the live bot uses, over a trailing window of exactly `CANDLE_COUNT` candles — matching what the live bot fetches each cycle.
+- Two supporting changes: `StateStore(persist=False)` for in-memory accounting, and an optional `now` argument on `RiskManager.refresh_daily_limits()` so daily limits roll over against historical timestamps.
+- Reports trades, win rate, **breakeven win rate**, net P&L, profit factor, max drawdown, longest losing streak, and signals suppressed by risk limits. Text or `--json` output. Loads candles from a file or fetches from Deriv with pagination.
+- **Validated in both directions:** on 30,000 synthetic random-walk candles the default settings produce a 51.4% win rate over 144 trades and a **net loss** — correct, since 51.4% is below the 54.1% breakeven implied by a 0.85 payout. On a synthetic trending series it detects the edge (7/7 wins). A backtester that showed profit on random data would be broken.
+- Test count rose from 148 to 183.
+
 **Verification**
 
-- `python -m pytest` → 148 passed.
+- `python -m pytest` → 183 passed.
 - All modules import and byte-compile cleanly.
 - `.env.example` verified to parse into a valid `Config` with demo-safe defaults and token redaction confirmed.
 - Entrypoint verified to exit 2 with a readable message (no traceback) when unconfigured.
@@ -52,7 +60,7 @@
 
 - **Owner action required before any use:** create a Deriv API token (Read + Trade scopes only — not Payments or Admin) on a **virtual/demo** account, and populate `.env`. The bot cannot run without it, and no key was created or held by the AI, per the standing API-key decision.
 - **Recommended before considering real money:** run with `DERIV_DRY_RUN=true` for an extended period, then on demo, to observe both winning and losing days.
-- **Not implemented:** backtesting. The strategy has not been validated against historical data and is not claimed to be profitable.
+- **Backtesting now exists, but has not been run on real data.** The owner should replay real Deriv history across several months and coins (`python -m deriv_bot.backtest --days 30 --save-candles btc.json`) and compare win rate against breakeven win rate. The strategy has demonstrated **no edge** so far, and correctly shows a loss on random-walk data. Treat it as unproven.
 
 ## Standards Sync Status
 
