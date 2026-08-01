@@ -1,8 +1,11 @@
 """Tests for the trader's account guard — the check that stands between the
-bot and real money."""
+bot and real money — and for its reconnection behaviour."""
+
+import asyncio
 
 import pytest
 
+from deriv_bot.api import ConnectionLost, DerivError
 from deriv_bot.state import StateStore
 from deriv_bot.trader import Trader, UnsafeAccount
 
@@ -43,6 +46,62 @@ class TestAccountGuard:
         trader = build(tmp_path, {"loginid": "CR9999", "currency": "USD"})
         with pytest.raises(UnsafeAccount):
             trader._verify_account()
+
+
+class TestReconnection:
+    """A 24/7 bot must treat a failed connection as a retry, not an exit.
+
+    These cover the case that a real run hit: a proxy rejecting the socket.
+    That surfaces as ConnectionLost now, and must not end the process.
+    """
+
+    def drive(self, tmp_path, error, *, attempts_before_stop=2, **overrides):
+        trader = build(tmp_path, VIRTUAL, **overrides)
+        attempts: list[int] = []
+
+        async def failing_connect():
+            attempts.append(1)
+            if len(attempts) >= attempts_before_stop:
+                trader.request_stop()
+            raise error
+
+        trader.api.connect = failing_connect
+        asyncio.run(trader.run())
+        return attempts
+
+    def test_a_rejecting_proxy_is_retried(self, tmp_path):
+        attempts = self.drive(tmp_path, ConnectionLost("proxy rejected connection: HTTP 403"))
+        assert len(attempts) >= 2, "expected the trader to retry rather than exit"
+
+    def test_a_network_error_is_retried(self, tmp_path):
+        attempts = self.drive(tmp_path, OSError("name resolution failed"))
+        assert len(attempts) >= 2
+
+    def test_a_transient_api_error_is_retried(self, tmp_path):
+        attempts = self.drive(tmp_path, DerivError("RateLimit", "slow down"))
+        assert len(attempts) >= 2
+
+    def test_an_invalid_token_stops_instead_of_looping_forever(self, tmp_path):
+        # Retrying a permanently bad token would spin uselessly and hide the
+        # real problem, so this one propagates.
+        trader = build(tmp_path, VIRTUAL)
+
+        async def bad_token():
+            raise DerivError("InvalidToken", "token is invalid")
+
+        trader.api.connect = bad_token
+        with pytest.raises(DerivError):
+            asyncio.run(trader.run())
+
+    def test_an_unsafe_account_stops_immediately(self, tmp_path):
+        trader = build(tmp_path, REAL)  # real account, no opt-in
+
+        async def connect():
+            return REAL
+
+        trader.api.connect = connect
+        with pytest.raises(UnsafeAccount):
+            asyncio.run(trader.run())
 
 
 class TestCurrencyResolution:

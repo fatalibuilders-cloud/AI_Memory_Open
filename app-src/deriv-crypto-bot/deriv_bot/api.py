@@ -75,6 +75,30 @@ def _redact(request: dict) -> dict:
     return {k: ("***" if k in _SENSITIVE_KEYS else v) for k, v in request.items()}
 
 
+def silence_background_errors() -> None:
+    """Route errors raised inside library background callbacks to the log.
+
+    The websockets client can raise from its own asyncio callbacks when a
+    connection dies abruptly — a proxy closing mid-handshake, for instance.
+    asyncio's default handler prints those as bare tracebacks on stderr, which
+    lands confusingly next to the clean error the bot has already reported for
+    the same event. They go to DEBUG instead, so LOG_LEVEL=DEBUG still shows
+    them when something genuinely needs diagnosing.
+    """
+
+    def handler(loop, context: dict) -> None:
+        log.debug(
+            "background asyncio error: %s",
+            context.get("message", "unknown"),
+            exc_info=context.get("exception"),
+        )
+
+    try:
+        asyncio.get_running_loop().set_exception_handler(handler)
+    except RuntimeError:  # pragma: no cover - no running loop
+        pass
+
+
 class DerivAPI:
     """One logical session against Deriv. Reusable across reconnections."""
 
@@ -103,13 +127,20 @@ class DerivAPI:
         """Dial the socket and authorize. Returns the authorize payload."""
         await self.close()
         log.info("connecting to %s (app_id=%s)", self.config.endpoint, self.config.app_id)
-        self._socket = await ws_connect(
-            self._url(),
-            ping_interval=20,
-            ping_timeout=20,
-            close_timeout=10,
-            max_size=8 * 1024 * 1024,
-        )
+        try:
+            self._socket = await ws_connect(
+                self._url(),
+                ping_interval=20,
+                ping_timeout=20,
+                close_timeout=10,
+                max_size=8 * 1024 * 1024,
+            )
+        except (WebSocketException, OSError) as exc:
+            # Everything that can go wrong opening the socket — DNS, TLS, a
+            # rejecting proxy, a bad app_id failing the handshake — surfaces as
+            # ConnectionLost, so callers handle one exception type rather than
+            # the websockets library's whole hierarchy.
+            raise ConnectionLost(f"could not open socket: {exc}") from exc
         self._reader = asyncio.create_task(self._read_loop(), name="deriv-reader")
         self._keepalive = asyncio.create_task(self._keepalive_loop(), name="deriv-keepalive")
 

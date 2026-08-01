@@ -14,6 +14,7 @@ import os
 import signal
 import sys
 
+from .api import silence_background_errors
 from .config import Config, ConfigError
 from .state import StateStore
 from .trader import Trader, UnsafeAccount
@@ -47,6 +48,7 @@ def _setup_logging(level: str) -> None:
 
 
 async def _run(config: Config) -> int:
+    silence_background_errors()
     store = StateStore(config.state_file, config.journal_file)
     trader = Trader(config, store)
 

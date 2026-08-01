@@ -34,9 +34,21 @@
 - **Validated in both directions:** on 30,000 synthetic random-walk candles the default settings produce a 51.4% win rate over 144 trades and a **net loss** — correct, since 51.4% is below the 54.1% breakeven implied by a 0.85 payout. On a synthetic trending series it detects the edge (7/7 wins). A backtester that showed profit on random data would be broken.
 - Test count rose from 148 to 183.
 
+**Build — onboarding and a real bug found by running it (follow-up)**
+
+- Added `deriv_bot/check.py`, a preflight command (`python -m deriv_bot.check`) that connects, authorizes, inspects the account, lists the crypto universe, pulls candles, runs the strategy, and prices a real contract — then reports READY / NOT READY with specific remedies. **It never buys**; it requests a quote and stops, and there is a test asserting that.
+- The check prints the **measured payout ratio** from a live proposal, which closes the loop on the backtester's single largest assumption: the owner can now feed a real number into `--payout-ratio` instead of guessing.
+- Added `setup.sh` (venv, dependencies, test run, `.env` scaffold — safe to re-run, never overwrites `.env`) and `.github/workflows/deriv-crypto-bot.yml` (tests on Python 3.10/3.11/3.12, plus explicit guards that the crypto-only tests run and that no `.env` is ever committed).
+- **Bug found by actually running the check:** the sandbox proxy rejected the WebSocket with `InvalidProxyStatus`, a `websockets` exception that neither the preflight check *nor the trader's reconnect loop* caught. The trader would have crashed instead of retrying — a genuine 24/7 robustness defect that no test covered. Fixed by translating all socket-open failures to `ConnectionLost` at the API boundary, so callers handle one exception type. Added `tests/test_api.py` and `TestReconnection` in `tests/test_trader.py` to cover proxy, DNS, and transient-API failures.
+- Also silenced `websockets`' own background-callback tracebacks (routed to DEBUG), which were printing next to the clean error message and would have confused a first-time user.
+- Test count rose from 183 to 221.
+
 **Verification**
 
-- `python -m pytest` → 183 passed.
+- `python -m pytest` → 221 passed.
+- `setup.sh` executed end to end in a clean environment: venv created, dependencies installed, suite run, `.env` scaffolded. Re-run confirmed idempotent.
+- `python -m deriv_bot.check` executed against the blocked sandbox proxy and produced a clean, actionable NOT READY report with no traceback.
+- Confirmed `.env` and `.venv` are git-ignored and were never staged.
 - All modules import and byte-compile cleanly.
 - `.env.example` verified to parse into a valid `Config` with demo-safe defaults and token redaction confirmed.
 - Entrypoint verified to exit 2 with a readable message (no traceback) when unconfigured.

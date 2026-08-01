@@ -54,55 +54,99 @@ There are tests for all three. See `tests/test_cycle.py::TestCryptoOnly`.
 
 ---
 
-## Setup
+## Quick start
 
 You need Python 3.10 or newer.
 
-### 1. Get your Deriv credentials
-
-- **App ID** — register at [developers.deriv.com](https://developers.deriv.com). To start, you can use `1089`, Deriv's public testing app ID.
-- **API token** — in your Deriv account, go to **Settings → API token**. Create one with the **Read** and **Trade** scopes.
-  - Do **not** tick "Payments" or "Admin". The bot never needs them.
-  - Make sure you are on your **virtual (demo)** account when you create it.
-
-### 2. Install
-
 ```bash
 cd app-src/deriv-crypto-bot
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+./setup.sh
 ```
 
-### 3. Configure
+That creates a virtual environment, installs everything, runs the test suite, and writes a `.env` for you to fill in. It is safe to re-run and never overwrites an existing `.env`.
 
-```bash
-cp .env.example .env
+**Then get a token.** In your Deriv account: switch to your **virtual (demo)** account, go to **Settings → API token**, and create one with the **Read** and **Trade** scopes ticked — *not* Payments, *not* Admin. The bot never needs those, and withholding them means a leaked token cannot move money out of your account.
+
+Put it in `.env`:
+
 ```
-
-Open `.env` and set `DERIV_APP_ID` and `DERIV_API_TOKEN`. Everything else has a working default.
+DERIV_API_TOKEN=your_token_here
+```
 
 > `.env` is git-ignored. Never commit it — the token in it can trade your account.
 
-### 4. Backtest it
-
-See [Backtesting](#backtesting) below. Do this before anything else — it costs nothing and tells you whether the strategy is worth running at all.
-
-### 5. Watch it think before it trades
+**Then check it:**
 
 ```bash
-DERIV_DRY_RUN=true python -m deriv_bot
+source .venv/bin/activate
+python -m deriv_bot.check
 ```
 
-Dry run does everything except buy: it finds signals and prices real contracts, and logs what it *would* have done. This is the best way to understand its behaviour. Leave it running for a few hours.
+---
 
-### 6. Run it
+## Checking your setup
+
+`python -m deriv_bot.check` is the first thing to run and the thing to re-run whenever something looks wrong. It connects, authorizes, inspects your account, lists the crypto universe, pulls candles, runs the strategy over them, and prices a real contract — then tells you whether the bot is ready.
+
+**It never buys anything.** It requests a price quote and stops. Running it costs nothing.
+
+```
+1. Connection
+  [PASS] Connected  wss://ws.derivws.com/websockets/v3
+  [PASS] Token accepted  app_id=1089
+
+2. Account
+  [PASS] Virtual (demo) account  VRTC1
+         No real funds at risk. This is the right place to start.
+  [PASS] Balance readable  10,000.00 USD
+  [PASS] Stake affordable  1.00 USD per trade
+
+3. Crypto universe
+  [PASS] 12 cryptocurrency symbols offered by Deriv
+  [PASS] 76 non-crypto symbols excluded  forex, indices, synthetics
+  [PASS] 6 symbols selected  cryBTCUSD, cryETHUSD, ...
+
+4. Market data and strategy
+  [PASS] Fetched 200 candles for cryBTCUSD  60s each
+  [PASS] Data is current  latest candle 12s old
+  [PASS] Strategy sees no trade right now  no crossover on the latest candle
+
+5. Contract pricing
+  [PASS] Priced a real contract  stake 1.00, payout 1.85 USD
+         (This was a price quote only. Nothing was bought.)
+
+  [PASS] Real payout ratio: 0.850  win returns 0.850x your stake
+         You must win more than 54.1% of trades to break even.
+```
+
+That last block is the reason to run it even when nothing is wrong. **The payout ratio is the biggest assumption in any backtest**, and this measures it instead of guessing. Feed the number straight back in:
 
 ```bash
+python -m deriv_bot.backtest --days 30 --payout-ratio 0.850
+```
+
+If something is broken, the check says what and how to fix it — a rejected token points you at the token page with the right scopes, a missing `Trade` scope is named explicitly, and a real-money account without the opt-in is reported as a failure rather than quietly proceeding.
+
+---
+
+## Running it
+
+In the order that keeps you out of trouble:
+
+```bash
+# 1. Backtest first — costs nothing, tells you if the strategy is worth running
+python -m deriv_bot.backtest --days 30 --save-candles btc.json
+
+# 2. Dry run — finds signals and prices real contracts, but never buys
+DERIV_DRY_RUN=true python -m deriv_bot
+
+# 3. Demo — real mechanics, no real money
 python -m deriv_bot
 ```
 
 Stop with `Ctrl+C` — it finishes the current cycle and shuts down cleanly.
+
+Leave step 3 running long enough to see losing days, not just winning ones. That is the whole point of the exercise.
 
 ---
 
@@ -178,6 +222,7 @@ Either way, **keep the `state/` directory on persistent storage**. That is where
 
 | I want to… | Do this |
 |---|---|
+| Check my setup is working | `python -m deriv_bot.check` — places no trades |
 | Stop trading right now | `touch KILL_SWITCH` — takes effect within one cycle |
 | Resume | `rm KILL_SWITCH` |
 | See what it's doing | `docker compose -f deploy/docker-compose.yml logs -f`, or `journalctl -u deriv-crypto-bot -f` |
@@ -216,7 +261,7 @@ pip install pytest
 python -m pytest
 ```
 
-183 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, and the backtester's accounting. No network access needed.
+221 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10, 3.11, and 3.12.
 
 ---
 
@@ -233,7 +278,8 @@ deriv_bot/
 ├── risk.py         Limits and position sizing
 ├── state.py        Durable daily counters and the trade journal
 ├── trader.py       The loop that ties it together
-└── backtest.py     Replays history through the same strategy and risk code
+├── backtest.py     Replays history through the same strategy and risk code
+└── check.py        Preflight check — verifies setup, never trades
 ```
 
 Two design choices worth explaining:

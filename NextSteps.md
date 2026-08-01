@@ -10,7 +10,7 @@
 
 ### High Priority
 
-1. **Create a Deriv API token to run `deriv-crypto-bot`** *(owner action — [Human])*. The bot is built and tested but cannot run without it. In your Deriv account: **Settings → API token**, scopes **Read + Trade only** (not Payments, not Admin), created while on your **virtual/demo** account. Put it in `app-src/deriv-crypto-bot/.env` (copy from `.env.example`). That file is git-ignored — never commit it.
+1. **Create a Deriv API token and verify the setup** *(owner action — [Human])*. Run `./setup.sh` in `app-src/deriv-crypto-bot/` (creates the environment and a `.env`). Then in your Deriv account: **Settings → API token**, scopes **Read + Trade only** (not Payments, not Admin), created while on your **virtual/demo** account. Put it in `.env` — that file is git-ignored, never commit it. Then run `python -m deriv_bot.check`, which verifies everything and **places no trades**. It also prints the real payout ratio to use in step 2.
 2. **Backtest against real Deriv history** *(owner action — [Human], needs the token from step 1)*. `python -m deriv_bot.backtest --symbol cryBTCUSD --days 30 --save-candles btc.json`. Run it across several months and several coins. Compare **win rate against breakeven win rate** — with the default 0.85 payout you must beat 54.1% just to break even. On synthetic random-walk data the strategy correctly shows a loss, so assume no edge until real data says otherwise.
 3. **Run the bot in dry-run, then demo, before considering real money** *(owner action — [Human])*. `DERIV_DRY_RUN=true python -m deriv_bot` shows what it would trade without trading. Observe both winning and losing days first.
 4. **Begin FatalibuildersConstructionApp Release 1.0 development** — Project initialized (2026-07-16). Next session: use the project's own `agents/open.md`, start CORE-1.0 (scaffold the `fatalibuilders-app` repository, pure [AI]). *(Project-level work — root NextSteps tracks only that the project is active.)*
@@ -40,7 +40,8 @@
 | Record app integration directive | 2026-07-16 | Owner: integrate with all kinds of tools → integration-first architecture; Document 2 now In Progress |
 | Owner full name confirmed; contact profile created | 2026-07-16 | Eng Ali Ahmed — owner fields updated system-wide; preliminary profile at `contacts/Eng-Ali-Ahmed.md` |
 | Build `deriv-crypto-bot` | 2026-08-01 | Crypto-only, 24/7 trading bot for the Deriv WebSocket API at `app-src/deriv-crypto-bot/`. Demo-account default, daily loss limit, kill switch. Awaits owner API token |
-| Add backtesting to `deriv-crypto-bot` | 2026-08-01 | `deriv_bot/backtest.py` replays history through the same strategy and risk code; reports win rate against the breakeven implied by payout. 183 tests passing. On synthetic random-walk data the defaults correctly show a loss — no edge demonstrated yet on real data |
+| Add backtesting to `deriv-crypto-bot` | 2026-08-01 | `deriv_bot/backtest.py` replays history through the same strategy and risk code; reports win rate against the breakeven implied by payout. On synthetic random-walk data the defaults correctly show a loss — no edge demonstrated yet on real data |
+| Onboarding, CI, and a reconnection fix | 2026-08-01 | `deriv_bot/check.py` preflight (never trades; prints the measured payout ratio), `setup.sh`, and CI on Python 3.10/3.11/3.12. Running the check exposed a real bug: socket-open failures escaped the trader's reconnect loop, so a rejecting proxy would have crashed the bot rather than retrying. Fixed and covered. 221 tests passing |
 
 ---
 
