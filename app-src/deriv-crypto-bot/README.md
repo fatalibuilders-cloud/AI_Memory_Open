@@ -146,6 +146,8 @@ Nearly every setup problem is *being in the wrong folder*. Run `ls` — if you d
 | Error | What it means | Fix |
 |---|---|---|
 | `No module named 'deriv_bot'` | You're not in the bot's folder, or the venv isn't active | `cd` into `deriv-bot\app-src\deriv-crypto-bot`, then use `.venv\Scripts\python.exe -m deriv_bot.check` |
+| `DERIV_API_TOKEN is required but not set` | Your `.env` exists but the token line is still blank | Run the check — it prints the exact file, the exact line number, and what to type. Then `notepad .env`, paste after the `=`, **Ctrl+S**, close Notepad |
+| Token pasted but still "not set" | Notepad saved it as `.env.txt`, or you didn't save | The check detects the `.txt` case and prints the rename command. Otherwise re-open and confirm Ctrl+S |
 | `destination path 'AI_Memory_Open' already exists` | You have an older clone from before the bot existed | Clone into a new folder using the `-b ... deriv-bot` form in Step 1 |
 | `pathspec 'claude/deriv-7h4xbl' did not match` | Your local copy has never fetched this branch | `git fetch origin` first, then `git checkout claude/deriv-7h4xbl`. Or just re-clone with `-b` |
 | `The term '.\setup.ps1' is not recognized` | `setup.ps1` isn't in the current folder | You're in the wrong directory — see above |
@@ -342,7 +344,7 @@ pip install pytest
 python -m pytest
 ```
 
-221 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10, 3.11, and 3.12.
+251 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
 
 ---
 

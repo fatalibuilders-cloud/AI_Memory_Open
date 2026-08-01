@@ -22,6 +22,7 @@ import os
 import sys
 from datetime import datetime, timezone
 
+from . import envfile
 from .api import ConnectionLost, DerivAPI, DerivError, silence_background_errors
 from .config import Config, ConfigError
 from .indicators import Candle
@@ -348,15 +349,14 @@ def main(argv: list[str] | None = None) -> int:
     logging.getLogger("websockets").setLevel(logging.ERROR)
 
     try:
-        from .__main__ import _load_dotenv
-
-        _load_dotenv()
+        envfile.load()
         config = Config.from_env()
     except ConfigError as exc:
-        print(f"\n  Configuration error: {exc}")
-        print("\n  Copy .env.example to .env and fill in DERIV_APP_ID and")
-        print("  DERIV_API_TOKEN, then run this again:")
-        print("      cp .env.example .env")
+        print("\n" + "=" * 62)
+        print("  DERIV CRYPTO BOT - PREFLIGHT CHECK")
+        print("=" * 62)
+        print(envfile.explain(exc))
+        print("=" * 62 + "\n")
         return 2
 
     report = Report(colour=not args.no_colour and supports_colour())

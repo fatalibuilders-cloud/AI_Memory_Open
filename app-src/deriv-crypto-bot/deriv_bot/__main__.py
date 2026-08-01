@@ -14,6 +14,7 @@ import os
 import signal
 import sys
 
+from . import envfile
 from .api import silence_background_errors
 from .config import Config, ConfigError
 from .state import StateStore
@@ -25,14 +26,7 @@ log = logging.getLogger("deriv_bot")
 def _load_dotenv() -> None:
     """Load a local .env if python-dotenv is installed. Optional by design:
     in production the environment is usually supplied by systemd or Docker."""
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        return
-    for candidate in (".env", os.path.join(os.path.dirname(__file__), "..", ".env")):
-        if os.path.exists(candidate):
-            load_dotenv(candidate, override=False)
-            return
+    envfile.load()
 
 
 def _setup_logging(level: str) -> None:
@@ -87,9 +81,7 @@ def main() -> int:
     try:
         config = Config.from_env()
     except ConfigError as exc:
-        _setup_logging("INFO")
-        log.error("configuration error: %s", exc)
-        log.error("copy .env.example to .env and fill it in, then try again")
+        print(envfile.explain(exc))
         return 2
 
     _setup_logging(config.log_level)
