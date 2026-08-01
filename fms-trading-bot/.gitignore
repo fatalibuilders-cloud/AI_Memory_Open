@@ -1,0 +1,13 @@
+.env
+tg_state.json
+__pycache__/
+*.pyc
+*.log
+
+# preset backups
+.env.bak
+
+# signal copier
+signal_session.session
+signal_session.session-journal
+signal_log.jsonl

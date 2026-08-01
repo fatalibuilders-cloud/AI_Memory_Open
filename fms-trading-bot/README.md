@@ -1,0 +1,394 @@
+# FMS Trading Bot — Forex, Metals & Stocks with a Phone Remote
+
+An auto-trading bot for **Forex pairs, gold/silver, and stock CFDs**,
+controlled entirely **from your phone** via a private Telegram bot: log in
+with a password, then start/stop trading, watch balance and positions, close
+trades, and get instant push notifications for every trade the bot opens or
+closes.
+
+```
+ your phone (Telegram) ⇄ Telegram Bot API ⇄ this bot ⇄ broker (MT5 or OANDA)
+```
+
+Six broker backends (`BROKER=` in `.env`):
+
+| Backend | Runs on | Markets |
+|---|---|---|
+| `mt5` | Windows | forex, metals, stock CFDs — any MT5 broker |
+| `exness` | Windows | as above, with Exness traits (`m` suffix, IOC filling) |
+| `deriv` | Windows | crypto **and** 24/7 synthetic indices (FOK filling) |
+| `vantage` | Windows | as `mt5`, with Vantage traits (`+` suffix) |
+| `oanda` | any OS | forex, metals |
+| `binance` | any OS | crypto futures, 24/7 |
+
+Exness, Deriv and Vantage all speak MetaTrader 5, so they share one
+implementation (`broker/mt5.py`); their modules carry only what genuinely
+differs. The most important of those is the **order-filling mode** — Deriv
+generally requires FOK where Exness accepts IOC, and a wrong mode is
+rejected with "Unsupported filling mode". The bot now detects what each
+symbol permits and uses the broker's preference as a tie-breaker.
+
+OANDA and Binance have their own REST APIs and implement the `Broker`
+interface directly.
+
+## Why the bot doesn't literally run *on* the phone
+
+Android/iOS suspend background apps aggressively — a bot living on a phone
+misses entries, drops connections and dies overnight. The reliable setup is
+the one every professional uses: the bot runs 24/7 on a Windows PC or a cheap
+Windows VPS (~$10/mo) next to the MT5 terminal, and your phone is the **remote
+control** with full authority over it. Same convenience, none of the fragility.
+
+## ⚠️ Risk warning
+
+- Leveraged forex/metals/CFD trading can lose money **fast**. Most retail
+  accounts lose money. No strategy — including this one — guarantees profit.
+- **Always start on an MT5 demo account** (every broker gives you one free)
+  and run it for at least a couple of weeks before going live.
+- The bot risks a fixed small % of balance per trade (default 0.5%) with a
+  hard daily loss stop (default −3%) and **no martingale** — don't raise
+  these limits until you understand exactly what they protect you from.
+- Beware of Telegram "signal/profit bots" run by anonymous teams (e.g. paid
+  signal bots for binary options). Closed-source bots that want your deposit
+  or credentials are frequently scams. This bot is open code that runs on
+  your own machine — your credentials never leave it.
+
+---
+
+## Setup (once, ~20 minutes)
+
+Pick your broker backend first:
+
+- **Windows machine available, or you want stocks** → follow the MT5 path below.
+- **Linux/Mac (or a free Linux VPS)** → use OANDA: open a free practice
+  account at oanda.com, then in the account portal → *Manage API Access* →
+  generate a token. Put in `.env`: `BROKER=oanda`, `OANDA_API_TOKEN`,
+  `OANDA_ACCOUNT_ID` (looks like `101-001-1234567-001`), `OANDA_ENV=practice`,
+  and OANDA-style symbols such as `SYMBOLS=EUR_USD,XAU_USD`. Then skip
+  straight to step 2 (Telegram) — no MT5 needed, and on Linux
+  `deploy/setup-vps.sh` does the install + systemd service in one command.
+
+### 1. Get an MT5 account (MT5 path)
+
+Install [MetaTrader 5](https://www.metatrader5.com/) on a Windows PC/VPS and
+open a **demo account** with any MT5 broker (or use your existing broker if
+they support MT5). Note the **login number, password, and server name**
+(shown in MT5 under *File → Login to Trade Account*).
+
+Symbols depend on the broker, e.g. `EURUSD`, `GBPUSD` (forex), `XAUUSD`
+(gold), `XAGUSD` (silver), `AAPL`, `TSLA` (stock CFDs). Check the exact names
+in MT5's Market Watch and put them in `SYMBOLS`.
+
+### 2. Create your private Telegram bot
+
+1. In Telegram, message **@BotFather** → `/newbot` → pick a name.
+2. Copy the token it gives you into `.env` as `TG_BOT_TOKEN`.
+3. Choose a strong `TG_PASSWORD` — this is what you'll type on your phone
+   to take control. Anyone with this password controls your trading, so
+   treat it like a bank PIN.
+
+### 3. Install & run (on the Windows machine with MT5)
+
+```powershell
+cd fms-trading-bot
+py -m venv .venv ; .venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env    # then edit .env
+py main.py
+```
+
+### 4. Take control from your phone
+
+Open your bot in Telegram and send:
+
+```
+/login <your TG_PASSWORD>
+/status
+/resume        ← the bot starts paused; this arms auto-trading
+```
+
+You'll now get a push notification for every position opened/closed.
+
+## Phone commands
+
+| Command | Effect |
+|---|---|
+| `/login <password>` | Authorize this phone (persists across restarts) |
+| `/status` | Mode, balance/equity, open positions, day stats |
+| `/balance` | Balance & equity |
+| `/positions` | Open positions with live PnL |
+| `/close <ticket>` | Close one position |
+| `/closeall` | Close everything now |
+| `/resume` / `/pause` | Arm / disarm auto-trading (positions stay open on pause) |
+| `/risk <pct>` | Change % of balance risked per trade (max 5) |
+| `/logout` | De-authorize this phone |
+
+## How it trades
+
+On every closed candle (default M5) per symbol:
+
+1. **Signal** — EMA-20 crossing above EMA-50 with RSI > 45 → **buy**;
+   crossing below with RSI < 55 → **sell**.
+2. **Exits set at entry** — stop-loss at 1.5×ATR, take-profit at 2×ATR
+   (positive reward:risk), executed broker-side so they trigger even if the
+   bot goes offline.
+3. **Position size** — by default the stop-loss distance is scaled so a loss
+   costs `RISK_PCT`% of balance. Setting **`FIXED_LOT=0.01`** overrides that
+   and sends exactly 0.01 lots every trade — the broker minimum, and the
+   simplest hard cap on exposure while you are testing (1 pip ≈ $0.10 on
+   EURUSD instead of $167 at 0.5% risk).
+4. **Risk gate** — every entry must pass: daily trade cap, max open
+   positions (total and per symbol), per-symbol cooldown, and the daily loss
+   limit; position size is computed so the SL loses exactly `RISK_PCT`% of
+   balance.
+
+All parameters are in `.env` (see `.env.example`).
+
+### Interval mode (high-frequency) — demo only
+
+`ENTRY_MODE=interval` makes the bot attempt a trade every
+`ENTRY_INTERVAL_SECONDS` in the current trend direction instead of waiting
+for a crossover. It exists so you can *watch* what high-frequency trading
+actually does to an account. Understand the arithmetic first:
+
+Every trade pays the spread (~1 pip on EURUSD). With 0.5% risk and M1-sized
+ATR stops (~3 pips) the computed position is ~16 lots, so 1 pip ≈ **$167 per
+trade**. At one trade per 30 seconds that is **~$334/minute**, i.e. a
+$100,000 account consumed in roughly **5 hours by spread alone**, before the
+market moves at all. Frequency multiplies costs; it does not create edge.
+
+To reach the full rate you must also set `TIMEFRAME=M1`,
+`COOLDOWN_SECONDS` ≤ the interval, and raise `MAX_TRADES_PER_DAY` /
+`MAX_OPEN_POSITIONS` — the risk gates throttle it on purpose, and the bot
+logs a warning naming each limit that is holding it back.
+
+## Copying signals from a Telegram group
+
+`signal_copier.py` reads a signal group you belong to, parses the messages
+into orders, and — **in paper mode by default** — logs what it would have
+done so you can measure the group before trusting it.
+
+```powershell
+pip install telethon
+.\.venv\Scripts\python.exe signal_copier.py --list-chats   # find the group id
+.\.venv\Scripts\python.exe signal_copier.py                # paper mode
+.\.venv\Scripts\python.exe signal_copier.py --report       # the group's record
+.\.venv\Scripts\python.exe signal_copier.py --live         # place real orders
+```
+
+Setup: get `api_id`/`api_hash` from https://my.telegram.org (API development
+tools) into `TG_API_ID` / `TG_API_HASH`, then put the group id in
+`SIGNAL_CHAT_ID`.
+
+**Why paper mode is the default.** Signal groups publish their winners and
+quietly drop their losers, so their advertised record is meaningless. Paper
+mode records every signal as it arrives, which after a few weeks gives you
+the group's real hit rate — the only basis for deciding whether to follow it.
+
+**Safety rules the copier enforces:**
+
+- a signal is traded only if it has **both** an explicit stop and target
+- signals whose levels are on the wrong side of entry are logged, never traded
+- symbols the account doesn't offer are skipped with a clear reason
+- all normal risk gates apply (`FIXED_LOT`, daily loss stop, position limits)
+- a separate cap on signal orders per day (`--max-per-day`, default 5)
+- `--live` requires typing `yes` at a confirmation prompt
+
+**Note on access:** reading a group requires signing in as your own Telegram
+account, which creates a `signal_session.session` file granting full access
+to your Telegram. It is git-ignored — keep it private, and never share it.
+
+## Multiple brokers — one at a time, or several at once
+
+```powershell
+.\.venv\Scripts\python.exe profile.py brokers          # known brokers + naming
+.\.venv\Scripts\python.exe profile.py add hfm          # scaffold a profile
+notepad .env                                           # fill in its credentials
+.\.venv\Scripts\python.exe profile.py use hfm          # switch to one
+.\.venv\Scripts\python.exe profile.py use exness,deriv # run BOTH at once
+```
+
+Each profile carries its own login, password, server **and symbol list**,
+because naming differs per broker — Exness uses `EURUSDm`, most others use
+`EURUSD`. Switching never touches your Telegram settings or strategy tuning.
+
+### Running two accounts simultaneously
+
+`ACTIVE_BROKERS=exness,deriv` trades both in one process — for example forex
+and gold on Exness during the week, plus crypto or synthetics on Deriv around
+the clock. Every account gets:
+
+- its own broker connection, with that broker's traits (Deriv's FOK filling)
+- its own symbol list
+- **its own risk manager** — daily loss limits and trade caps are per-account,
+  so a bad day on one never silences the other
+- independent reconnection: one broker going down does not stop the rest
+
+One phone remote covers all of them. `/status` reports each account
+separately, `/accounts` lists them, and any command can be scoped by name:
+
+```
+/positions deriv      only that account
+/closeall exness      close one account's positions
+/closeall             close everything, everywhere
+```
+
+Note that this multiplies exposure: two accounts at 0.01 lots is 0.02 lots of
+real risk, and each account's daily loss limit applies to its own balance.
+
+**Only one MetaTrader 5 account per bot.** The MetaTrader5 python package
+drives a single terminal, and logging in with a second account *switches*
+that terminal rather than opening a parallel connection — both sessions
+would then read and trade the same account while reporting different names.
+The bot refuses this combination at startup. Valid combinations:
+
+| Combination | Works |
+|---|---|
+| one MT5 account (exness *or* deriv *or* vantage) | ✅ |
+| MT5 + `binance` | ✅ separate APIs |
+| MT5 + `oanda` | ✅ separate APIs |
+| `oanda` + `binance` | ✅ |
+| exness + deriv (two MT5) | ❌ refused |
+
+To trade two MT5 brokers simultaneously, run a second copy of the bot in its
+own folder, with its own **portable** MT5 terminal installation and its own
+Telegram bot token.
+
+### Nothing trades? Check Algo Trading first
+
+If orders are rejected with `AutoTrading disabled by client (10027)`, the
+**Algo Trading** button in the MT5 toolbar is off. Click it until it is
+green. `doctor.py` checks this explicitly, and the bot warns at startup —
+this is the most common reason a correctly configured bot never trades.
+
+Brokers that accept Kenyan clients, run MT5, and offer Bitcoin:
+
+| Broker | Crypto | Notes |
+|---|---|---|
+| HFM | 75+ pairs | CMA-licensed in Kenya, KES accounts |
+| Exness | 9 pairs | CMA-licensed, KES accounts, M-Pesa, `m` symbol suffix |
+| Pepperstone | BTCUSD ~$15 spread | CMA-licensed, M-Pesa, no KES accounts |
+| Deriv | yes + **24/7 synthetic indices** | M-Pesa, very popular in Kenya — see below |
+| IC Markets, XM, RoboForex, FBS | yes | see `profile.py brokers` |
+
+### Deriv synthetic indices — the weekend option
+
+Deriv offers **synthetic indices** (Volatility 75, Boom/Crash, Step, Jump)
+that trade **24 hours a day, 7 days a week**, including weekends when forex,
+metals and stocks are all closed. For a bot that otherwise sits idle from
+Friday night to Monday morning, that is a real practical advantage.
+
+```powershell
+.\.venv\Scripts\python.exe profile.py add deriv    # pre-fills synthetic symbols
+notepad .env                                       # add Deriv MT5 credentials
+.\.venv\Scripts\python.exe profile.py use deriv
+```
+
+Symbol names contain spaces and are used verbatim, e.g.
+`SYMBOLS=Volatility 75 Index,Step Index`. Confirm the exact names your
+account offers with `python symbols.py Volatility`.
+
+**Understand what these are before trading them.** Synthetic indices are not
+real markets — the prices are generated by Deriv's own random number engine,
+audited but wholly internal. There is no external price discovery, no news,
+no other participants: Deriv is simultaneously the venue, the price source
+and your counterparty. That is not automatically bad (the volatility is
+genuinely random rather than manipulated, which arguably makes technical
+strategies *more* honest to test), but it is a fundamentally different
+proposition from trading EURUSD, and worth knowing before you commit money.
+Volatility 75 in particular moves violently — treat `FIXED_LOT=0.01` as a
+hard floor there, not a starting point.
+
+Symbol suffixes vary by **account type** as well as broker — confirm with
+`python symbols.py BTC` once connected rather than guessing.
+
+## Backtesting — measure before you trust
+
+`backtest.py` replays the strategy over real history from your own MT5
+terminal and reports what it would actually have returned:
+
+```powershell
+.\.venv\Scripts\python.exe backtest.py --symbol EURUSDm --days 30 --balance 50
+.\.venv\Scripts\python.exe backtest.py --symbol BTCUSDm --days 30 --preset aggressive
+```
+
+It reports trades, win rate, profit factor, max drawdown, end balance and the
+average daily return — then projects how long 20x would take at that rate.
+The simulation is deliberately pessimistic: entries fill at the next bar's
+open (no lookahead), the spread is charged on every entry, and when a bar's
+range covers both stop and target it assumes the **stop** was hit.
+
+Read `profit factor` first: below 1.0 the configuration loses money, and no
+amount of leverage or frequency fixes a losing edge — it only loses faster.
+
+### Searching for an edge
+
+`optimize.py` grid-searches four strategies (EMA crossover, Bollinger mean
+reversion, Donchian breakout, always-with-trend) over parameter ranges,
+fits on the first two-thirds of the data and reports each candidate's
+performance on the **final third it never saw**:
+
+```powershell
+.\.venv\Scripts\python.exe optimize.py --symbol EURUSDm --days 60
+```
+
+Two rules for reading it honestly:
+
+1. **In-sample numbers mean nothing.** Fitting parameters to history always
+   produces something that looks good.
+2. **One out-of-sample survivor out of hundreds also means nothing.** The
+   tool prints how many combinations it tried and how many would pass by
+   pure luck. A real edge appears across several symbols and periods; a
+   coincidence appears in exactly one. Verified: on a synthetic random walk
+   with no edge by construction, the search still found a config returning
+   +4.3% out-of-sample.
+
+The genuinely useful outcome is often "nothing survived" — that saves you
+the money you would have lost finding out live.
+
+## Project layout
+
+```
+fms-trading-bot/
+├── main.py                # entry point
+├── .env.example           # copy to .env and fill in
+└── fmsbot/
+    ├── config.py          # settings
+    ├── indicators.py      # EMA / RSI / ATR (pure python)
+    ├── strategy.py        # EMA-cross + RSI filter, ATR exits
+    ├── risk.py            # daily limits + risk-based sizing
+    ├── telegram.py        # phone remote (stdlib, long-polling)
+    ├── bot.py             # orchestrator
+    └── broker/
+        ├── __init__.py    # build_broker() factory
+        ├── base.py        # Broker interface
+        ├── mt5.py         # MetaTrader 5 engine (Windows)
+        ├── exness.py      # Exness traits   (MT5 subclass)
+        ├── deriv.py       # Deriv traits    (MT5 subclass, synthetics)
+        ├── vantage.py     # Vantage traits  (MT5 subclass)
+        ├── oanda.py       # OANDA v20 REST adapter (any OS)
+        └── binance.py     # Binance USD-M Futures REST adapter (any OS)
+```
+
+## Running it 24/7 for free
+
+See [deploy/DEPLOY.md](deploy/DEPLOY.md):
+
+- **MT5 mode** — AWS free-tier Windows (12 months) or your broker's free VPS;
+  `deploy/setup-windows.ps1` handles install, auto-start and crash-restart.
+- **OANDA mode** — Oracle Cloud Always-Free Linux VM (free forever);
+  `deploy/setup-vps.sh` does the same via systemd.
+
+## Troubleshooting
+
+- **`MetaTrader5 package not available`** — you're not on Windows, or
+  `pip install MetaTrader5` failed. The bot must run where the MT5 terminal is.
+- **`MT5 initialize failed`** — check MT5_LOGIN/PASSWORD/SERVER; set `MT5_PATH`
+  to the full path of `terminal64.exe`; make sure *Algo Trading* is enabled in
+  the MT5 terminal (button in the toolbar).
+- **`No bars for SYMBOL`** — wrong symbol name for your broker; check Market
+  Watch in MT5 (right-click → Show All).
+- **Order rejected `Invalid volume`/`Market closed`** — stock CFDs trade only
+  during exchange hours; forex/metals close on weekends.
+- **No Telegram replies** — wrong `TG_BOT_TOKEN`, or the server has no
+  outbound internet access to api.telegram.org.
