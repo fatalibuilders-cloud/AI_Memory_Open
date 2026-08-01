@@ -60,26 +60,28 @@ You need **Python 3.10 or newer** and **git** installed.
 
 ### Step 1 — Get the code onto your machine
 
-The bot lives on a branch, so you need the `git checkout` line too, not just the clone.
+The bot lives on a branch, so clone that branch directly with `-b`. Cloning into its own folder (`deriv-bot`) keeps this independent of any older copy of the repository you may already have.
 
 **Windows (PowerShell):**
 
 ```powershell
 cd $HOME
-git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git
-cd AI_Memory_Open
-git checkout claude/deriv-7h4xbl
-cd app-src\deriv-crypto-bot
+git clone -b claude/deriv-7h4xbl https://github.com/fatalibuilders-cloud/AI_Memory_Open.git deriv-bot
+cd deriv-bot\app-src\deriv-crypto-bot
 ```
 
 **macOS / Linux:**
 
 ```bash
 cd ~
-git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git
-cd AI_Memory_Open
-git checkout claude/deriv-7h4xbl
-cd app-src/deriv-crypto-bot
+git clone -b claude/deriv-7h4xbl https://github.com/fatalibuilders-cloud/AI_Memory_Open.git deriv-bot
+cd deriv-bot/app-src/deriv-crypto-bot
+```
+
+Confirm you are in the right place — this should list `setup.ps1`, `deriv_bot`, and `README.md`:
+
+```powershell
+ls          # PowerShell, macOS, and Linux all understand this
 ```
 
 ### Step 2 — Run setup
@@ -134,6 +136,32 @@ python -m deriv_bot.check
 ```
 
 > **Note for Windows users:** every `python -m ...` command below assumes you have activated the virtual environment. If you'd rather not, just replace `python` with `.venv\Scripts\python.exe` in any command. To activate it in PowerShell: `.\.venv\Scripts\Activate.ps1`
+
+---
+
+## If setup goes wrong
+
+Nearly every setup problem is *being in the wrong folder*. Run `ls` — if you don't see `setup.ps1` and `deriv_bot`, that's the problem, and the errors below follow from it.
+
+| Error | What it means | Fix |
+|---|---|---|
+| `No module named 'deriv_bot'` | You're not in the bot's folder, or the venv isn't active | `cd` into `deriv-bot\app-src\deriv-crypto-bot`, then use `.venv\Scripts\python.exe -m deriv_bot.check` |
+| `destination path 'AI_Memory_Open' already exists` | You have an older clone from before the bot existed | Clone into a new folder using the `-b ... deriv-bot` form in Step 1 |
+| `pathspec 'claude/deriv-7h4xbl' did not match` | Your local copy has never fetched this branch | `git fetch origin` first, then `git checkout claude/deriv-7h4xbl`. Or just re-clone with `-b` |
+| `The term '.\setup.ps1' is not recognized` | `setup.ps1` isn't in the current folder | You're in the wrong directory — see above |
+| `running scripts is disabled on this system` | PowerShell's execution policy | `powershell -ExecutionPolicy Bypass -File .\setup.ps1` — affects this one command only |
+| `cd : Cannot find path ...app-src...` | The clone predates the bot, or the branch isn't checked out | Re-clone with `-b` as in Step 1 |
+
+**Already have an older clone you want to keep?** Update it in place instead of re-cloning:
+
+```powershell
+cd $HOME\AI_Memory_Open
+git fetch origin
+git checkout claude/deriv-7h4xbl
+cd app-src\deriv-crypto-bot
+```
+
+The `git fetch` is the part that matters — without it, git doesn't know the branch exists.
 
 ---
 

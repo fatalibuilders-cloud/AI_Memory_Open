@@ -98,6 +98,11 @@ echo
 echo "  The check tells you whether everything is wired up, and prints"
 echo "  the real payout ratio to use when backtesting."
 echo
+echo "  If you open a new terminal later, either cd back here first:"
+echo "       cd '$(pwd)'"
+echo "  or use the full path, which works from anywhere:"
+echo "       '$(pwd)/.venv/bin/python' -m deriv_bot.check"
+echo
 echo "  Real-money trading is OFF by default and stays off until you"
 echo "  set DERIV_ALLOW_REAL_MONEY=true yourself."
 echo
