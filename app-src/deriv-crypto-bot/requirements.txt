@@ -1,0 +1,7 @@
+# Runtime dependency. The bot deliberately has only one — indicators are
+# implemented in pure Python so there is no numpy/pandas build step.
+websockets>=12.0
+
+# Optional: lets the bot read a local .env file during development.
+# In production the environment usually comes from systemd or Docker instead.
+python-dotenv>=1.0

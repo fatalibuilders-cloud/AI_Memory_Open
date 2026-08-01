@@ -1,0 +1,24 @@
+# Run from the project root:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker-compose.yml logs -f
+services:
+  deriv-crypto-bot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: deriv-crypto-bot:latest
+    container_name: deriv-crypto-bot
+    # The point of the bot is to stay up; restart on anything but an explicit stop.
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      # Daily loss counters live here. Without this volume, a container restart
+      # would reset them — and a reset limit is not a limit.
+      - ../state:/app/state
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

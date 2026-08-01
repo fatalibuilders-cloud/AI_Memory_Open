@@ -2,7 +2,7 @@
 
 > **SCOPE:** This file indexes decisions about the **AI Memory system itself** — its structure, standards, policies, shared resources, and cross-project infrastructure. This is NOT a project-level file. Project-specific decisions live in each project's own `Key-Decisions.md`.
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-08-01
 
 ---
 
@@ -27,6 +27,9 @@ When performing any action that matches a keyword below, read the referenced det
 | staging complete, worldwide, sign-off | All three staging documents complete: worldwide/Kenya launch, residential R1, management features R4 (project-level) | `projects/staging/FatalibuildersConstructionApp/decisions-learnings/Key-Decisions-2026-07-16_1030.md` | 2026-07-16 |
 | initialization, promotion, PROJECT_MEMORY_INIT | FatalibuildersConstructionApp promoted to full project; Release 1.0 planned (29 stories); staging archived | `session-summary/AI-Session-Summary-2026-07-16_1044.md` | 2026-07-16 |
 | onboarding, communication | Owner is a first-time app builder — communications must be jargon-free with explicit action lists | `decisions-learnings/Key-Decisions-2026-07-16_0945.md` | 2026-07-16 |
+| Deriv, trading bot, crypto | `deriv-crypto-bot` built in `app-src/` directly (not staged); Python; crypto-only enforced at three points | `decisions-learnings/Key-Decisions-2026-08-01_0014.md` | 2026-08-01 |
+| trading, real money, safety | Trading bots default to a demo account; real-money use requires an explicit opt-in flag and fails closed | `decisions-learnings/Key-Decisions-2026-08-01_0014.md` | 2026-08-01 |
+| external API, runtime discovery | Where a remote API's specifics cannot be verified, discover them at runtime rather than hardcoding from memory | `decisions-learnings/Key-Decisions-2026-08-01_0014.md` | 2026-08-01 |
 
 ---
 
@@ -34,6 +37,7 @@ When performing any action that matches a keyword below, read the referenced det
 
 - **2026-07-16:** Staged **FatalibuildersConstructionApp** (Software) as this fork's first project via staging.md. Vision and scope are AI drafts pending owner review.
 - **2026-07-16 (later):** **One-time system setup completed.** Owner: Fatali Builders (fatalibuilders@gmail.com); repository: fatalibuilders-cloud/AI_Memory_Open; primary model: Claude. Deferred: API keys, enterprise OS choice, standards customization, owner full name. The app itself will follow an integration-first architecture per owner directive.
+- **2026-08-01:** **`deriv-crypto-bot` built** under `app-src/` — a cryptocurrency-only, 24/7 trading bot for the Deriv WebSocket API. Built directly rather than via `staging.md`, since the request was a concrete build. Safety posture: demo account by default, real money behind an explicit opt-in that fails closed, daily loss limit persisted across restarts, kill-switch file. 148 tests pass. Owner must supply a Deriv API token before it can run.
 
 ---
 
@@ -44,6 +48,7 @@ When performing any action that matches a keyword below, read the referenced det
 | `Key-Decisions-2026-07-16_0728.md` | 2026-07-16 | Stage FatalibuildersConstructionApp project |
 | `Key-Decisions-2026-07-16_0908.md` | 2026-07-16 | One-time system setup; app integration directive |
 | `Key-Decisions-2026-07-16_0945.md` | 2026-07-16 | API key guidance; first-time builder onboarding approach |
+| `Key-Decisions-2026-08-01_0014.md` | 2026-08-01 | Deriv crypto trading bot: build location, safety defaults, runtime API discovery |
 
 ---
 

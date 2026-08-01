@@ -2,7 +2,7 @@
 
 > **SCOPE:** This file tracks pending work on the **AI Memory system itself** — its structure, standards, policies, shared resources, and cross-project infrastructure. This is NOT a project-level file. Project-specific next steps live in each project's own `NextSteps.md`.
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-08-01
 
 ---
 
@@ -10,15 +10,19 @@
 
 ### High Priority
 
-1. **Begin FatalibuildersConstructionApp Release 1.0 development** — Project initialized (2026-07-16). Next session: use the project's own `agents/open.md`, start CORE-1.0 (scaffold the `fatalibuilders-app` repository, pure [AI]). *(Project-level work — root NextSteps tracks only that the project is active.)*
-2. ~~Owner sign-off / staging~~ **DONE (2026-07-16):** owner approved; PROJECT_MEMORY_INIT executed; staging archived.
-3. ~~Tool inventory~~ *Mostly done: Excel-only accounting; WhatsApp + calls.* Photo storage/scheduling questions now only matter if Epic 5 (management features) stays.
+1. **Create a Deriv API token to run `deriv-crypto-bot`** *(owner action — [Human])*. The bot is built and tested but cannot run without it. In your Deriv account: **Settings → API token**, scopes **Read + Trade only** (not Payments, not Admin), created while on your **virtual/demo** account. Put it in `app-src/deriv-crypto-bot/.env` (copy from `.env.example`). That file is git-ignored — never commit it.
+2. **Run the bot in dry-run, then demo, before considering real money** *(owner action — [Human])*. `DERIV_DRY_RUN=true python -m deriv_bot` shows what it would trade without trading. The strategy has **not** been backtested and is not claimed to be profitable; observe both winning and losing days first.
+3. **Begin FatalibuildersConstructionApp Release 1.0 development** — Project initialized (2026-07-16). Next session: use the project's own `agents/open.md`, start CORE-1.0 (scaffold the `fatalibuilders-app` repository, pure [AI]). *(Project-level work — root NextSteps tracks only that the project is active.)*
+4. ~~Owner sign-off / staging~~ **DONE (2026-07-16):** owner approved; PROJECT_MEMORY_INIT executed; staging archived.
+5. ~~Tool inventory~~ *Mostly done: Excel-only accounting; WhatsApp + calls.* Photo storage/scheduling questions now only matter if Epic 5 (management features) stays.
 
 ### Medium Priority
 
 1. **Continue FatalibuildersConstructionApp staging Documents 1 & 2** — After owner review: fill goals, success metrics, constraints; decide mobile-first vs. web-first and offline support. *(Project-level work — use the staging project's own agents/open.md.)*
 2. **Register API keys** — **No longer urgent: release 1 needs NO keys** (Excel and wa.me WhatsApp links are key-free). Guide at `API-Keys-Guide.md`; first real key will be the hosting account at launch.
 3. **Confirm enterprise OS** — Remaining deferred setup field; Zoho One has a pre-built MCP connector if chosen.
+4. **Add backtesting to `deriv-crypto-bot`** — The largest gap in the bot. Without it the strategy cannot be evaluated on historical data before risking money. Deriv's `ticks_history` can supply the candles; the strategy module is already a pure function over candles, so a backtester can drive it directly.
+5. **Decide whether `deriv-crypto-bot` becomes a formal project** — Currently standalone source under `app-src/`. If it grows beyond a personal tool, stage it via `staging.md` and promote it with `PROJECT_MEMORY_INIT.md`.
 
 ### Low Priority
 
@@ -34,6 +38,7 @@
 | Run `setup-AI-Memory.md` (one-time system setup) | 2026-07-16 | Owner, fork URL, and model preferences configured; API keys, enterprise OS, and standards customization deferred to owner |
 | Record app integration directive | 2026-07-16 | Owner: integrate with all kinds of tools → integration-first architecture; Document 2 now In Progress |
 | Owner full name confirmed; contact profile created | 2026-07-16 | Eng Ali Ahmed — owner fields updated system-wide; preliminary profile at `contacts/Eng-Ali-Ahmed.md` |
+| Build `deriv-crypto-bot` | 2026-08-01 | Crypto-only, 24/7 trading bot for the Deriv WebSocket API at `app-src/deriv-crypto-bot/`. 148 tests passing. Demo-account default, daily loss limit, kill switch. Awaits owner API token; no backtesting yet |
 
 ---
 

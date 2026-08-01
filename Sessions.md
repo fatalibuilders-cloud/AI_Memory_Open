@@ -2,7 +2,7 @@
 
 > **SCOPE:** This file indexes sessions that modified the **AI Memory system itself** — its structure, standards, policies, shared resources, and cross-project infrastructure. This is NOT a project-level file. Project-specific sessions live in each project's own `Sessions.md`.
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-08-01
 
 ---
 
@@ -25,6 +25,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `session-summary/AI-Session-Summary-2026-07-16_1026.md` | 2026-07-16 | standards, Eurocodes, British Standards, US codes, KEBS, Kenya, code profiles, M-Pesa, geotechnical |
 | `session-summary/AI-Session-Summary-2026-07-16_1030.md` | 2026-07-16 | staging complete, worldwide market, residential, management features, PWA, tech stack, release plan, sign-off |
 | `session-summary/AI-Session-Summary-2026-07-16_1044.md` | 2026-07-16 | PROJECT_MEMORY_INIT, initialization, promotion, Release 1.0, Sellable Core, 29 stories, project workspace, staging archived |
+| `session-summary/AI-Session-Summary-2026-08-01_0014.md` | 2026-08-01 | Deriv, trading bot, crypto only, 24/7, WebSocket API, EMA crossover, risk limits, kill switch, demo account default, app-src, Python, Docker, systemd, 148 tests |
 
 ---
 

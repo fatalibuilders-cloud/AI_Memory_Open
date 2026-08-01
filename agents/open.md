@@ -159,6 +159,10 @@ This protocol should be executed when the user says any of the following:
 - `projects/[ProjectName]_AI_Training/`: Formal, initialized project memory folders
 - `projects/staging/`: Projects being staged prior to formal initialization
 
+**Application Source (`app-src/`) — working code, not memory files:**
+- `app-src/fatalibuilders-app/`: Next.js source for the FatalibuildersConstructionApp project
+- `app-src/deriv-crypto-bot/`: Standalone Python trading bot for the Deriv API — cryptocurrency only, runs 24/7. Not a formal `_AI_Training` project. **Before changing it, read `decisions-learnings/Key-Decisions-2026-08-01_0014.md`** — its safety defaults (demo account, persisted daily loss halt, kill switch, three-point crypto-only enforcement) are deliberate and must not be relaxed casually.
+
 ### Root Directory File Index
 *Updated during closure protocol.*
 

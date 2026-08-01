@@ -1,0 +1,15 @@
+# Never commit a real token
+.env
+
+# Runtime state and trade journal
+state/
+*.jsonl
+
+# Kill switch is an operator action, not source
+KILL_SWITCH
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/

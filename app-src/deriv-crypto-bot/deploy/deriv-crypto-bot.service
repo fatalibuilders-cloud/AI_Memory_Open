@@ -1,0 +1,51 @@
+# systemd unit for running the bot continuously on a Linux host.
+#
+# Install:
+#   sudo cp deploy/deriv-crypto-bot.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now deriv-crypto-bot
+#   journalctl -u deriv-crypto-bot -f
+#
+# Adjust User, WorkingDirectory, and ExecStart to match your install.
+
+[Unit]
+Description=Deriv crypto-only trading bot
+Documentation=https://developers.deriv.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deriv
+Group=deriv
+WorkingDirectory=/opt/deriv-crypto-bot
+
+# The token lives here, not in this unit file. Keep it chmod 600.
+EnvironmentFile=/opt/deriv-crypto-bot/.env
+
+ExecStart=/opt/deriv-crypto-bot/.venv/bin/python -m deriv_bot
+
+# SIGTERM asks the bot to finish its cycle and shut down cleanly.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+Restart=always
+RestartSec=10
+
+# Hardening — the bot needs outbound network and its own state directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/deriv-crypto-bot/state
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=deriv-crypto-bot
+
+[Install]
+WantedBy=multi-user.target
