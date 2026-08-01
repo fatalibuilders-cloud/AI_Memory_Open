@@ -17,11 +17,20 @@ defaults:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Windows is in the matrix because the owner runs the bot there; a
+    # POSIX-only assumption (path separators, venv layout) must fail here
+    # rather than on their machine.
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        os: [ubuntu-latest]
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+        include:
+          - os: windows-latest
+            python-version: '3.13'
+          - os: macos-latest
+            python-version: '3.12'
     steps:
       - uses: actions/checkout@v4
 
@@ -40,25 +49,39 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+      # Single-line -c form so this works identically under bash and pwsh.
       - name: Check every module imports
-        run: |
-          python -c "
-          import deriv_bot, deriv_bot.api, deriv_bot.backtest, deriv_bot.check
-          import deriv_bot.config, deriv_bot.indicators, deriv_bot.market
-          import deriv_bot.risk, deriv_bot.state, deriv_bot.strategy, deriv_bot.trader
-          print('ok', deriv_bot.__version__)
-          "
+        run: python -c "import deriv_bot, deriv_bot.api, deriv_bot.backtest, deriv_bot.check, deriv_bot.config, deriv_bot.indicators, deriv_bot.market, deriv_bot.risk, deriv_bot.state, deriv_bot.strategy, deriv_bot.trader; print('ok', deriv_bot.__version__)"
 
       # Guards the invariant that gives this bot its name.
       - name: Verify crypto-only enforcement is tested
         run: python -m pytest -q tests/test_cycle.py::TestCryptoOnly tests/test_market.py
 
+      # The entry points must at least start and fail cleanly with no config,
+      # on every OS. Exit code 2 means "configuration missing", not a crash.
+      - name: Entry points fail cleanly without configuration
+        shell: bash
+        env:
+          DERIV_APP_ID: ""
+          DERIV_API_TOKEN: ""
+        run: |
+          set +e
+          python -m deriv_bot; bot=$?
+          python -m deriv_bot.check; chk=$?
+          set -e
+          if [ "$bot" -ne 2 ] || [ "$chk" -ne 2 ]; then
+            echo "::error::expected exit code 2 from both, got bot=$bot check=$chk"
+            exit 1
+          fi
+          echo "ok - both exited 2 with a readable message"
+
       # A committed token would be trading someone's account by the time
       # anyone noticed, so fail the build rather than warn.
       - name: Ensure no .env was committed
+        shell: bash
         run: |
           if [ -f .env ]; then
-            echo "::error::.env is committed — it must stay git-ignored"
+            echo "::error::.env is committed - it must stay git-ignored"
             exit 1
           fi
-          echo "ok — no .env in the tree"
+          echo "ok - no .env in the tree"

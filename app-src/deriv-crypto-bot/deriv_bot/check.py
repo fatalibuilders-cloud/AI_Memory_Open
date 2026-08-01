@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -34,6 +35,27 @@ YELLOW = "\033[33m"
 RED = "\033[31m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
+
+
+def supports_colour(stream=None) -> bool:
+    """Whether ANSI colour is safe to emit.
+
+    Windows Terminal and modern PowerShell handle ANSI; the legacy conhost
+    console prints the escape codes literally, which looks like corruption. On
+    Windows, only enable colour when an environment variable indicates a
+    capable terminal.
+    """
+    stream = stream or sys.stdout
+    if not hasattr(stream, "isatty") or not stream.isatty():
+        return False
+    if os.name == "nt":
+        return bool(
+            os.environ.get("WT_SESSION")  # Windows Terminal
+            or os.environ.get("ANSICON")
+            or os.environ.get("TERM")  # Git Bash, VS Code terminal
+            or os.environ.get("ConEmuANSI") == "ON"
+        )
+    return True
 
 
 class Report:
@@ -147,7 +169,7 @@ async def _account_checks(api: DerivAPI, config: Config, account: dict, report: 
                 "Daily loss limit exceeds your balance",
                 f"{config.daily_loss_limit:.2f} > {balance:,.2f}",
             )
-            report.note("The limit cannot protect you — lower DAILY_LOSS_LIMIT.")
+            report.note("The limit cannot protect you - lower DAILY_LOSS_LIMIT.")
     except DerivError as exc:
         report.fail("Could not read balance", str(exc))
 
@@ -216,7 +238,7 @@ async def _universe_checks(api: DerivAPI, config: Config, report: Report) -> Non
         report.ok(f"Strategy says {signal.direction} right now", signal.reason)
     else:
         report.ok("Strategy sees no trade right now", signal.reason)
-        report.note("That is normal — signals are infrequent by design.")
+        report.note("That is normal - signals are infrequent by design.")
 
     # -- contract pricing --------------------------------------------------
     report.heading("5. Contract pricing")
@@ -287,7 +309,7 @@ def summarise(config: Config, report: Report) -> int:
     report.heading("Summary")
 
     if report.failures:
-        print(f"  {report._paint('NOT READY', RED)} — {len(report.failures)} problem(s) to fix:")
+        print(f"  {report._paint('NOT READY', RED)} - {len(report.failures)} problem(s) to fix:")
         for item in report.failures:
             print(f"    - {item}")
         print("\n  Fix these, then run this check again.")
@@ -298,7 +320,7 @@ def summarise(config: Config, report: Report) -> int:
         for item in report.warnings:
             print(f"    - {item}")
     else:
-        print(f"  {report._paint('READY', GREEN)} — everything checks out.")
+        print(f"  {report._paint('READY', GREEN)} - everything checks out.")
 
     print("\n  Suggested next steps, in order:")
     print("    1. Backtest, using the measured payout ratio printed above:")
@@ -337,11 +359,10 @@ def main(argv: list[str] | None = None) -> int:
         print("      cp .env.example .env")
         return 2
 
-    colour = not args.no_colour and sys.stdout.isatty()
-    report = Report(colour=colour)
+    report = Report(colour=not args.no_colour and supports_colour())
 
     print("\n" + "=" * 62)
-    print("  DERIV CRYPTO BOT — PREFLIGHT CHECK")
+    print("  DERIV CRYPTO BOT - PREFLIGHT CHECK")
     print("=" * 62)
     print("  Verifies your token and settings. Places no trades.")
 

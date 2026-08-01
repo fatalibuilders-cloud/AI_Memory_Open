@@ -175,6 +175,49 @@ class TestConnectionFailures:
         assert "could not reach deriv" in capsys.readouterr().out.lower()
 
 
+class TestColourSupport:
+    """Legacy Windows consoles print ANSI codes literally, which looks like
+    corruption to a user who just wants to know if their token works."""
+
+    class FakeStream:
+        def __init__(self, tty: bool) -> None:
+            self._tty = tty
+
+        def isatty(self) -> bool:
+            return self._tty
+
+    def test_never_colours_a_redirected_stream(self, monkeypatch):
+        from deriv_bot.check import supports_colour
+
+        assert not supports_colour(self.FakeStream(tty=False))
+
+    def test_posix_tty_gets_colour(self, monkeypatch):
+        from deriv_bot.check import supports_colour
+
+        monkeypatch.setattr("deriv_bot.check.os.name", "posix")
+        assert supports_colour(self.FakeStream(tty=True))
+
+    def test_legacy_windows_console_gets_no_colour(self, monkeypatch):
+        from deriv_bot.check import supports_colour
+
+        monkeypatch.setattr("deriv_bot.check.os.name", "nt")
+        for var in ("WT_SESSION", "ANSICON", "TERM", "ConEmuANSI"):
+            monkeypatch.delenv(var, raising=False)
+        assert not supports_colour(self.FakeStream(tty=True))
+
+    @pytest.mark.parametrize(
+        "var,value", [("WT_SESSION", "1"), ("ANSICON", "1"), ("TERM", "xterm"), ("ConEmuANSI", "ON")]
+    )
+    def test_capable_windows_terminals_get_colour(self, monkeypatch, var, value):
+        from deriv_bot.check import supports_colour
+
+        monkeypatch.setattr("deriv_bot.check.os.name", "nt")
+        for other in ("WT_SESSION", "ANSICON", "TERM", "ConEmuANSI"):
+            monkeypatch.delenv(other, raising=False)
+        monkeypatch.setenv(var, value)
+        assert supports_colour(self.FakeStream(tty=True))
+
+
 class TestReport:
     def test_tracks_outcomes(self):
         report = Report(colour=False)

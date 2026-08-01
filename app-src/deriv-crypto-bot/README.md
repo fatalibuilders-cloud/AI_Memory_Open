@@ -56,18 +56,61 @@ There are tests for all three. See `tests/test_cycle.py::TestCryptoOnly`.
 
 ## Quick start
 
-You need Python 3.10 or newer.
+You need **Python 3.10 or newer** and **git** installed.
+
+### Step 1 — Get the code onto your machine
+
+The bot lives on a branch, so you need the `git checkout` line too, not just the clone.
+
+**Windows (PowerShell):**
+
+```powershell
+cd $HOME
+git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git
+cd AI_Memory_Open
+git checkout claude/deriv-7h4xbl
+cd app-src\deriv-crypto-bot
+```
+
+**macOS / Linux:**
 
 ```bash
+cd ~
+git clone https://github.com/fatalibuilders-cloud/AI_Memory_Open.git
+cd AI_Memory_Open
+git checkout claude/deriv-7h4xbl
 cd app-src/deriv-crypto-bot
+```
+
+### Step 2 — Run setup
+
+**Windows (PowerShell):**
+
+```powershell
+.\setup.ps1
+```
+
+If PowerShell blocks it with *"running scripts is disabled on this system"*, use this instead — it bypasses the policy for this one command only, without changing any system setting:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+**macOS / Linux:**
+
+```bash
 ./setup.sh
 ```
 
-That creates a virtual environment, installs everything, runs the test suite, and writes a `.env` for you to fill in. It is safe to re-run and never overwrites an existing `.env`.
+Either script creates a virtual environment, installs everything, runs the test suite, and writes a `.env` for you to fill in. Both are safe to re-run and never overwrite an existing `.env`.
 
-**Then get a token.** In your Deriv account: switch to your **virtual (demo)** account, go to **Settings → API token**, and create one with the **Read** and **Trade** scopes ticked — *not* Payments, *not* Admin. The bot never needs those, and withholding them means a leaked token cannot move money out of your account.
+### Step 3 — Get a Deriv API token
 
-Put it in `.env`:
+In your Deriv account: switch to your **virtual (demo)** account, go to **Settings → API token**, and create one with the **Read** and **Trade** scopes ticked — *not* Payments, *not* Admin. The bot never needs those, and withholding them means a leaked token cannot move money out of your account.
+
+Open `.env` and paste the token in after the `=`:
+
+**Windows:** `notepad .env` &nbsp;&nbsp;•&nbsp;&nbsp; **macOS/Linux:** `nano .env`
 
 ```
 DERIV_API_TOKEN=your_token_here
@@ -75,12 +118,22 @@ DERIV_API_TOKEN=your_token_here
 
 > `.env` is git-ignored. Never commit it — the token in it can trade your account.
 
-**Then check it:**
+### Step 4 — Check it
+
+**Windows (PowerShell):**
+
+```powershell
+.venv\Scripts\python.exe -m deriv_bot.check
+```
+
+**macOS / Linux:**
 
 ```bash
 source .venv/bin/activate
 python -m deriv_bot.check
 ```
+
+> **Note for Windows users:** every `python -m ...` command below assumes you have activated the virtual environment. If you'd rather not, just replace `python` with `.venv\Scripts\python.exe` in any command. To activate it in PowerShell: `.\.venv\Scripts\Activate.ps1`
 
 ---
 

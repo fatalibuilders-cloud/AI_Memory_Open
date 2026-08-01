@@ -164,7 +164,7 @@ def _candles_per_contract(config: Config) -> int:
     if seconds < config.candle_granularity:
         raise ConfigError(
             f"TRADE_DURATION ({seconds}s) is shorter than one candle "
-            f"({config.candle_granularity}s) — cannot resolve the outcome"
+            f"({config.candle_granularity}s) - cannot resolve the outcome"
         )
     return max(1, seconds // config.candle_granularity)
 
@@ -276,7 +276,7 @@ def format_report(result: BacktestResult, config: Config) -> str:
     add = lines.append
 
     add("=" * 62)
-    add(f"  BACKTEST — {result.symbol}")
+    add(f"  BACKTEST - {result.symbol}")
     add("=" * 62)
     add("")
     add(f"  Candles replayed     {result.candles:,} @ {config.candle_granularity}s")
@@ -327,7 +327,7 @@ def format_report(result: BacktestResult, config: Config) -> str:
     if result.total_pnl <= 0:
         add("  LOSS. This configuration lost money over this period.")
     elif margin < 2.0:
-        add("  MARGINAL. Profitable here, but within noise of breakeven —")
+        add("  MARGINAL. Profitable here, but within noise of breakeven -")
         add("  a small change in real payouts would erase it.")
     else:
         add(f"  PROFITABLE over this period, {margin:.1f} points above breakeven.")
@@ -404,7 +404,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m deriv_bot.backtest",
         description="Replay historical candles through the bot's strategy and risk rules.",
-        epilog="Results are indicative only — see the module docstring for the assumptions.",
+        epilog="Results are indicative only - see the module docstring for the assumptions.",
     )
     parser.add_argument("--symbol", default="cryBTCUSD", help="crypto symbol (default: cryBTCUSD)")
     source = parser.add_mutually_exclusive_group()
