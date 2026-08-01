@@ -1,0 +1,17 @@
+{
+  "name": "Masjid Fund",
+  "short_name": "Masjid Fund",
+  "description": "Fund the construction of masajid around the world.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8f3",
+  "theme_color": "#114535",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
