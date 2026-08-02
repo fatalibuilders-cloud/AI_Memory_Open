@@ -148,6 +148,7 @@ Release files (`Product_Development/Releases/`), Bugs.md (metrics at init), prod
 
 ### Release 1.0 — Sellable Core
 - **Release File:** `Product_Development/Releases/fatalibuilders-app-build-instructions-1_0.md`
+- **Provecta market-gap review (2026-08-02) reconciled — see `Launch-Readiness-Synthesis.md`.** All launch-critical gaps it named are now built: completeness wedge (services/fittings + shell-vs-hidden % reveal, shown free/demo as the conversion hook), M-Pesa Daraja STK (mock-until-keys, primary Kenyan rail), free teaser, branded exports. Cost engine v0.2.0; 95 tests. Naming note: reports call it "Msingi" — confirm brand with owner. Owner-gated to launch: M-Pesa keys, Paddle keys, hosting+Postgres, email, legal review, + validate the new services/fittings assumptions.
 - **Completion:** ~74% (22/29 built) — [DONE]: CORE-1.0, 1.3, 2.0, 2.2, 4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 5.3, Epic 6, CORE-3.1 (sandbox checkout), Epic 7 (7.0/7.1/7.2/7.3), **CORE-3.0 Paddle integration pre-built (activates on owner keys)**. Full journey works in sandbox: /demo → signup → project → materials free → cost+labor+exports gated → buy → unlock. **86 tests.** App in private repo `fatalibuilders-cloud/fatalibuilders-app` (main). **Remaining for sellable MVP — mostly owner-gated: Paddle keys (guide: `Paddle-Activation-Guide.md`) → activate; CORE-3.2 M-Pesa; CORE-1.1/1.2 hosting+Postgres; CORE-2.1 email; owner legal review; Epic 8 launch.** Open validation: labor productivity norms.
 
 ### Future Releases (planned skeleton)
