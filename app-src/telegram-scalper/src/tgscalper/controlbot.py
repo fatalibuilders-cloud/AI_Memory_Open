@@ -42,10 +42,15 @@ MENU = """<b>TeleScalper</b> — signal copier
 /pause — stop opening new trades
 /resume — start again
 /trades — recent decisions
-/risk — position sizing and limits
+/settings — everything currently in force
+/connect — check the broker link
 
 Managing trades already open keeps working while paused, so a
 "close" or "SL to BE" from an admin is still followed.
+
+<i>This bot only answers while the copier is running on your PC.
+Silence from it means the program has stopped — and while it is
+stopped, nothing is being copied.</i>
 """
 
 
@@ -144,6 +149,8 @@ class ControlBot:
             "resume": self._cmd_resume,
             "trades": self._cmd_trades,
             "risk": self._cmd_risk,
+            "settings": self._cmd_settings,
+            "connect": self._cmd_connect,
             "id": self._cmd_id,
         }
         handler = handlers.get(command)
@@ -339,6 +346,74 @@ class ControlBot:
             ),
             parse_mode="html",
         )
+
+    async def _cmd_settings(self, event: Any) -> None:
+        """Everything currently in force, in one message."""
+        config = self.config
+        risk = config.risk
+        lines = [
+            f"<b>Mode:</b> {self._mode()}",
+            f"<b>Broker:</b> {config.broker.provider}"
+            + (f" (suffix {config.broker.suffix})" if config.broker.suffix else ""),
+            f"<b>Entry:</b> {config.execution.entry}, targets {config.execution.tp_mode}",
+            f"<b>Sizing:</b> "
+            + (
+                f"fixed {risk.fixed_lot} lots"
+                if risk.fixed_lot is not None
+                else f"{risk.risk_per_trade_pct}% per trade"
+            )
+            + f", max {risk.max_lot} lots",
+            f"<b>Limits:</b> {risk.max_open_trades} open, {risk.max_open_per_symbol} per symbol, "
+            f"daily stop {risk.max_daily_loss_pct}%",
+            f"<b>Hours:</b> {risk.hours.start}–{risk.hours.end} "
+            f"({', '.join(risk.hours.days)}), your computer's clock",
+            f"<b>Symbols:</b> {', '.join(risk.allow_symbols) or 'any that resolve'}",
+            f"<b>Duplicates:</b> ignored within {risk.dedupe_window_minutes} min",
+            f"<b>Groups:</b> {len(config.telegram.enabled_groups)} / {config.telegram.max_groups}",
+            "",
+            "<i>Edit config.yaml and restart to change any of this.</i>",
+        ]
+        await event.respond("\n".join(lines), parse_mode="html")
+
+    async def _cmd_connect(self, event: Any) -> None:
+        """Check the broker link, and try to rebuild it if it has dropped.
+
+        MT5 connections die when the terminal is closed or restarted, and the
+        failure is otherwise invisible until a signal arrives and cannot be
+        filled.
+        """
+        broker = self.engine.broker
+        try:
+            account = await asyncio.to_thread(broker.account_info)
+            await event.respond(
+                f"<b>{broker.name}</b> is connected.\n"
+                f"Balance {account.balance:,.2f} {account.currency}, "
+                f"equity {account.equity:,.2f}.\n"
+                f"Mode: {self._mode()}.",
+                parse_mode="html",
+            )
+            return
+        except Exception as exc:
+            await event.respond(f"Not connected ({_esc(exc)}). Reconnecting…", parse_mode="html")
+
+        try:
+            await asyncio.to_thread(broker.connect)
+            account = await asyncio.to_thread(broker.account_info)
+            symbols = await asyncio.to_thread(broker.available_symbols)
+            if symbols:
+                self.engine.resolver.load_available(symbols)
+            await event.respond(
+                f"<b>Reconnected.</b> Balance {account.balance:,.2f} {account.currency}, "
+                f"{len(symbols) or 'n/a'} symbols.",
+                parse_mode="html",
+            )
+        except Exception as exc:
+            await event.respond(
+                f"<b>Could not connect:</b> {_esc(exc)}\n\n"
+                "For MetaTrader 5, check that the terminal is open, logged in, and that "
+                "Algo Trading is enabled (Tools → Options → Expert Advisors).",
+                parse_mode="html",
+            )
 
     # --- inline buttons ---
 
