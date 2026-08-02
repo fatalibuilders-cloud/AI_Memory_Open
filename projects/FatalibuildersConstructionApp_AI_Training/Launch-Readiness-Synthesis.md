@@ -51,7 +51,7 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 
 Ordered by the reviews' Phase-1 priority:
 
-1. **M-Pesa Daraja keys** (primary payment) — register at developer.safaricom.co.ke → Lipa na M-Pesa Online → sandbox keys → set `MPESA_*` + `PAYMENTS_PROVIDER=mpesa`. *(Guide to be written like the Paddle one.)*
+1. **Kenyan payment keys** (primary) — **recommended: Pesapal** (aggregator, M-Pesa + cards, settles to KCB, live in days). Integration is **built + tested**; just add keys per `Pesapal-Activation-Guide.md`. Lower-fee alternative: your own Daraja shortcode per `Mpesa-Activation-Guide.md` (`MPESA_*` + `PAYMENTS_PROVIDER=mpesa`).
 2. **Paddle keys** (secondary, worldwide cards) — already pre-built; see `Paddle-Activation-Guide.md`.
 3. **Hosting + Postgres** (Vercel + Neon) — gives the public URL; see `TESTING-GUIDE.md`.
 4. **Email provider** (Resend) — verification + receipts.
