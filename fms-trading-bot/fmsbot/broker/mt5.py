@@ -76,13 +76,31 @@ class MT5Broker(Broker):
 
     def connect(self) -> None:
         mt5 = _mt5()
-        kwargs = {"login": self.login, "password": self.password, "server": self.server}
+        info = None
+
+        # Prefer attaching to a terminal the user already has open and logged
+        # into: initialising with credentials can start a SEPARATE instance
+        # whose settings (notably Algo Trading) are at defaults, so a terminal
+        # the user carefully enabled appears to be ignored.
         args = (self.path,) if self.path else ()
-        if not mt5.initialize(*args, **kwargs):
-            raise BrokerError(f"MT5 initialize failed: {mt5.last_error()}")
-        info = mt5.account_info()
+        if mt5.initialize(*args):
+            current = mt5.account_info()
+            if current is not None and int(current.login) == int(self.login):
+                info = current
+                log.info("Attached to the running MT5 terminal (account %s).",
+                         current.login)
+            else:
+                mt5.shutdown()
+
         if info is None:
-            raise BrokerError(f"MT5 login failed: {mt5.last_error()}")
+            kwargs = {"login": self.login, "password": self.password,
+                      "server": self.server}
+            if not mt5.initialize(*args, **kwargs):
+                raise BrokerError(f"MT5 initialize failed: {mt5.last_error()}")
+            info = mt5.account_info()
+            if info is None:
+                raise BrokerError(f"MT5 login failed: {mt5.last_error()}")
+
         self.mt5 = mt5
         term = mt5.terminal_info()
         if term is not None and not getattr(term, "trade_allowed", True):
