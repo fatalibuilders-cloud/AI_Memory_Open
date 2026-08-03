@@ -327,6 +327,36 @@ class TradingBot:
             log.info("Auto-trading PAUSED from phone.")
             return "⏸ Auto-trading OFF (open positions untouched)."
 
+        if command in ("diag", "autotrade", "enable"):
+            lines = []
+            for s in self.sessions:
+                if not s.connected:
+                    lines.append(f"{s.name}: offline")
+                    continue
+                mt5 = getattr(s.broker, "mt5", None)
+                if mt5 is None:
+                    lines.append(f"{s.name} ({s.cfg.kind}): connected — "
+                                 f"no terminal setting to check")
+                    continue
+                term = mt5.terminal_info()
+                allowed = getattr(term, "trade_allowed", None) if term else None
+                if allowed is False:
+                    lines.append(
+                        f"❌ {s.name}: ALGO TRADING OFF in the MT5 terminal.\n"
+                        f"   Orders are rejected with 10027.\n"
+                        f"   This cannot be switched on from the phone — it is a "
+                        f"setting inside MetaTrader 5 on the PC:\n"
+                        f"   Tools → Options → Expert Advisors → tick 'Allow "
+                        f"algorithmic trading', or click the Algo Trading toolbar "
+                        f"button until it is green.\n"
+                        f"   Terminal in use: {getattr(term, 'path', '?')}")
+                elif allowed:
+                    lines.append(f"✅ {s.name}: algo trading enabled in the terminal")
+                else:
+                    lines.append(f"{s.name}: terminal state unknown")
+            lines.append("\n(/resume only arms the BOT — this checks MetaTrader.)")
+            return "\n".join(lines)
+
         if command == "accounts":
             lines = []
             for s in self.sessions:

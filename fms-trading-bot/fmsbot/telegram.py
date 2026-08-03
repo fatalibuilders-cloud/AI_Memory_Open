@@ -190,6 +190,7 @@ class TelegramRemote:
                 "/close <ticket> — close one\n"
                 "/closeall — close everything\n"
                 "  (add an account name to scope: /positions deriv)\n"
+                "/diag — is MetaTrader allowing trades?\n"
                 "/resume — enable auto-trading\n"
                 "/pause — stop opening new trades\n"
                 "/risk <pct> — set risk per trade\n"

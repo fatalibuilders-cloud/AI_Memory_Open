@@ -82,14 +82,28 @@ def main() -> int:
     # The single most common reason a working bot never trades.
     if settings.broker in ("mt5", "exness", "deriv", "vantage"):
         term = broker.mt5.terminal_info()
-        if term is not None and not getattr(term, "trade_allowed", True):
-            print(f"  {BAD} ALGO TRADING IS OFF in the MT5 terminal.")
-            print( "        Every order will be rejected with 'AutoTrading disabled "
-                   "by client' (10027).")
-            print( "        Fix: click the 'Algo Trading' toolbar button in MT5 so "
-                   "it turns green.")
+        if term is None:
+            print(f"  {WARN} terminal_info() unavailable")
         else:
-            print(f"  {OK} algo trading enabled in the terminal")
+            print(f"  terminal   : {getattr(term, 'path', '?')}")
+            print(f"  data folder: {getattr(term, 'data_path', '?')}")
+            if not getattr(term, "trade_allowed", True):
+                print(f"  {BAD} ALGO TRADING IS OFF in THIS terminal.")
+                print( "        Orders are rejected with 10027 'AutoTrading disabled "
+                       "by client'.")
+                print( "        NOTE: this is the terminal shown above. If you enabled "
+                       "Algo Trading")
+                print( "        in a different MT5 window, it does not count — the "
+                       "bot uses this one.")
+                print( "        Fix in THAT terminal: Tools -> Options -> Expert "
+                       "Advisors ->")
+                print( "        tick 'Allow algorithmic trading', OR click the Algo "
+                       "Trading toolbar button.")
+                print( "        Then set MT5_PATH in .env to that terminal's "
+                       "terminal64.exe so the")
+                print( "        bot always attaches to the one you configured.")
+            else:
+                print(f"  {OK} algo trading enabled in this terminal")
 
     open_positions = broker.positions()
     print(f"  open positions: {len(open_positions)}")
