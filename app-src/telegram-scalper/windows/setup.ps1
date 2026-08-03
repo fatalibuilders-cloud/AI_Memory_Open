@@ -61,6 +61,26 @@ Write-Host @"
 +--------------------------------------------------------------+
 "@ -ForegroundColor Magenta
 
+# --------------------------------------------------- 0. Execution policy
+# A process-scope bypass dies with the window, so every new PowerShell would
+# refuse to run run.ps1 with "running scripts is disabled on this system".
+# RemoteSigned for the current user is the standard fix: locally written
+# scripts run, anything downloaded from the internet still needs a signature.
+# No administrator rights required.
+Write-Step 'Checking the script execution policy'
+$userPolicy = Get-ExecutionPolicy -Scope CurrentUser
+if ($userPolicy -in @('Restricted', 'Undefined', 'AllSigned')) {
+    try {
+        Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
+        Write-Ok 'set to RemoteSigned for your user account (persists across windows)'
+    } catch {
+        Write-Warn "could not change it: $_"
+        Write-Warn 'You may need this in each new window: Set-ExecutionPolicy -Scope Process Bypass -Force'
+    }
+} else {
+    Write-Ok "already $userPolicy"
+}
+
 # ---------------------------------------------------------------- 1. Python
 Write-Step 'Checking Python'
 $python = $null
