@@ -72,11 +72,22 @@ Write-Ok 'session present, no interactive login needed'
 # -------------------------------------------------------------- sleep policy
 if (-not $KeepSleepSettings) {
     Write-Step 'Stopping the computer from sleeping'
-    # Sleep suspends the process and drops the Telegram connection. The display
-    # may still switch off; only standby matters here.
-    powercfg /change standby-timeout-ac 0 2>&1 | Out-Null
-    powercfg /change hibernate-timeout-ac 0 2>&1 | Out-Null
-    Write-Ok 'standby and hibernate disabled while on mains power'
+    # powercfg usually needs elevation. Failing to change a power setting must
+    # never stop the task being registered — that would trade the whole point
+    # of this script for a nice-to-have.
+    try {
+        $null = powercfg /change standby-timeout-ac 0 2>&1
+        $null = powercfg /change hibernate-timeout-ac 0 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Ok 'standby and hibernate disabled while on mains power'
+        } else {
+            Write-Warn 'could not change power settings (usually needs an admin window)'
+            Write-Warn 'Set Settings > System > Power > Screen and sleep > Never by hand'
+        }
+    } catch {
+        Write-Warn "could not change power settings: $_"
+        Write-Warn 'Set Settings > System > Power > Screen and sleep > Never by hand'
+    }
     Write-Warn 'On battery the machine will still sleep, and copying stops when it does'
 } else {
     Write-Warn 'Power settings untouched - if this machine sleeps, copying stops'
