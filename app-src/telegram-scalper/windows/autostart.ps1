@@ -39,6 +39,8 @@ function Write-Step { param($m) Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Write-Ok   { param($m) Write-Host "    OK  $m" -ForegroundColor Green }
 function Write-Warn { param($m) Write-Host "    !   $m" -ForegroundColor Yellow }
 
+$startupCmd = Join-Path ([Environment]::GetFolderPath('Startup')) 'tgscalper.cmd'
+
 if ($Remove) {
     if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
         Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -47,6 +49,16 @@ if ($Remove) {
     } else {
         Write-Host "No scheduled task named '$TaskName'." -ForegroundColor Yellow
     }
+    if (Test-Path $startupCmd) {
+        Remove-Item $startupCmd -Force
+        Write-Host "Removed startup entry $startupCmd." -ForegroundColor Green
+    }
+    Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*tgscalper*' } |
+        ForEach-Object {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            Write-Host "Stopped running copier (PID $($_.ProcessId))." -ForegroundColor Green
+        }
     Write-Host 'Sleep settings were left as they are. Restore them with:' -ForegroundColor DarkGray
     Write-Host '    powercfg /change standby-timeout-ac 30' -ForegroundColor DarkGray
     exit 0
@@ -114,34 +126,93 @@ $settings = New-ScheduledTaskSettingsSet `
 
 if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
 }
 
-Register-ScheduledTask `
-    -TaskName $TaskName `
-    -Action $action `
-    -Trigger $triggers `
-    -Settings $settings `
-    -Description 'Telegram signal copier (tgscalper)' | Out-Null
-Write-Ok "task '$TaskName' registered - starts at logon, retries every minute"
+# Registering a task can be refused outright — group policy, security software,
+# or a machine that simply requires elevation for the task store. Claiming
+# success here regardless is worse than failing: it sends you away believing
+# the copier will come back after a reboot when nothing has been set up.
+$method = ''
+try {
+    Register-ScheduledTask `
+        -TaskName $TaskName `
+        -Action $action `
+        -Trigger $triggers `
+        -Settings $settings `
+        -Description 'Telegram signal copier (tgscalper)' `
+        -ErrorAction Stop | Out-Null
+    $method = 'task'
+    Write-Ok "task '$TaskName' registered - starts at logon, retries every minute"
+} catch {
+    Write-Warn "Windows refused to register the task: $($_.Exception.Message)"
+    Write-Warn 'Falling back to the Startup folder, which never needs admin rights.'
+}
 
+if (-not $method) {
+    # A .cmd in the per-user Startup folder is the lowest-privilege autostart
+    # Windows offers. No elevation, no task store, no policy to satisfy.
+    $body = @(
+        '@echo off',
+        "cd /d ""$projectDir""",
+        "start """" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""$runScript"" run"
+    )
+    [System.IO.File]::WriteAllLines($startupCmd, $body, [System.Text.ASCIIEncoding]::new())
+    if (Test-Path $startupCmd) {
+        $method = 'startup'
+        Write-Ok "startup entry created: $startupCmd"
+        Write-Warn 'This starts it at logon but will NOT restart it if it crashes.'
+    } else {
+        throw "Could not set up autostart by either method. Start it by hand with: .\windows\run.ps1 run"
+    }
+}
+
+# --------------------------------------------------------------- start it now
 if (-not $NoStart) {
-    Start-ScheduledTask -TaskName $TaskName
-    Start-Sleep -Seconds 3
-    $info = Get-ScheduledTaskInfo -TaskName $TaskName
-    Write-Ok "started (last result: $($info.LastTaskResult))"
+    Write-Step 'Starting it now'
+    $already = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*tgscalper*' })
+    if ($already.Count -gt 0) {
+        Write-Ok "already running (PID $($already[0].ProcessId))"
+    } else {
+        # Launched directly rather than through the task, so that this works
+        # identically whichever autostart method was used above.
+        Start-Process -FilePath 'powershell.exe' `
+            -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
+                          '-File', "`"$runScript`"", 'run' `
+            -WorkingDirectory $projectDir `
+            -WindowStyle Hidden
+
+        # Verify rather than assume: a process that dies on startup is exactly
+        # the failure this script exists to prevent.
+        $up = $false
+        foreach ($attempt in 1..10) {
+            Start-Sleep -Seconds 2
+            $found = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+                Where-Object { $_.CommandLine -like '*tgscalper*' })
+            if ($found.Count -gt 0) { $up = $true; break }
+        }
+        if ($up) {
+            Write-Ok 'running - send /status to your bot to confirm'
+        } else {
+            Write-Warn 'it did not stay running. See what happened with:'
+            Write-Warn '    .\windows\run.ps1 run'
+            Write-Warn '(that shows the error in the window instead of hiding it)'
+        }
+    }
 }
 
 Write-Host @"
 
-Running in the background now. Send /status to your bot to confirm.
+Autostart method: $(if ($method -eq 'task') { 'Scheduled Task (restarts on failure)' } else { 'Startup folder (starts at logon only)' })
 
 Watch it:
     Get-Content .\logs\tgscalper.log -Wait -Tail 40
 
-Control it:
-    Stop-ScheduledTask  -TaskName $TaskName
-    Start-ScheduledTask -TaskName $TaskName
+Check on it any time:
+    .\windows\health.ps1
+
+Stop it, or undo all of this:
     .\windows\autostart.ps1 -Remove
 
 Two things this cannot do for you:

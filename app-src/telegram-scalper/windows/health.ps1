@@ -51,20 +51,30 @@ if ($running.Count -gt 0) {
     $problems.Add('copier not running')
 }
 
-# ---------------------------------------------------- 2. scheduled task
-Head '2. Scheduled task (starts it automatically)'
+# --------------------------------------------------------- 2. autostart
+Head '2. Autostart (brings it back after a reboot)'
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+$startupCmd = Join-Path ([Environment]::GetFolderPath('Startup')) 'tgscalper.cmd'
+$autostart = $false
+
 if ($task) {
     $info = Get-ScheduledTaskInfo -TaskName $TaskName
-    Ok "registered, state: $($task.State)"
+    Ok "scheduled task registered, state: $($task.State)"
     Note "last run    : $($info.LastRunTime)"
     Note "last result : $($info.LastTaskResult)  (0 = ok, 267009 = currently running)"
+    $autostart = $true
     if ($info.LastTaskResult -ne 0 -and $info.LastTaskResult -ne 267009) {
         $problems.Add("scheduled task exited with code $($info.LastTaskResult)")
     }
-} else {
-    Bad "no scheduled task named '$TaskName'"
-    Note 'It will not restart on its own after a reboot.'
+}
+if (Test-Path $startupCmd) {
+    Ok "startup entry present: $startupCmd"
+    Note 'Starts at logon. Does not restart it if it crashes.'
+    $autostart = $true
+}
+if (-not $autostart) {
+    Bad 'nothing will start it automatically'
+    Note 'It will not come back after a reboot, or if it stops.'
     $problems.Add('autostart not set up')
 }
 
@@ -132,14 +142,14 @@ if ($problems.Count -eq 0) {
 
     if ($Fix) {
         Write-Host "`n  Fixing..." -ForegroundColor Cyan
-        if ($problems -contains 'autostart not set up') {
-            & (Join-Path $PSScriptRoot 'autostart.ps1')
-        } elseif ($problems -contains 'copier not running' -and $task) {
-            Start-ScheduledTask -TaskName $TaskName
-            Start-Sleep -Seconds 5
-            Write-Host '  Started. Send /status to your bot.' -ForegroundColor Green
+        if ($problems -contains 'not logged in' -or $problems -contains 'no groups selected') {
+            # Neither can be fixed without you: one needs a phone code typed in,
+            # the other needs groups picked in Telegram.
+            Write-Host '  This one needs you - see the notes above.' -ForegroundColor Yellow
         } else {
-            Write-Host '  Nothing here can be fixed automatically - see the notes above.' -ForegroundColor Yellow
+            # autostart.ps1 sets up autostart *and* starts it now, so it covers
+            # both remaining problems.
+            & (Join-Path $PSScriptRoot 'autostart.ps1')
         }
     } else {
         Write-Host "`n  Try:  .\windows\health.ps1 -Fix" -ForegroundColor Cyan
