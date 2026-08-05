@@ -38,6 +38,8 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 
 **Headline:** every launch-critical gap the review named (#4, #7, #8, #10) is now built. The MVP is functionally complete in sandbox.
 
+**Roadmap Phase-1 checklist (both the Execution Blueprint and Success Roadmap):** payments ✅, accounts ✅, PDF/Excel exports ✅, free teaser ✅, testing ✅, **analytics ✅ (now built)**. Multiple currencies (their Phase 3/8) also shipped: KES locally + USD internationally. Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI, marketplace, i18n/Swahili).
+
 ---
 
 ## 3. Problems resolved this session (the reason for this doc)
@@ -56,7 +58,7 @@ Ordered by the reviews' Phase-1 priority:
 3. **Hosting + Postgres** (Vercel + Neon) — gives the public URL; see `TESTING-GUIDE.md`.
 4. **Email provider** (Resend) — verification + receipts.
 5. **Owner legal review** — Terms/Privacy/Refund drafts.
-6. **Analytics** (Blueprint Phase 1) — signup→estimate→purchase funnel; quick AI build once hosted.
+6. ~~**Analytics** (Blueprint Phase 1) — signup→estimate→purchase funnel.~~ ✅ **BUILT** — first-party funnel + owner-only `/admin` dashboard (set `ADMIN_EMAIL`). No third-party trackers.
 7. **Owner-engineer validation** of the new **services/fittings assumptions** (counts per m²) — like the earlier materials sign-off.
 
 Once M-Pesa keys + hosting exist, the app is sellable in Kenya.
