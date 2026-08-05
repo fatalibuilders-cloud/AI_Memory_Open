@@ -25,7 +25,19 @@ control_bot:
   notify_skips: true
 
 execution:
+  # paper = built-in simulator, invented fills, no broker involved.
+  # live  = orders go to MetaTrader 5. Whether that is virtual money or real
+  #         money depends on which account MT5 is logged into, NOT on this
+  #         setting. Also needs TGSCALPER_ALLOW_LIVE in .env.
+  # Switch with:  .\windows\mode.ps1 broker   /   .\windows\mode.ps1 paper
   mode: paper
+
+  # The separate, deliberate step for actual money. The engine asks MT5 what
+  # kind of account it is connected to and refuses to start on a real-money
+  # one while this is false — so testing on a Deriv demo account needs no
+  # change here at all.
+  allow_real_money: false
+
   entry: market
   tp_mode: first          # one position at TP1: tightest target, best hit rate
   max_tps: 3

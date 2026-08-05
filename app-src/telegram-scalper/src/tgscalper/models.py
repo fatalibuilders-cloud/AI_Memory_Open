@@ -156,6 +156,16 @@ class AccountInfo:
     currency: str = "USD"
     leverage: int = 0
     margin_free: float = 0.0
+    # What kind of account the broker says this is: DEMO, CONTEST, REAL, PAPER
+    # or UNKNOWN. Sending orders to a broker and risking actual money are two
+    # different decisions, and only the broker can tell us which one this is.
+    trade_mode: str = "UNKNOWN"
+    login: str = ""
+    server: str = ""
+
+    @property
+    def is_real_money(self) -> bool:
+        return self.trade_mode.upper() == "REAL"
 
 
 @dataclass

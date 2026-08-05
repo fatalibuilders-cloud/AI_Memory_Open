@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from . import risk as risk_rules
-from .brokers.base import Broker
+from .brokers.base import Broker, BrokerError
 from .brokers.paper import PaperBroker
 from .config import Config, GroupConfig
 from .journal import Journal
@@ -62,6 +62,31 @@ class Engine:
             self.resolver.load_available(symbols)
             log.info("broker %s exposes %d symbols", self.broker.name, len(symbols))
         account = self.broker.account_info()
+
+        # Ask the broker what kind of account this is, rather than trusting the
+        # server name. Reaching a real-money account when only "send orders to
+        # MT5" was intended is the one mistake here that costs actual money, so
+        # it stops the run rather than warning and carrying on.
+        if self.broker.is_live and account.is_real_money and not self.config.execution.allow_real_money:
+            raise BrokerError(
+                f"REFUSING TO START: {self.broker.name} account {account.login} on "
+                f"{account.server} is a REAL MONEY account.\n"
+                f"Balance {account.balance:.2f} {account.currency} would be at risk.\n\n"
+                "If you meant to test, log MetaTrader 5 into your DEMO account "
+                "instead and restart.\n"
+                "If you really intend to trade real money, set "
+                "execution.allow_real_money: true in config.yaml — deliberately."
+            )
+        if self.broker.is_live:
+            log.warning(
+                "connected to a %s account (%s on %s), balance %.2f %s",
+                account.trade_mode,
+                account.login,
+                account.server,
+                account.balance,
+                account.currency,
+            )
+
         self.journal.day_start_balance(account.balance)
         self.journal.record_event(
             "start",

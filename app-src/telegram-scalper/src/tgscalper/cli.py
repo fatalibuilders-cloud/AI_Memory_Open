@@ -279,10 +279,19 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         broker.connect()
         account = broker.account_info()
         symbols = broker.available_symbols()
+        where = f" ({account.login}@{account.server})" if account.login else ""
         print(
-            f"broker: {broker.name} connected — balance {account.balance:.2f} "
-            f"{account.currency}, {len(symbols) or 'n/a'} symbols"
+            f"broker: {broker.name} connected — {account.trade_mode} account{where}, "
+            f"balance {account.balance:.2f} {account.currency}, "
+            f"{len(symbols) or 'n/a'} symbols"
         )
+        if account.is_real_money and not config.execution.allow_real_money:
+            print(
+                "  NOTE: this is a REAL MONEY account. The engine will refuse to "
+                "start until execution.allow_real_money is set to true."
+            )
+        elif account.trade_mode == "DEMO":
+            print("  demo account — virtual money, safe to trade against")
         if symbols:
             from .symbols import SymbolResolver
 

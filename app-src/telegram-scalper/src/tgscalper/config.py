@@ -115,6 +115,12 @@ class ExecutionConfig:
     # $1.50, sensible on gold and meaningless on an index priced at 250,000.
     max_entry_slippage_points: float = 0.0
     paper_balance: float = 10_000.0
+    # Sending orders to a broker and risking actual money are separate
+    # decisions. mode: live only means "stop simulating"; pointed at a demo
+    # account it is virtual funds. This flag is the second, deliberate step,
+    # and the broker's own account type decides whether it applies — a server
+    # named "-Demo" is a convention, not a guarantee.
+    allow_real_money: bool = False
     # Set by load(): live needs the config flag AND the env acknowledgement.
     live_enabled: bool = False
     live_block_reason: str = ""
@@ -256,6 +262,7 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
             "max_entry_slippage_points",
             "max_entry_slippage_pct_of_stop",
             "paper_balance",
+            "allow_real_money",
         )
     )
 

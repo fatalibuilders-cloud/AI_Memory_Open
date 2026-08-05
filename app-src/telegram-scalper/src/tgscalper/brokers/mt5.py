@@ -103,7 +103,24 @@ class MT5Broker(Broker):
             currency=info.currency,
             leverage=info.leverage,
             margin_free=info.margin_free,
+            trade_mode=self._trade_mode(getattr(info, "trade_mode", None)),
+            login=str(getattr(info, "login", "")),
+            server=str(getattr(info, "server", "")),
         )
+
+    def _trade_mode(self, raw: Any) -> str:
+        """Translate MT5's numeric account type into something readable.
+
+        This is the only trustworthy source for "is this real money" — the
+        server name is a convention, not a guarantee.
+        """
+        mt5 = self.mt5
+        table = {
+            getattr(mt5, "ACCOUNT_TRADE_MODE_DEMO", 0): "DEMO",
+            getattr(mt5, "ACCOUNT_TRADE_MODE_CONTEST", 1): "CONTEST",
+            getattr(mt5, "ACCOUNT_TRADE_MODE_REAL", 2): "REAL",
+        }
+        return table.get(raw, "UNKNOWN")
 
     def available_symbols(self) -> list[str]:
         symbols = self.mt5.symbols_get()

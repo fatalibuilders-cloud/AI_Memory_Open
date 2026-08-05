@@ -101,6 +101,7 @@ class PaperBroker(Broker):
             equity=self.balance + floating,
             currency="USD",
             margin_free=self.balance,
+            trade_mode="PAPER",
         )
 
     def available_symbols(self) -> list[str]:

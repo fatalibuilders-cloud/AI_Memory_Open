@@ -363,6 +363,31 @@ python -m tgscalper report --days 3
 This is the step that tells you whether your groups' formats actually parse and
 whether the sizing matches what you'd have done by hand. Do not skip it.
 
+**5b. Then test against a demo account.** Paper mode and a broker demo account
+are not the same test:
+
+| | Fills | Spreads, slippage, rejections | Money |
+|---|---|---|---|
+| `paper` | invented | ignored | none |
+| `live` + **demo** account | real | real | virtual |
+| `live` + **real** account | real | real | yours |
+
+Paper mode proves your groups' messages parse. Only a demo account tells you
+whether the orders are actually accepted, what they fill at, and how far behind
+the admin you land. Do that step before risking anything.
+
+```powershell
+.\windows\mode.ps1 broker      # send orders to MT5
+.\windows\mode.ps1 paper       # back to the simulator
+```
+
+`mode: live` means "stop simulating" — **not** "risk real money". Which of those
+last two rows you get depends on the account MetaTrader 5 is logged into, and
+nothing else. The engine asks MT5 what kind of account it is and **refuses to
+start on a real-money one** unless `execution.allow_real_money: true` is set, so
+a demo test cannot become a live one by accident. `/status` and `doctor` both
+name the account type.
+
 **6. Go live, deliberately.** Two independent switches must agree:
 
 ```yaml

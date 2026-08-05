@@ -191,8 +191,16 @@ class ControlBot:
         try:
             account = await asyncio.to_thread(self.engine.broker.account_info)
             positions = await asyncio.to_thread(self.engine.broker.positions)
+            label = {
+                "PAPER": "simulated, no broker",
+                "DEMO": "demo — virtual money",
+                "CONTEST": "contest account",
+                "REAL": "⚠️ REAL MONEY",
+            }.get(account.trade_mode.upper(), account.trade_mode)
+            where = f" {account.login}@{account.server}" if account.login else ""
+            lines.append(f"<b>Account:</b> {_esc(label)}{_esc(where)}")
             lines.append(
-                f"<b>Account:</b> {account.balance:,.2f} {account.currency} "
+                f"<b>Balance:</b> {account.balance:,.2f} {account.currency} "
                 f"(equity {account.equity:,.2f})"
             )
             floating = sum(position.profit for position in positions)
