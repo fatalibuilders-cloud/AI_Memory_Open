@@ -38,7 +38,9 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 
 **Headline:** every launch-critical gap the review named (#4, #7, #8, #10) is now built. The MVP is functionally complete in sandbox.
 
-**Roadmap Phase-1 checklist (both the Execution Blueprint and Success Roadmap):** payments ✅, accounts ✅, PDF/Excel exports ✅, free teaser ✅, testing ✅, **analytics ✅ (now built)**. Multiple currencies (their Phase 3/8) also shipped: KES locally + USD internationally. Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI, marketplace, i18n/Swahili).
+**Roadmap Phase-1 checklist (both the Execution Blueprint and Success Roadmap):** payments ✅, accounts ✅, PDF/Excel exports ✅, free teaser ✅, testing ✅, **analytics ✅ (now built)**. Multiple currencies (their Phase 3/8) also shipped: KES locally + USD internationally. The roadmap's **"offline capability" competitive advantage is now built** too — PWA service worker + offline fallback page (`public/sw.js`, `public/offline.html`, `OfflineReady`). Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI, marketplace, i18n/Swahili).
+
+> **Offline scope (be honest):** the installed app now opens offline, caches its shell/static assets, and shows a branded offline page + banner instead of a dead screen; `/api` always stays live. True *offline data editing* (enter a project with no signal, sync later) needs client-side storage (IndexedDB) + a sync layer — a larger, separate piece flagged for a later release, not part of this change.
 
 ---
 
