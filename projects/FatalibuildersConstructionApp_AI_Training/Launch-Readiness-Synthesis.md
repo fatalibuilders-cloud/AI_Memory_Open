@@ -38,9 +38,14 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 
 **Headline:** every launch-critical gap the review named (#4, #7, #8, #10) is now built. The MVP is functionally complete in sandbox.
 
-**Roadmap Phase-1 checklist (both the Execution Blueprint and Success Roadmap):** payments ✅, accounts ✅, PDF/Excel exports ✅, free teaser ✅, testing ✅, **analytics ✅ (now built)**. Multiple currencies (their Phase 3/8) also shipped: KES locally + USD internationally. The roadmap's **"offline capability" competitive advantage is now built** too — PWA service worker + offline fallback page (`public/sw.js`, `public/offline.html`, `OfflineReady`). Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI, marketplace, i18n/Swahili).
+**Roadmap Phase-1 checklist (both the Execution Blueprint and Success Roadmap):** payments ✅, accounts ✅, PDF/Excel exports ✅, free teaser ✅, testing ✅, **analytics ✅**. Beyond Phase-1, several roadmap items are now also built:
+- **Multiple currencies (Phase 3/8):** KES locally + USD internationally.
+- **Swahili support (East Africa phase):** English/Swahili i18n with a header toggle — cookie-based locale + typed dictionaries (`src/i18n/`), no external i18n lib. Translated: header, footer, homepage, pricing, paywall, account, login/signup, offline page. *(Deep wizard/engine + legal strings are the next translation batch.)*
+- **Offline capability (competitive advantage):** PWA service worker + offline fallback (`public/sw.js`, `public/offline.html`, `OfflineReady`) **and** true **offline project editing** — IndexedDB drafts + a sync outbox (`offline-store.ts`, `offline-sync.ts`) wired into the wizard: edits persist and queue with no signal, then flush automatically on reconnect.
 
-> **Offline scope (be honest):** the installed app now opens offline, caches its shell/static assets, and shows a branded offline page + banner instead of a dead screen; `/api` always stays live. True *offline data editing* (enter a project with no signal, sync later) needs client-side storage (IndexedDB) + a sync layer — a larger, separate piece flagged for a later release, not part of this change.
+Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI, marketplace).
+
+> **Offline scope (be honest):** app-shell offline + offline data editing now both work — the wizard keeps working offline and syncs on reconnect (a previously-visited edit page is served from SW cache so it reopens offline; `/api` always stays live when online). Not covered: opening a *brand-new* project while fully offline from a cold start, and multi-device conflict resolution (latest-write-wins per project) — later refinements, not blockers.
 
 ---
 
