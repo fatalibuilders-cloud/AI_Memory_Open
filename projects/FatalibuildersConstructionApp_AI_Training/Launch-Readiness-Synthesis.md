@@ -45,6 +45,8 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 
 Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI).
 
+**Android APK / Play Store — pre-staged (not yet built):** the app is a **PWA** (installs from the browser today; no APK exists by design). A **TWA (Trusted Web Activity)** wrapper is configured to produce a real APK/AAB — `android/twa-manifest.json` (packageId **com.fatalibuilders.app**), `android/README.md` (build guide: PWABuilder or Bubblewrap), `public/.well-known/assetlinks.json` (fingerprint placeholder), and real PNG icons (`public/icons/*`, regen `scripts/gen-icons.mjs`). **Blocker:** needs the app **deployed to a public HTTPS URL first** (owner-gated hosting) — then the APK is one command. Update the placeholder `host`/domain + fill the signing-key SHA-256 in assetlinks.json.
+
 **Daily engagement (Blueprint Phase 4 / MAU driver) — started:** the **project build diary** is built — `/projects/[id]/diary`, `diary_entries` table, `lib/diary.ts`. Builders log dated notes + optional daily spend and see a **spent-vs-estimate budget bar** (goes red over budget); the daily-return hook. Self-contained (no external feeds). *(Remaining daily-use items — live daily material prices, weather, reminders/notifications — need owner-gated data feeds / notification infra.)*
 
 **All three post-MVP moats (review gaps #11–13) are now built** as working MVPs:
