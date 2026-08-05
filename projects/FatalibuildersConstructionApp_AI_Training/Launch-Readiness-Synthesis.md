@@ -32,9 +32,9 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 | 8 | Mobile-money (M-Pesa) | ⬜ launch-critical | ✅ **NOW BUILT** — Daraja STK provider (mock-until-keys) |
 | 9 | Accounts + entitlement | ⬜ | ✅ built |
 | 10 | Branded exports + disclaimer | ⬜ | ✅ Excel + PDF, per-page disclaimer |
-| 11 | Diaspora "Verified Build" tier | ⬜ post-MVP | Planned (R2+) |
-| 12 | Lender-ready BOQ + QS sign-off | ⬜ post-MVP | Planned (R2+) |
-| 13 | Materials-marketplace handoff | ⬜ post-MVP | Planned (R2+) |
+| 11 | Diaspora "Verified Build" tier | ⬜ post-MVP | ✅ **NOW BUILT** — request + public trust page (`/verify/[token]`) + milestones + admin manager |
+| 12 | Lender-ready BOQ + QS sign-off | ⬜ post-MVP | ✅ **NOW BUILT** — bank-application PDF with certification page |
+| 13 | Materials-marketplace handoff | ⬜ post-MVP | ✅ **NOW BUILT** — priced cart from quantities → WhatsApp order (seed partner catalog) |
 
 **Headline:** every launch-critical gap the review named (#4, #7, #8, #10) is now built. The MVP is functionally complete in sandbox.
 
@@ -43,7 +43,14 @@ The reviews were dated ~1 Aug and marked several items as "still to build." Sinc
 - **Multi-language (East Africa → global phase):** now **five languages — English, Kiswahili, Français, Español, العربية (Arabic, RTL)**. Dependency-free i18n (`src/i18n/`): a locale registry (endonym + text direction) + typed dictionaries; `<html dir>` follows the locale so Arabic renders right-to-left; a header dropdown switches language. **Adding another language = one registry entry + one dictionary** (the `Dictionary` type makes the compiler reject an incomplete translation; a parity test double-checks every locale). **Full app coverage:** header, footer, homepage, pricing, paywall, account, login/signup, offline page, the project wizard (all steps, field labels, select options, review, buttons) and the legal pages (terms/privacy/refund, with a governing-language "English prevails" note). *(Only the cost-engine BOQ line-item labels and export files remain English — a small future batch.)*
 - **Offline capability (competitive advantage):** PWA service worker + offline fallback (`public/sw.js`, `public/offline.html`, `OfflineReady`) **and** true **offline project editing** — IndexedDB drafts + a sync outbox (`offline-store.ts`, `offline-sync.ts`) wired into the wizard: edits persist and queue with no signal, then flush automatically on reconnect.
 
-Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI, marketplace).
+Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, legal) or later-phase (partnerships, AI).
+
+**All three post-MVP moats (review gaps #11–13) are now built** as working MVPs:
+- **Diaspora "Verified Build" tier** (biggest revenue lever) — owner requests a Verified Build on a completed project; a public, unguessable **`/verify/[token]` trust page** shows project summary, estimated contract value, assigned supervisor and a milestone progress bar (Foundation → Handover). Admins advance status/milestones from `/admin`. The verification itself is a **human service** the Fatali team performs; the request is the intake, payment/scheduling arranged with the owner. Tier price `VERIFIED_BUILD_FROM_USD` = $99 ("from").
+- **Lender-ready BOQ** — a `/api/projects/[id]/export-lender` PDF: cover sheet (reference no, applicant, contract sum), full-contract BOQ, and a **certification page** for a registered QS/Engineer (BORAQS/EBK) to sign + stamp. Paid-gated.
+- **Materials-marketplace handoff** — `engines/marketplace` prices the estimated quantities from a **seed partner catalog (KES)** into a cart with a **"Send order on WhatsApp"** button (real supplier prices/checkout on revenue share replace the catalog later).
+
+> **Honest scope on the moats:** Verified Build's on-the-ground checking is a manual owner service (the app is the record + trust artifact, not automated verification); the marketplace prices are an indicative seed catalog pending a real supplier partner; the lender BOQ generates figures but certification is the named professional's responsibility. All three are structured so the real partner/service slots in without a rebuild.
 
 > **Offline scope (be honest):** app-shell offline + offline data editing now both work — the wizard keeps working offline and syncs on reconnect (a previously-visited edit page is served from SW cache so it reopens offline; `/api` always stays live when online). Not covered: opening a *brand-new* project while fully offline from a cold start, and multi-device conflict resolution (latest-write-wins per project) — later refinements, not blockers.
 
