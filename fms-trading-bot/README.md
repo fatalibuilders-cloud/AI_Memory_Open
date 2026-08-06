@@ -318,6 +318,24 @@ restart looks like nothing happened (new phone commands come back as
 "Unknown command"). Running git while the bot holds files open can also
 leave git stuck on a `y/n` unlink prompt.
 
+## Does it actually work? — measuring real results
+
+```powershell
+.\.venv\Scripts\python.exe report.py --days 7
+```
+
+Reads the broker's own deal history, so this is what actually happened
+rather than an estimate: win rate, profit factor, average win and loss,
+best and worst trade, and a per-symbol and per-day breakdown. It counts
+only trades this bot placed (magic 984512) unless you pass `--all`.
+
+**Read the profit factor.** Above 1.0 the configuration makes money;
+below 1.0 it loses, and trading more often or bigger only loses faster.
+
+**Sample size matters more than the number.** Under ~30 trades the result
+is meaningless; under ~100 treat it as noise in either direction. A run of
+luck looks exactly like an edge until it stops.
+
 ## Backtesting — measure before you trust
 
 `backtest.py` replays the strategy over real history from your own MT5
