@@ -230,6 +230,48 @@ class TestManagement:
         assert signal("stops to entry please").action is Action.BREAKEVEN
 
 
+class TestRealSignalFormats:
+    """Verbatim posts from live rooms. Regression cover for real wording."""
+
+    def test_gtmo_vip_gold_zone_with_stacked_targets(self):
+        parsed = signal(
+            "Gold buy now 4268.4 - 4265\n"
+            "\n"
+            "SL: 4262\n"
+            "\n"
+            "TP: 4271\n"
+            "TP: 4273\n"
+            "TP: 4275\n"
+            "TP: open"
+        )
+        assert parsed.symbol == "XAUUSD"
+        assert parsed.side is Side.BUY
+        # The zone is written high-to-low; order must not matter.
+        assert parsed.entry_zone == (4265.0, 4268.4)
+        assert parsed.entry == pytest.approx(4266.7)
+        assert parsed.stop_loss == 4262
+        # Each TP on its own line, and "TP: open" contributes no number.
+        assert parsed.take_profits == [4271, 4273, 4275]
+
+    def test_open_ended_target_alone_is_not_a_number(self):
+        parsed = signal("Gold buy now 4268\nSL: 4262\nTP: 4271\nTP: open")
+        assert parsed.take_profits == [4271]
+
+    def test_disclaimer_post_is_ignored(self):
+        assert not parse(
+            "🔔Ready Signal this is no financial advice. Trade at your own risk"
+        ).ok
+
+    def test_heads_up_without_levels_is_ignored(self):
+        # "Gold buy now" with nothing else arrives seconds before the real post.
+        assert not parse("Gold buy now").ok
+
+    def test_the_follow_up_stop_move_is_understood(self):
+        parsed = signal("Move SL to 4260 and place last entries at bottom of zone now")
+        assert parsed.action is Action.MOVE_SL
+        assert parsed.new_sl == 4260
+
+
 class TestEmojiDirection:
     """Rooms that mark direction with an arrow instead of the word BUY/SELL."""
 

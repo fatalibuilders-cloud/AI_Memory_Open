@@ -165,6 +165,11 @@ class RiskConfig:
     hours: TradingHours = field(default_factory=TradingHours)
     breakeven_offset_points: float = 0.0
     partial_close_default: float = 0.5
+    # Admins do sometimes move a stop further away — widening a zone entry, or
+    # giving a trade more room. Following that increases the loss you already
+    # accepted when the trade opened, so it is refused by default and the
+    # refusal is journalled. Set true to follow the admin exactly.
+    allow_stop_widening: bool = False
     # If a signal has no stop at all and require_stop_loss is off, use this many
     # points as an emergency stop rather than trading naked.
     fallback_stop_points: float = 0.0
@@ -285,6 +290,7 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
             "block_symbols",
             "breakeven_offset_points",
             "partial_close_default",
+            "allow_stop_widening",
             "fallback_stop_points",
         )
     )

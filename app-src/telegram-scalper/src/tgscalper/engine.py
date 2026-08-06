@@ -427,9 +427,10 @@ class Engine:
                 if position is None:
                     results.append(OrderResult(ok=False, error=f"position {ticket} gone"))
                     continue
-                # A "new stop" that is worse than the current one increases risk;
-                # the admin may be averaging, we are not.
-                if position.stop_loss is not None:
+                # A "new stop" further from entry increases the loss already
+                # accepted when the trade opened. Admins do ask for it — giving
+                # a zone entry more room — so it is a setting, not a law.
+                if position.stop_loss is not None and not self.config.risk.allow_stop_widening:
                     improving = (
                         signal.new_sl - position.stop_loss
                     ) * position.side.sign > 0
@@ -440,7 +441,8 @@ class Engine:
                                 ticket=ticket,
                                 error=(
                                     f"refused to widen stop on {ticket} from "
-                                    f"{position.stop_loss} to {signal.new_sl}"
+                                    f"{position.stop_loss} to {signal.new_sl} "
+                                    f"(set risk.allow_stop_widening: true to follow it)"
                                 ),
                             )
                         )

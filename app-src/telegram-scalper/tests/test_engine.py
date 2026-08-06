@@ -385,3 +385,34 @@ class TestPaperBrokerSafety:
         broker = build_broker(config)
         assert isinstance(broker, PaperBroker)
         assert not broker.is_live
+
+
+class TestStopWidening:
+    """Admins widen stops on zone entries. Following that is a choice."""
+
+    def _open(self, engine):
+        assert post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1).accepted
+
+    def test_refused_by_default(self, setup):
+        engine, broker, _, _ = setup
+        self._open(engine)
+        decision = post(engine, "move SL to 2340", message_id=2)
+        assert not decision.accepted
+        assert "allow_stop_widening" in decision.orders[0].error
+        assert broker.positions()[0].stop_loss == 2344
+
+    def test_followed_when_allowed(self, setup):
+        engine, broker, _, config = setup
+        config.risk.allow_stop_widening = True
+        self._open(engine)
+        assert post(engine, "move SL to 2340", message_id=2).accepted
+        assert broker.positions()[0].stop_loss == 2340
+
+    def test_tightening_always_works(self, setup):
+        engine, broker, _, _ = setup
+        self._open(engine)
+        assert post(engine, "move SL to 2348", message_id=2).accepted
+        assert broker.positions()[0].stop_loss == 2348
+
+    def test_the_option_is_off_by_default(self):
+        assert not config_module.load("does-not-exist.yaml", env={}).risk.allow_stop_widening
