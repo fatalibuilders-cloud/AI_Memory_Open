@@ -35,6 +35,7 @@ class BrokerSession:
     last_entry_attempt: dict[str, float] = field(default_factory=dict)
     known_tickets: set[int] = field(default_factory=set)
     reconnect_attempt: int = 0
+    last_block: str = ""          # why the most recent signal was refused
 
     @property
     def label(self) -> str:

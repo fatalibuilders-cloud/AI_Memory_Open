@@ -180,6 +180,7 @@ class TradingBot:
         if not ok:
             log.info("[%s] %s signal %s blocked: %s",
                      session.name, symbol, signal.side, reason)
+            session.last_block = f"{symbol} {signal.side} blocked — {reason}"
             return
 
         risk_amount = risk.risk_amount(balance)
@@ -326,6 +327,36 @@ class TradingBot:
             self.paused = True
             log.info("Auto-trading PAUSED from phone.")
             return "⏸ Auto-trading OFF (open positions untouched)."
+
+        if command == "why":
+            lines = []
+            if self.paused:
+                lines.append("⏸ THE BOT IS PAUSED — send /resume.\n")
+            for s in sessions:
+                lines.append(f"— {s.name} —")
+                if not s.connected:
+                    lines.append("  OFFLINE (retrying)")
+                    continue
+                balance, equity = s.broker.balance(), s.broker.equity()
+                positions = s.broker.positions()
+                for line in s.risk.explain(balance, equity, len(positions), s.symbols):
+                    lines.append(f"  {line}")
+                # when was the last signal actually seen, per symbol
+                for symbol in s.symbols:
+                    seen = s.last_bar.get(symbol)
+                    if seen:
+                        age = (time.time() - seen) / 60.0
+                        lines.append(f"  {symbol}: last candle checked "
+                                     f"{age:.0f} min ago")
+                    else:
+                        lines.append(f"  {symbol}: no candles processed yet")
+                blocked = s.last_block
+                if blocked:
+                    lines.append(f"  last block: {blocked}")
+            lines.append(f"\nstrategy: EMA{self.s.ema_fast}/{self.s.ema_slow} "
+                         f"on {self.s.timeframe}")
+            lines.append("No signal = no trade. Quiet spells are normal.")
+            return "\n".join(lines)
 
         if command in ("diag", "autotrade", "enable"):
             lines = []

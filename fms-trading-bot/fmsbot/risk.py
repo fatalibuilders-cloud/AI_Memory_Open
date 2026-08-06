@@ -66,3 +66,32 @@ class RiskManager:
         pnl = equity - st.start_balance if st.start_balance else 0.0
         return (f"today: {st.trades}/{self.s.max_trades_per_day} trades, "
                 f"day PnL {pnl:+.2f}")
+
+    def explain(self, balance: float, equity: float,
+                open_total: int, symbols: list[str]) -> list[str]:
+        """Human-readable state of every gate, for the /why command."""
+        self._roll(balance)
+        s, st = self.s, self.stats
+        out = [f"trades today: {st.trades}/{s.max_trades_per_day}"
+               + ("  ← CAP REACHED" if st.trades >= s.max_trades_per_day else "")]
+
+        out.append(f"open positions: {open_total}/{s.max_open_positions}"
+                   + ("  ← FULL" if open_total >= s.max_open_positions else ""))
+
+        if st.start_balance > 0:
+            dd = (equity - st.start_balance) / st.start_balance * 100.0
+            line = f"day PnL: {equity - st.start_balance:+.2f} ({dd:+.2f}%)"
+            if dd <= -s.daily_loss_limit_pct:
+                line += f"  ← DAILY LOSS LIMIT ({s.daily_loss_limit_pct}%) HIT"
+            else:
+                line += f", limit -{s.daily_loss_limit_pct}%"
+            out.append(line)
+
+        now = time.time()
+        cooling = []
+        for symbol in symbols:
+            wait = s.cooldown_seconds - (now - st.last_entry.get(symbol, 0.0))
+            if wait > 0:
+                cooling.append(f"{symbol} {wait:.0f}s")
+        out.append("cooldown: " + (", ".join(cooling) if cooling else "none active"))
+        return out
