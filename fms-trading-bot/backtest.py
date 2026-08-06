@@ -316,7 +316,8 @@ def main() -> int:
     p.add_argument("--days", type=int, default=30, help="history window (default 30)")
     p.add_argument("--csv", help="use a CSV instead of MT5 (time,open,high,low,close)")
     p.add_argument("--balance", type=float, default=50.0, help="starting balance")
-    p.add_argument("--preset", choices=("conservative", "balanced", "aggressive"),
+    p.add_argument("--preset",
+                   choices=("conservative", "balanced", "aggressive", "highfreq"),
                    help="test a preset without changing .env")
     p.add_argument("--timeframe", help="override timeframe")
     p.add_argument("--point-value", type=float, help="money per 1.0 price move per lot")

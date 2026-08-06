@@ -61,6 +61,22 @@ PRESETS: dict[str, dict[str, str]] = {
     },
 }
 
+PRESETS["highfreq"] = {
+    # Targets ~100 trades/day across two symbols. M1 bars with very fast
+    # EMAs, a wide RSI band, tight stops against a modest target, short
+    # cooldown and room for several concurrent positions.
+    "ENTRY_MODE": "signal",
+    "TIMEFRAME": "M1",
+    "EMA_FAST": "5", "EMA_SLOW": "13",
+    "RSI_FLOOR": "35", "RSI_CEILING": "65",
+    "ATR_SL_MULT": "1.0", "ATR_TP_MULT": "1.5",
+    "FIXED_LOT": "0.01",
+    "MAX_OPEN_POSITIONS": "10", "MAX_POSITIONS_PER_SYMBOL": "3",
+    "MAX_TRADES_PER_DAY": "100",
+    "DAILY_LOSS_LIMIT_PCT": "20",
+    "COOLDOWN_SECONDS": "30",
+}
+
 NOTES = {
     "conservative": "A handful of trades a day. Slowest growth, smallest drawdowns.",
     "balanced": "The shipped default: a few trades a day per symbol.",
@@ -69,6 +85,14 @@ NOTES = {
         "  bigger swings BOTH ways — a bad day can now cost 15% before the daily\n"
         "  stop trips. This is the realistic ceiling; anything beyond it is\n"
         "  gambling, not aggression."
+    ),
+    "highfreq": (
+        "Targets ~100 trades/day. DEMO ONLY.\n"
+        "  At 0.01 lots the spread costs roughly $12-30/day: negligible on a\n"
+        "  100k demo, but it would consume a $50 live account in 2-3 days before\n"
+        "  the market moves at all. The daily stop is set to -20%, so a bad day\n"
+        "  runs much further before the bot stops itself.\n"
+        "  Measure it rather than assume: backtest.py --preset highfreq"
     ),
 }
 
