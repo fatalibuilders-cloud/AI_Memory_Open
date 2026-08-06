@@ -302,6 +302,22 @@ hard floor there, not a starting point.
 Symbol suffixes vary by **account type** as well as broker — confirm with
 `python symbols.py BTC` once connected rather than guessing.
 
+## Updating
+
+```powershell
+.\update.ps1
+```
+
+Does the whole sequence in the right order: stops the bot, kills any
+leftover process from this folder, pulls, validates `.env`, restarts, and
+prints what changed plus the last few log lines.
+
+Do not just run `git pull` — that only changes files on disk. The running
+bot keeps executing the code it loaded at startup, so an update without a
+restart looks like nothing happened (new phone commands come back as
+"Unknown command"). Running git while the bot holds files open can also
+leave git stuck on a `y/n` unlink prompt.
+
 ## Backtesting — measure before you trust
 
 `backtest.py` replays the strategy over real history from your own MT5
