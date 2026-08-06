@@ -134,20 +134,29 @@ def main() -> int:
               f"= {len(results)/max(days_traded,1):.0f}/day")
         print(f"  net {net:+,.2f} on a {balance:,.2f} balance "
               f"= {100*net/balance if balance else 0:+.3f}%")
-        if pf >= 1.5:
-            print("  Profit factor above 1.5 — genuinely promising. Keep running it;")
-            print("  a month of this would be meaningful evidence.")
+
+        # Sample size decides whether the profit factor means anything at all,
+        # so it is stated FIRST — a 100% win rate over one trade is not a
+        # promising strategy, it is one trade.
+        if len(results) < 30:
+            print(f"\n  NOT ENOUGH DATA — {len(results)} trade(s).")
+            print("  No conclusion can be drawn, good or bad. A 100% win rate over")
+            print("  a handful of trades is luck, not edge.")
+            print("  Come back at 100+ trades before reading anything into it.")
+        elif len(results) < 100:
+            print(f"\n  THIN DATA — {len(results)} trades. Indicative at best;")
+            print("  wait for 100+ before acting on it.")
+        elif pf >= 1.5:
+            print("  Profit factor above 1.5 over a real sample — genuinely")
+            print("  promising. Keep running it and re-check monthly.")
         elif pf > 1.0:
-            print("  Marginally profitable. Too close to call yet — needs many more")
-            print("  trades before this is distinguishable from luck.")
-        elif pf > 0:
+            print("  Marginally profitable over a real sample. Too close to call —")
+            print("  keep collecting before drawing conclusions.")
+        else:
             print("  LOSING configuration: it pays out less than it loses.")
             print("  More trades will lose more money, not less. Change the strategy")
             print("  (preset.py balanced, or optimize.py to search) rather than")
             print("  raising frequency or size.")
-        if len(results) < 30:
-            print(f"\n  NOTE: only {len(results)} trades — far too few to judge.")
-            print("  Treat anything under ~100 trades as noise, whichever way it went.")
         return 0
     finally:
         broker.disconnect()

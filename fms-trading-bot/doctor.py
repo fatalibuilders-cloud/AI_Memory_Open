@@ -39,10 +39,28 @@ def fmt_ts(ts: int) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 
+def _bot_is_running() -> bool:
+    """Best-effort check for another bot process on Windows."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["wmic", "process", "where", "name='python.exe'", "get", "commandline"],
+            capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return False
+    return "main.py" in out
+
+
 def main() -> int:
     print("=" * 68)
     print("FMS BOT DOCTOR")
     print("=" * 68)
+    if _bot_is_running():
+        print("\n  ! The bot appears to be RUNNING.")
+        print("    Two processes sharing one MT5 terminal interfere, which shows up")
+        print("    here as 'Terminal: Call failed' on symbols that are actually fine.")
+        print("    For a clean reading:  Stop-ScheduledTask -TaskName FMSTradingBot")
+        print("    ...then re-run this, and start the bot again afterwards.\n")
 
     settings = Settings.load()
     problems = settings.validate()

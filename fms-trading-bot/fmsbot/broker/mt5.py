@@ -164,8 +164,13 @@ class MT5Broker(Broker):
             time.sleep(wait)
             rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
         if rates is None or len(rates) == 0:
-            raise BrokerError(
-                f"No bars for {symbol}: {mt5.last_error()}.{self._suggest(symbol)}")
+            err = mt5.last_error()
+            hint = self._suggest(symbol)
+            if "Call failed" in str(err):
+                hint += (" If the bot is running, stop it before using the "
+                         "analysis tools — two processes sharing one terminal "
+                         "interfere: Stop-ScheduledTask -TaskName FMSTradingBot")
+            raise BrokerError(f"No bars for {symbol}: {err}.{hint}")
         return [Bar(int(r["time"]), float(r["open"]), float(r["high"]),
                     float(r["low"]), float(r["close"])) for r in rates]
 
