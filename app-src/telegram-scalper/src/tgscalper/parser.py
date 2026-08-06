@@ -111,6 +111,28 @@ class ParseResult:
         return self.signal is not None
 
 
+# Signal rooms often mark direction with a symbol rather than a word:
+# "XAUUSD 🟢 3350" or "GOLD 🔻 3350". Emoji are stripped by normalize(), so
+# direction has to be read off the raw text before that happens.
+_EMOJI_BUY = ("🟢", "🔵", "⬆️", "⬆", "⤴️", "📈", "🚀", "🔼", "▲", "🔺", "☝️", "👆")
+_EMOJI_SELL = ("🔴", "⬇️", "⬇", "⤵️", "📉", "🔽", "▼", "🔻", "👇", "☟")
+
+
+def _emoji_direction(raw: str) -> Optional[Side]:
+    """Direction from an arrow or coloured marker, if the text has exactly one.
+
+    Both directions present means a legend or a summary post ("🟢 BUY 🔴 SELL"),
+    not an instruction, so nothing is inferred.
+    """
+    has_buy = any(token in raw for token in _EMOJI_BUY)
+    has_sell = any(token in raw for token in _EMOJI_SELL)
+    if has_buy and not has_sell:
+        return Side.BUY
+    if has_sell and not has_buy:
+        return Side.SELL
+    return None
+
+
 def normalize(raw: str) -> str:
     """Upper-case, de-emoji and standardise the vocabulary.
 
@@ -347,6 +369,7 @@ def parse(
 
     text = normalize(raw)
     warnings: list[str] = []
+    emoji_direction = False
 
     side, order_type = _extract_direction(text)
     canonical = find_symbol(text, aliases)
@@ -356,7 +379,19 @@ def parse(
         managed = _parse_management(text, source, raw)
         if managed:
             return ParseResult(signal=managed)
-        return ParseResult(error="no trade direction found")
+
+        # Before giving up, allow an arrow to stand in for the word — but only
+        # in a message that already looks like a signal. Requiring both a stop
+        # and a target keeps decorative emoji in ordinary chat from inventing
+        # a trade out of nothing.
+        emoji_side = _emoji_direction(raw)
+        if emoji_side is None or not (_SL_RE.search(text) and _TP_RE.search(text)):
+            return ParseResult(error="no trade direction found")
+        side = emoji_side
+        emoji_direction = True
+        warnings.append(
+            f"no BUY/SELL word; direction read from the arrow/marker as {side.value}"
+        )
 
     # A direction word plus a management verb and no fresh levels is a
     # follow-up ("close the buy"), not a new entry.
@@ -379,6 +414,15 @@ def parse(
     stop_loss, sl_pips = _extract_sl(working)
     take_profits, tp_pips = _extract_tps(working)
     entry, zone, explicit_market = _extract_entry(working)
+
+    if entry is None and zone is None and emoji_direction:
+        # The entry hunt keys off the direction word, which this message does
+        # not have. Blank out the stop and targets and the entry is whatever
+        # number is left.
+        leftover = _TP_RE.sub(_blank, _SL_RE.sub(_blank, working))
+        found = _NUM_RE.search(leftover)
+        if found:
+            entry = _to_float(found.group(0))
 
     if zone is not None:
         # A zone is a range to enter within; the midpoint is the reference price.

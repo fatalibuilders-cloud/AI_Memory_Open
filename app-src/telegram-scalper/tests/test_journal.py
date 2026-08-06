@@ -221,3 +221,66 @@ class TestPersistence:
         journal.record_skip(MessageRef(chat_id=-100123, message_id=9), "chit chat", "hello")
         rows = journal.recent(5)
         assert rows[0]["action"] == "SKIP"
+
+
+class TestThreadSafety:
+    """The engine runs on worker threads, so the journal is hit concurrently.
+
+    Before the lock this produced "cannot commit - no transaction is active"
+    and "bad parameter or other API misuse" under real load, losing records.
+    """
+
+    def test_concurrent_writes_all_land(self, journal):
+        import threading
+
+        errors: list[Exception] = []
+
+        def writer(index: int) -> None:
+            try:
+                for step in range(20):
+                    journal.record_signal(a_signal(2350.0 + index * 100 + step), accepted=True)
+                    journal.record_skip(
+                        MessageRef(chat_id=-1, message_id=index), "noise", "chatter"
+                    )
+            except Exception as exc:  # pragma: no cover - only on regression
+                errors.append(exc)
+
+        threads = [threading.Thread(target=writer, args=(i,)) for i in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert not errors, f"concurrent writes raised: {errors[:3]}"
+        summary = journal.summary(days=1)
+        assert summary["signals_accepted"] == 8 * 20
+        assert summary["signals_skipped"] == 8 * 20
+
+    def test_reads_and_writes_interleave_safely(self, journal):
+        import threading
+
+        errors: list[Exception] = []
+        stop = threading.Event()
+
+        def reader() -> None:
+            try:
+                while not stop.is_set():
+                    journal.summary(days=1)
+                    journal.recent(5)
+                    journal.accepted_since(60)
+            except Exception as exc:  # pragma: no cover - only on regression
+                errors.append(exc)
+
+        readers = [threading.Thread(target=reader) for _ in range(3)]
+        for thread in readers:
+            thread.start()
+        try:
+            for index in range(60):
+                journal.record_signal(a_signal(2350.0 + index), accepted=True)
+                journal.day_start_balance(10_000.0)
+        finally:
+            stop.set()
+            for thread in readers:
+                thread.join()
+
+        assert not errors, f"interleaved access raised: {errors[:3]}"

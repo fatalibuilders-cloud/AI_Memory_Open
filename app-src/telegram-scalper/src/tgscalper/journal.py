@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -94,20 +95,40 @@ class Journal:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        # WAL keeps reads (the report command) from blocking the live writer.
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        with closing(self.conn.cursor()) as cursor:
-            cursor.executescript(SCHEMA)
-        self.conn.commit()
+        # The engine runs on worker threads (asyncio.to_thread), so several
+        # messages can reach the journal at once. sqlite3 tolerates the shared
+        # connection only with check_same_thread=False, and even then
+        # interleaved statement/commit pairs corrupt each other's transactions
+        # — "cannot commit - no transaction is active". One lock around every
+        # database touch removes the interleaving entirely.
+        self._lock = threading.RLock()
+        with self._lock:
+            # WAL keeps reads (the report command) from blocking the live writer.
+            self.conn.execute("PRAGMA journal_mode=WAL")
+            with closing(self.conn.cursor()) as cursor:
+                cursor.executescript(SCHEMA)
+            self.conn.commit()
 
     def close(self) -> None:
-        self.conn.close()
+        with self._lock:
+            self.conn.close()
+
+    def _write(self, sql: str, params: tuple[object, ...] = ()) -> int:
+        """Run one statement and commit it, atomically against other threads."""
+        with self._lock:
+            cursor = self.conn.execute(sql, params)
+            self.conn.commit()
+            return int(cursor.lastrowid or 0)
+
+    def _read(self, sql: str, params: tuple[object, ...] | list[object] = ()) -> list[sqlite3.Row]:
+        with self._lock:
+            return self.conn.execute(sql, params).fetchall()
 
     # --- writes ---
 
     def record_signal(self, signal: Signal, accepted: bool, reason: str = "") -> int:
         source = signal.source or MessageRef(chat_id=0, message_id=0)
-        cursor = self.conn.execute(
+        return self._write(
             """INSERT INTO signals (ts, chat_id, chat_title, message_id, sender_id, action,
                                     symbol, side, entry, stop_loss, take_profits, fingerprint,
                                     accepted, reason, raw_text)
@@ -130,13 +151,11 @@ class Journal:
                 signal.raw_text[:4000],
             ),
         )
-        self.conn.commit()
-        return int(cursor.lastrowid or 0)
 
     def record_skip(self, source: Optional[MessageRef], reason: str, raw_text: str) -> None:
         """Log a message we chose not to trade, so nothing is invisible."""
         reference = source or MessageRef(chat_id=0, message_id=0)
-        self.conn.execute(
+        self._write(
             """INSERT INTO signals (ts, chat_id, chat_title, message_id, sender_id, action,
                                     symbol, accepted, reason, raw_text)
                VALUES (?,?,?,?,?,?,?,?,?,?)""",
@@ -153,7 +172,6 @@ class Journal:
                 raw_text[:4000],
             ),
         )
-        self.conn.commit()
 
     def record_order(
         self,
@@ -164,7 +182,7 @@ class Journal:
         live: bool,
     ) -> None:
         reference = source or MessageRef(chat_id=0, message_id=0)
-        self.conn.execute(
+        self._write(
             """INSERT INTO orders (ts, signal_id, chat_id, message_id, ticket, symbol, side,
                                    order_type, volume, price, stop_loss, take_profit, leg,
                                    live, ok, error)
@@ -188,22 +206,17 @@ class Journal:
                 result.error,
             ),
         )
-        self.conn.commit()
 
     def record_close(
         self, ticket: int, close_price: Optional[float], profit: Optional[float] = None
     ) -> None:
-        self.conn.execute(
+        self._write(
             "UPDATE orders SET closed_at = ?, close_price = ?, profit = ? WHERE ticket = ?",
             (_now(), close_price, profit, ticket),
         )
-        self.conn.commit()
 
     def record_event(self, kind: str, detail: str = "") -> None:
-        self.conn.execute(
-            "INSERT INTO events (ts, kind, detail) VALUES (?,?,?)", (_now(), kind, detail)
-        )
-        self.conn.commit()
+        self._write("INSERT INTO events (ts, kind, detail) VALUES (?,?,?)", (_now(), kind, detail))
 
     # --- reads ---
 
@@ -212,30 +225,30 @@ class Journal:
         if window_minutes <= 0:
             return None
         cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat()
-        row = self.conn.execute(
+        rows = self._read(
             """SELECT ts FROM signals
                WHERE fingerprint = ? AND accepted = 1 AND ts >= ?
                ORDER BY ts DESC LIMIT 1""",
             (fingerprint, cutoff),
-        ).fetchone()
-        return row["ts"] if row else None
+        )
+        return rows[0]["ts"] if rows else None
 
     def accepted_since(self, minutes: int) -> int:
         cutoff = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
-        row = self.conn.execute(
+        rows = self._read(
             "SELECT COUNT(*) AS n FROM signals WHERE accepted = 1 AND action = 'OPEN' AND ts >= ?",
             (cutoff,),
-        ).fetchone()
-        return int(row["n"]) if row else 0
+        )
+        return int(rows[0]["n"]) if rows else 0
 
     def tickets_for_message(self, chat_id: int, message_id: int) -> list[int]:
         """Broker tickets opened by one Telegram post (for reply-based follow-ups)."""
-        rows = self.conn.execute(
+        rows = self._read(
             """SELECT ticket FROM orders
                WHERE chat_id = ? AND message_id = ? AND ok = 1 AND ticket IS NOT NULL
                  AND closed_at IS NULL""",
             (chat_id, message_id),
-        ).fetchall()
+        )
         return [int(row["ticket"]) for row in rows]
 
     def open_tickets(self, chat_id: Optional[int] = None, symbol: Optional[str] = None) -> list[int]:
@@ -248,7 +261,7 @@ class Journal:
             query += " AND UPPER(symbol) = ?"
             params.append(symbol.upper())
         query += " ORDER BY id DESC"
-        return [int(row["ticket"]) for row in self.conn.execute(query, params).fetchall()]
+        return [int(row["ticket"]) for row in self._read(query, params)]
 
     def day_start_balance(self, balance: float, day: Optional[date] = None) -> float:
         """Record and return the balance the day opened with.
@@ -257,34 +270,34 @@ class Journal:
         so the daily-loss guard survives a restart without resetting.
         """
         key = (day or datetime.now(timezone.utc).date()).isoformat()
-        row = self.conn.execute("SELECT balance FROM day_marks WHERE day = ?", (key,)).fetchone()
-        if row:
-            return float(row["balance"])
-        self.conn.execute(
-            "INSERT INTO day_marks (day, balance, ts) VALUES (?,?,?)", (key, balance, _now())
-        )
-        self.conn.commit()
+        with self._lock:
+            rows = self._read("SELECT balance FROM day_marks WHERE day = ?", (key,))
+            if rows:
+                return float(rows[0]["balance"])
+            self._write(
+                "INSERT INTO day_marks (day, balance, ts) VALUES (?,?,?)", (key, balance, _now())
+            )
         return balance
 
     def summary(self, days: int = 7) -> dict[str, object]:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-        signals = self.conn.execute(
+        signals = self._read(
             """SELECT accepted, COUNT(*) AS n FROM signals WHERE ts >= ? GROUP BY accepted""",
             (cutoff,),
-        ).fetchall()
+        )
         counts = {int(row["accepted"]): int(row["n"]) for row in signals}
-        orders = self.conn.execute(
+        orders = self._read(
             """SELECT COUNT(*) AS n, SUM(ok) AS filled, SUM(COALESCE(profit, 0)) AS pnl,
                       SUM(live) AS live_orders
                FROM orders WHERE ts >= ?""",
             (cutoff,),
-        ).fetchone()
-        top_reasons = self.conn.execute(
+        )[0]
+        top_reasons = self._read(
             """SELECT reason, COUNT(*) AS n FROM signals
                WHERE ts >= ? AND accepted = 0 AND reason != ''
                GROUP BY reason ORDER BY n DESC LIMIT 5""",
             (cutoff,),
-        ).fetchall()
+        )
         return {
             "days": days,
             "signals_accepted": counts.get(1, 0),
@@ -296,9 +309,27 @@ class Journal:
             "top_skip_reasons": [(row["reason"], int(row["n"])) for row in top_reasons],
         }
 
+    def skipped(self, days: int = 1, limit: int = 30, reason: str = "") -> list[sqlite3.Row]:
+        """Messages that were not traded, with their original text.
+
+        The reason alone ("no trade direction found") says the parser failed
+        but not what it failed on. The raw text is what makes a parser fix
+        possible.
+        """
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        query = """SELECT ts, chat_title, reason, raw_text FROM signals
+                   WHERE accepted = 0 AND ts >= ? AND raw_text != ''"""
+        params: list[object] = [cutoff]
+        if reason:
+            query += " AND reason LIKE ?"
+            params.append(f"%{reason}%")
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        return self._read(query, params)
+
     def recent(self, limit: int = 20) -> list[sqlite3.Row]:
-        return self.conn.execute(
+        return self._read(
             """SELECT ts, chat_title, action, symbol, side, entry, stop_loss, accepted, reason
                FROM signals ORDER BY id DESC LIMIT ?""",
             (limit,),
-        ).fetchall()
+        )

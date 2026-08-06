@@ -541,6 +541,38 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_skipped(args: argparse.Namespace) -> int:
+    """Show the messages that were not traded, with their original text.
+
+    This is the command to run when a group is being ignored: the reason says
+    the parser failed, the text says why, and the two together are what a
+    parser fix is built from.
+    """
+    config = load_config(args.config, getattr(args, "env", None))
+    journal = Journal(config.journal_path)
+    rows = journal.skipped(days=args.days, limit=args.limit, reason=args.reason)
+    if not rows:
+        print(f"Nothing skipped in the last {args.days} day(s).")
+        journal.close()
+        return 0
+
+    print(f"{len(rows)} skipped message(s) in the last {args.days} day(s):\n")
+    for row in rows:
+        when = str(row["ts"])[:19].replace("T", " ")
+        print(f"--- {when}  [{row['chat_title'] or 'unknown'}]")
+        print(f"    reason: {row['reason']}")
+        for line in (row["raw_text"] or "").splitlines():
+            if line.strip():
+                print(f"    | {line}")
+        print()
+    print(
+        "If a real signal is in there, send those lines to whoever maintains the\n"
+        "parser — the exact wording is what a fix needs."
+    )
+    journal.close()
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     config = load_config(args.config, getattr(args, "env", None))
     journal = Journal(config.journal_path)
@@ -620,6 +652,12 @@ def build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="start listening to Telegram")
     run.set_defaults(func=cmd_run)
 
+    skipped = sub.add_parser("skipped", help="show messages that were not traded, with their text")
+    skipped.add_argument("--days", type=int, default=1)
+    skipped.add_argument("--limit", type=int, default=30)
+    skipped.add_argument("--reason", default="", help="only reasons containing this text")
+    skipped.set_defaults(func=cmd_skipped)
+
     report = sub.add_parser("report", help="summarise the journal")
     report.add_argument("--days", type=int, default=7)
     report.add_argument("--recent", type=int, default=10, help="also list N recent messages")
@@ -630,7 +668,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command in {"doctor", "chats", "admins", "parse", "report", "symbols"}:
+    if args.command in {"doctor", "chats", "admins", "parse", "report", "symbols", "skipped"}:
         setup_logging(args.log_level or "WARNING", None)
     try:
         return int(args.func(args))

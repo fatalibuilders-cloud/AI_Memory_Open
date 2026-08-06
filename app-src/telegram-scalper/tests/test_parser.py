@@ -230,6 +230,56 @@ class TestManagement:
         assert signal("stops to entry please").action is Action.BREAKEVEN
 
 
+class TestEmojiDirection:
+    """Rooms that mark direction with an arrow instead of the word BUY/SELL."""
+
+    def test_green_marker_is_a_buy(self):
+        parsed = signal("XAUUSD 🟢 3350\nSL 3344\nTP 3360")
+        assert parsed.side is Side.BUY
+        assert parsed.entry == 3350
+        assert parsed.stop_loss == 3344
+
+    def test_red_marker_is_a_sell(self):
+        parsed = signal("GOLD 🔻 3350\nSL 3356\nTP 3340")
+        assert parsed.side is Side.SELL
+        assert parsed.entry == 3350
+
+    def test_arrows_work_too(self):
+        assert signal("XAUUSD ⬆️ 3350 SL 3344 TP 3360").side is Side.BUY
+        assert signal("XAUUSD ⬇️ 3350 SL 3356 TP 3340").side is Side.SELL
+
+    def test_the_inference_is_flagged_as_a_warning(self):
+        parsed = signal("XAUUSD 🟢 3350\nSL 3344\nTP 3360")
+        assert any("arrow" in warning for warning in parsed.warnings)
+
+    def test_market_entry_when_no_price_is_given(self):
+        parsed = signal("🟢 GOLD\nSL 3344\nTP 3360")
+        assert parsed.side is Side.BUY
+        assert parsed.entry is None
+
+    def test_a_word_direction_still_wins(self):
+        # A red decoration must not flip an explicit BUY.
+        parsed = signal("🔴 GOLD BUY 3350\nSL 3344\nTP 3360")
+        assert parsed.side is Side.BUY
+
+    def test_both_markers_infer_nothing(self):
+        # "🟢 BUY 🔴 SELL" is a legend or a summary, not an order.
+        assert not parse("XAUUSD 🟢 🔴 3350\nSL 3344\nTP 3360").ok
+
+    def test_decorative_emoji_without_levels_is_ignored(self):
+        for text in [
+            "🚀🚀 great week team 🔥",
+            "GOLD 🚀 to the moon boys",
+            "📈 markets looking good today",
+        ]:
+            assert not parse(text).ok, text
+
+    def test_an_arrow_alone_is_not_enough_without_a_stop(self):
+        # Requiring both SL and TP is what keeps decoration from trading.
+        assert not parse("XAUUSD 🟢 3350\nTP 3360").ok
+        assert not parse("XAUUSD 🟢 3350\nSL 3344").ok
+
+
 class TestChatterIsNotAnInstruction:
     """Regression guards. Every string here once triggered a false action."""
 
