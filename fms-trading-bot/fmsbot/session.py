@@ -106,7 +106,8 @@ def build_sessions(settings: Settings) -> list[BrokerSession]:
         sessions.append(BrokerSession(
             name=cfg.name, cfg=cfg,
             broker=build_broker_from_config(cfg),
-            risk=RiskManager(settings),
+            # one state file per account: limits belong to an account
+            risk=RiskManager(settings, state_file=f"risk_{cfg.name}.json"),
             symbols=list(cfg.symbols),
         ))
     return sessions

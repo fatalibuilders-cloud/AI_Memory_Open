@@ -11,3 +11,6 @@ __pycache__/
 signal_session.session
 signal_session.session-journal
 signal_log.jsonl
+
+# per-account daily risk state
+risk_*.json
