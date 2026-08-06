@@ -416,3 +416,79 @@ class TestStopWidening:
 
     def test_the_option_is_off_by_default(self):
         assert not config_module.load("does-not-exist.yaml", env={}).risk.allow_stop_widening
+
+
+class TestPaperPositionsSettle:
+    """Paper positions must be able to close, or testing dies after one trade.
+
+    With no price feed a paper position never hits its stop or target, so one
+    open gold trade holds the per-symbol slot and every later gold signal is
+    rejected as "already 1 XAUUSD positions open". Later signals carry fresh
+    prices; those settle what is already open.
+    """
+
+    def test_target_hit_frees_the_symbol(self, setup):
+        engine, broker, _, config = setup
+        config.risk.max_open_per_symbol = 1
+        assert post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1).accepted
+
+        # Next signal prices gold at 2365 — past the 2360 target.
+        second = post(engine, "GOLD BUY 2365\nSL 2359\nTP 2375", message_id=2)
+        assert second.accepted, second.reason
+        assert len(broker.positions()) == 1
+        assert broker.positions()[0].open_price == 2365
+
+    def test_stop_hit_frees_the_symbol(self, setup):
+        engine, broker, _, config = setup
+        config.risk.max_open_per_symbol = 1
+        post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1)
+        # Price came back at 2340, below the 2344 stop.
+        assert post(engine, "GOLD BUY 2340\nSL 2334\nTP 2350", message_id=2).accepted
+        assert len(broker.positions()) == 1
+
+    def test_a_price_between_stop_and_target_keeps_it_open(self, setup):
+        engine, broker, _, config = setup
+        config.risk.max_open_per_symbol = 1
+        post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1)
+        # 2352 is inside the range: the trade is still running, so the slot
+        # is legitimately taken and the new signal must be refused.
+        second = post(engine, "GOLD BUY 2352\nSL 2346\nTP 2362", message_id=2)
+        assert not second.accepted
+        assert "per symbol" in second.reason
+
+    def test_a_winning_paper_trade_shows_up_in_the_balance(self, setup):
+        engine, broker, _, config = setup
+        config.risk.max_open_per_symbol = 1
+        opening = broker.account_info().balance
+        post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1)
+        post(engine, "GOLD BUY 2365\nSL 2359\nTP 2375", message_id=2)
+        # 0.16 lots * $10 * $100/lot = $160 on the settled trade.
+        assert broker.account_info().balance > opening
+
+    def test_the_close_is_journalled(self, setup):
+        engine, broker, journal, config = setup
+        config.risk.max_open_per_symbol = 1
+        first = post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1)
+        ticket = first.orders[0].ticket
+        post(engine, "GOLD BUY 2365\nSL 2359\nTP 2375", message_id=2)
+        # A closed ticket must stop being a follow-up target.
+        assert ticket not in journal.tickets_for_message(CHAT_ID, 1)
+
+    def test_a_sell_settles_on_the_right_side(self, setup):
+        engine, broker, _, config = setup
+        config.risk.max_open_per_symbol = 1
+        post(engine, "GOLD SELL 2350\nSL 2356\nTP 2340", message_id=1)
+        # 2338 is past the 2340 target for a sell.
+        assert post(engine, "GOLD SELL 2338\nSL 2344\nTP 2328", message_id=2).accepted
+        assert len(broker.positions()) == 1
+
+    def test_other_symbols_are_untouched(self, setup):
+        engine, broker, _, config = setup
+        config.risk.max_open_per_symbol = 1
+        config.risk.dedupe_window_minutes = 0
+        post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1)
+        post(engine, "EURUSD BUY 1.0850\nSL 1.0820\nTP 1.0900", message_id=2)
+        assert len(broker.positions()) == 2
+        # A gold price must not settle the EURUSD trade.
+        post(engine, "GOLD BUY 2365\nSL 2359\nTP 2375", message_id=3)
+        assert any(p.symbol == "EURUSD" for p in broker.positions())

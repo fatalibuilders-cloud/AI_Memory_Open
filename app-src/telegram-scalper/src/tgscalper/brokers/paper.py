@@ -93,6 +93,49 @@ class PaperBroker(Broker):
     def last_price(self, symbol: str) -> Optional[float]:
         return self._prices.get(symbol.upper())
 
+    def settle_at(self, symbol: str, price: float) -> list[tuple[int, str, float]]:
+        """Close any position whose stop or target this price would have hit.
+
+        With no market feed, a paper position would otherwise stay open for
+        ever — and one open position per symbol is enough to block every later
+        signal for that symbol, which quietly ends the test after a single
+        trade. Each new signal carries a fresh price for its instrument, and
+        that is the only market data available here, so it is used to settle
+        what is already open before the new trade is considered.
+
+        Returns (ticket, "SL"|"TP", exit price) for each position closed.
+        """
+        if price <= 0:
+            return []
+        closed: list[tuple[int, str, float]] = []
+        for ticket, position in list(self._positions.items()):
+            if position.symbol.upper() != symbol.upper():
+                continue
+            sign = position.side.sign
+            # A stop is hit when price moves sign-against the position, a
+            # target when it moves sign-with it.
+            if position.stop_loss is not None and (price - position.stop_loss) * sign <= 0:
+                exit_price = position.stop_loss
+                reason = "SL"
+            elif position.take_profit is not None and (price - position.take_profit) * sign >= 0:
+                exit_price = position.take_profit
+                reason = "TP"
+            else:
+                continue
+            # Close at the level itself rather than the observed price: a real
+            # stop or limit fills there, give or take slippage we cannot model.
+            self._prices[symbol.upper()] = exit_price
+            self.close_position(ticket)
+            closed.append((ticket, reason, exit_price))
+
+        if closed:
+            # Drop the stored price so the next signal re-seeds from its own
+            # entry. Leaving the exit level behind would make the following
+            # signal look slipped against a price that is pure bookkeeping —
+            # inventing a rejection out of an artefact of the simulation.
+            self._prices.pop(symbol.upper(), None)
+        return closed
+
     # --- account & symbols ---
     def account_info(self) -> AccountInfo:
         floating = sum(position.profit for position in self._positions.values())

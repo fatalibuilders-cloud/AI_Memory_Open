@@ -167,15 +167,20 @@ class Engine:
             self.journal.record_signal(signal, accepted=False, reason=reason)
             return Decision(accepted=False, reason=reason, signal=signal)
 
-        # The paper book has no feed of its own, so the posted entry becomes its
-        # market — but only for a symbol it has never priced. Overwriting a known
-        # price would erase the gap between "what the admin posted" and "where
-        # the market actually is", which is exactly what the slippage guard reads.
-        if isinstance(self.broker, PaperBroker):
-            seed = signal.entry or signal.stop_loss
-            if seed and self.broker.last_price(broker_symbol) is None:
-                self.broker.seed_price(broker_symbol, seed)
-                info = self.broker.symbol_info(broker_symbol) or info
+        # The paper book has no feed of its own; each signal's price is the only
+        # market data it ever sees. Use it first to settle whatever is already
+        # open, since a paper position that can never close would otherwise
+        # hold the per-symbol slot for good and block every later signal.
+        if isinstance(self.broker, PaperBroker) and signal.entry:
+            for ticket, hit, exit_price in self.broker.settle_at(broker_symbol, signal.entry):
+                self.journal.record_close(ticket, exit_price)
+                log.info("paper position %s closed at %s %s", ticket, hit, exit_price)
+            # Only seed a symbol never priced before. Overwriting a known price
+            # would erase the gap between "what the admin posted" and "where the
+            # market is", which is what the slippage guard reads.
+            if self.broker.last_price(broker_symbol) is None:
+                self.broker.seed_price(broker_symbol, signal.entry)
+            info = self.broker.symbol_info(broker_symbol) or info
 
         state = self._risk_state(signal, broker_symbol)
         gate = risk_rules.check_guards(signal, info, state, self.config)
@@ -214,6 +219,11 @@ class Engine:
             return Decision(accepted=False, reason=sizing.error, signal=signal)
         for note in sizing.notes:
             log.info("sizing note [%s]: %s", broker_symbol, note)
+
+        # Guards have run, so the fill can now be marked at the signal's own
+        # price without hiding the gap the slippage check needed to see.
+        if isinstance(self.broker, PaperBroker) and signal.entry:
+            self.broker.seed_price(broker_symbol, signal.entry)
 
         signal_id = self.journal.record_signal(signal, accepted=True, reason="")
         orders: list[OrderResult] = []
