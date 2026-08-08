@@ -90,5 +90,26 @@ and only the owner can clear them. TikTok in particular needs a video pipeline
 before it does anything. Build order above front-loads the value (content engine
 + LinkedIn) and defers the heaviest dependency (TikTok video).
 
+---
+
+## BUILT (2026-08-05) — engine shipped
+
+The engine is built in `fatalibuilders-app` (176 tests):
+- **Content:** `src/engines/social/content.ts` — auto-writes captions from the
+  product (completeness hook, value, features, diaspora, M-Pesa, tips), KES/USD.
+- **Queue + scheduler:** `social_posts` table; `src/lib/social/index.ts`
+  (createPost/listPosts/cancelPost/publishDue).
+- **Adapters:** `src/lib/social/adapters.ts` — real **LinkedIn** (Posts API) and
+  **Instagram** (Graph 2-step) calls guarded by `configured()`; **TikTok** preview
+  (video pending). Not configured → preview/mock.
+- **Cron:** `vercel.json` runs `/api/social/publish` every 15 min (secured by
+  `CRON_SECRET`); admins can "Publish now" from **/admin/social** (the composer:
+  compose/schedule, one-tap suggested posts, live queue status).
+
+**To go live per platform:** obtain that platform's token (§2), set the env var
+(`LINKEDIN_ACCESS_TOKEN`+`LINKEDIN_ORG_URN`, `IG_ACCESS_TOKEN`+`IG_BUSINESS_ACCOUNT_ID`,
+`TIKTOK_ACCESS_TOKEN`), redeploy. Until then that platform previews. Start with
+LinkedIn.
+
 *App integration: `src/engines/social/`, `src/lib/social/`,
-`src/app/api/social/publish/`, `/admin/social` in `fatalibuilders-app`.*
+`src/app/api/social/`, `/admin/social`, `vercel.json` in `fatalibuilders-app`.*
