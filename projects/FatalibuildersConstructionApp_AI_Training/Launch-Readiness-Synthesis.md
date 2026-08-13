@@ -50,7 +50,8 @@ Phase-1 is complete in code; what remains is owner-gated (keys, hosting, email, 
 **Daily engagement (Blueprint Phase 4 / MAU driver) — two features built:**
 - **Build diary** — `/projects/[id]/diary`, `diary_entries`, `lib/diary.ts`: dated notes + optional daily spend with a **spent-vs-estimate budget bar** (red over budget).
 - **"Next steps" task list** — `tasks` table, `lib/tasks.ts`, `TaskList` on the project page: per-project to-dos with optional due dates, overdue/"due today" highlighting, check-off; the "what's due today?" hook.
-Both self-contained (no external feeds). *(Remaining daily-use items — live daily material prices, weather, reminders/notifications — need owner-gated data feeds / notification infra.)*
+- **Daily material prices** — `material_prices` table, `lib/prices.ts`, public `/prices` page + `/admin/prices` manager. Admin posts dated updates (history → up/down/steady trend arrows); defaults seeded from the rate card so it's populated day one. Footer-linked in all 5 languages. **Closes the competitive gap vs Zamu** (who had live prices; we didn't). Admin-set for now; a live supplier feed is the later upgrade.
+Self-contained (no external feeds). *(Remaining daily-use items — weather, reminders/push notifications — need external APIs / notification infra.)*
 
 **Verified Build pricing now scales with build size** — `verifiedBuildTier()` / `verifiedBuildPriceForArea()` (area breakpoints 120/300/600 m², multipliers ×1/1.8/3/4.5 on the env base); `createCheckout` prices from the project's floor area (server-authoritative), and the panel shows the exact size-scaled price. A small bungalow stays at the base (~$99); a 4-storey block pays the top tier.
 
