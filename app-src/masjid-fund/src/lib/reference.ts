@@ -11,3 +11,12 @@ export function newDonationReference(): string {
   for (const byte of bytes) out += ALPHABET[byte % ALPHABET.length];
   return `MF-${out}`;
 }
+
+/**
+ * Secret that lets a donor manage a monthly gift straight from their receipt,
+ * with no account to create. It is a bearer credential, so it is long enough
+ * that guessing is hopeless — unlike the short human-readable reference.
+ */
+export function newManageToken(): string {
+  return randomBytes(32).toString("base64url");
+}

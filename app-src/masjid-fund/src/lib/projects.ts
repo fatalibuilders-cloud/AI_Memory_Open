@@ -22,10 +22,14 @@ export interface Project {
   status: ProjectStatus;
   goalCents: number;
   raisedCents: number;
+  /** Part of raisedCents that came in outside the site, carried on the project row. */
+  offlineRaisedCents: number;
   donorCount: number;
   capacity: number;
   zakatEligible: boolean;
   accent: string;
+  /** Listing order; lower sorts first. */
+  position: number;
 }
 
 export interface ProjectCost {
@@ -79,6 +83,7 @@ interface ProjectRow {
   capacity: number;
   zakat_eligible: boolean;
   accent: string;
+  position: number;
 }
 
 const PROJECT_SELECT = `
@@ -213,9 +218,11 @@ function toProject(row: ProjectRow): Project {
     status: row.status as ProjectStatus,
     goalCents: toCents(row.goal_cents),
     raisedCents: toCents(row.offline_raised_cents) + toCents(row.donated_cents),
+    offlineRaisedCents: toCents(row.offline_raised_cents),
     donorCount: Number(row.donor_count ?? 0),
     capacity: row.capacity,
     zakatEligible: row.zakat_eligible,
     accent: row.accent,
+    position: Number(row.position ?? 0),
   };
 }

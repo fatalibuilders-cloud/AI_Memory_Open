@@ -81,21 +81,43 @@ export class StripeProvider implements PaymentProvider {
 
     const event = JSON.parse(rawBody) as {
       type?: string;
-      data?: { object?: { id?: string; client_reference_id?: string; metadata?: Record<string, string> } };
+      data?: {
+        object?: {
+          id?: string;
+          client_reference_id?: string;
+          subscription?: string | null;
+          metadata?: Record<string, string>;
+        };
+      };
     };
     const object = event.data?.object ?? {};
     const reference = object.client_reference_id ?? object.metadata?.reference ?? null;
     const providerRef = object.id ?? null;
+    const subscriptionRef = object.subscription ?? null;
 
     switch (event.type) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded":
-        return { reference, providerRef, status: "completed" };
+        return { reference, providerRef, subscriptionRef, status: "completed" };
       case "checkout.session.async_payment_failed":
       case "checkout.session.expired":
-        return { reference, providerRef, status: "failed" };
+        return { reference, providerRef, subscriptionRef, status: "failed" };
       default:
         return null; // Acknowledged, but nothing to record.
+    }
+  }
+
+  async cancelSubscription(subscriptionRef: string): Promise<void> {
+    const res = await fetch(`${this.apiBase}/v1/subscriptions/${subscriptionRef}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${this.secretKey}` },
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      throw new PaymentError(
+        body.error?.message ?? "The payment provider could not cancel this monthly gift.",
+        502,
+      );
     }
   }
 }

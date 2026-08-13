@@ -33,8 +33,23 @@ npm run build      # production build
 | `/projects/[slug]` | Project story, costed items, build updates, donate panel |
 | `/donate` | Donation form — amount, one-time/monthly, project, intent, dedication |
 | `/donate/thank-you` | Receipt with reference and donation status |
+| `/giving/[token]` | Donor self-service: view and cancel a monthly gift, no account needed |
 | `/checkout/[reference]` | Simulated hosted checkout (test mode only) |
 | `/about`, `/faq` | Governance, and the zakat/sadaqah questions donors ask |
+
+### Admin
+
+Staff screens at `/admin`, behind a shared operator login. Set `ADMIN_EMAIL` and
+`ADMIN_PASSWORD_HASH` (`npm run admin:hash -- 'the password'`); with those unset,
+development accepts `admin@localhost` / `masjidfund-dev` and production refuses
+sign-in altogether.
+
+| Route | Purpose |
+| --- | --- |
+| `/admin` | Totals, latest donations, and warnings for anything not configured |
+| `/admin/projects` | Add and edit projects, costed items and build updates |
+| `/admin/donations` | Filterable ledger; record bank-transfer or cash gifts |
+| `/admin/donations/export` | CSV of the ledger for the accounts |
 
 ### API
 
@@ -60,6 +75,16 @@ npm run build      # production build
   masjid construction is not one of the eight categories in Surah at-Tawbah (9:60).
 - **Totals are computed, never cached.** "Raised" is always
   `SUM(completed donations) + offline_raised_cents`, in SQL.
+- **Receipts follow settlement, not checkout.** `settleDonation()` is the single
+  point every provider converges on, so it is where the receipt goes out and
+  `email_log` is written. A mail failure is logged, never thrown — a paid
+  donation must not roll back because a mail service blinked.
+- **Monthly gifts are managed by a link, not an account.** The receipt carries a
+  256-bit token; `/giving/[token]` cancels at the provider and records the
+  instruction locally even if the provider call fails.
+- **Receipts never overstate the organisation.** Wording comes from `ORG_*` env
+  values, and with no registration number configured the receipt says so rather
+  than implying a charity status that does not exist.
 
 ## Going live
 
@@ -72,11 +97,13 @@ npm run build      # production build
    One-time gifts use Checkout in `payment` mode; monthly gifts use `subscription`
    mode with an inline monthly price. The simulator disables itself automatically
    once a live provider is configured.
-3. **Real projects** — set `SKIP_SEED=1` and load your own rows into `projects`,
-   `project_costs` and `project_updates` (see `src/db/schema.ts`).
-4. **Receipt email** — donations are recorded and the reference is shown on the
-   thank-you page, but no mail is sent yet. Wire a transactional email provider to
-   the settlement path in `src/lib/donations.ts`.
+3. **Email** — set `RESEND_API_KEY` and `EMAIL_FROM`, and add SPF and DKIM records
+   for the sending domain, or receipts land in spam.
+4. **Organisation** — set the `ORG_*` values so receipts carry the real
+   registration; until then they say plainly that none is configured.
+5. **Admin** — set `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`.
+6. **Real projects** — set `SKIP_SEED=1`, then add projects through `/admin`
+   (the sample rows only load into an unseeded database).
 
 Another payment provider (M-Pesa, PayPal, bank transfer reconciliation) means one
 new file implementing `PaymentProvider` in `src/lib/payments/` — nothing else in
@@ -84,10 +111,13 @@ the donation flow talks to a payment API.
 
 ## Not yet built
 
-- Receipt and monthly-reminder emails.
-- Donor accounts and self-service cancellation of monthly giving (the FAQ promises
-  a cancel link, which needs the email path above).
-- An admin surface for adding projects and posting build updates.
-- Multi-currency: amounts are stored per-donation with a currency, but the UI is
-  USD only.
-- Project photography — artwork is drawn in SVG (`src/components/MasjidScene.tsx`).
+- **M-Pesa, PayPal** — the provider boundary is ready; each is one adapter.
+- **Multi-currency** — donations carry a currency, but the UI and project budgets
+  are USD only. M-Pesa settles in KES, so this lands with that adapter.
+- **Abuse hardening** — no rate limit on `POST /api/donations` yet. Donation forms
+  are a standard target for card-testing; add limits plus Stripe Radar rules
+  before announcing the site publicly.
+- **Legal pages** — privacy, terms and refund policy.
+- **Real migrations** — schema is bootstrapped idempotently on boot, which is fine
+  so far but is not a migration history.
+- **Project photography** — artwork is drawn in SVG (`src/components/MasjidScene.tsx`).

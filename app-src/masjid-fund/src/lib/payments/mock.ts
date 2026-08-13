@@ -32,7 +32,12 @@ export class MockProvider implements PaymentProvider {
     return {
       reference: payload.reference ?? null,
       providerRef: payload.providerRef ?? null,
+      subscriptionRef: payload.reference ? `mock_sub_${payload.reference}` : null,
       status: payload.status,
     };
+  }
+
+  async cancelSubscription(): Promise<void> {
+    // Nothing to call — the donation row is marked cancelled by the caller.
   }
 }

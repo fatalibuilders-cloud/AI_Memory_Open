@@ -63,10 +63,40 @@ CREATE TABLE IF NOT EXISTS donations (
   completed_at timestamptz
 );
 
+-- Columns added after the first release. ADD COLUMN IF NOT EXISTS keeps the
+-- bootstrap safe to re-run against a database that already holds donations.
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS manage_token text;
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS subscription_ref text;
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS cancelled_at timestamptz;
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token text PRIMARY KEY,
+  email text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Delivery log, so support can answer "did my receipt go out?" without
+-- digging through the email provider's dashboard.
+CREATE TABLE IF NOT EXISTS email_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient text NOT NULL,
+  subject text NOT NULL,
+  kind text NOT NULL,
+  donation_reference text,
+  status text NOT NULL,
+  error text,
+  provider text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS donations_project_idx ON donations (project_id);
 CREATE INDEX IF NOT EXISTS donations_status_idx ON donations (status);
+CREATE UNIQUE INDEX IF NOT EXISTS donations_manage_token_idx ON donations (manage_token);
 CREATE INDEX IF NOT EXISTS project_costs_project_idx ON project_costs (project_id);
 CREATE INDEX IF NOT EXISTS project_updates_project_idx ON project_updates (project_id);
+CREATE INDEX IF NOT EXISTS email_log_reference_idx ON email_log (donation_reference);
 `;
 
 /**

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetDbForTests } from "@/db";
 import { DonationError } from "./donation";
-import { createDonation, getDonationByReference, settleDonation } from "./donations";
+import {
+  cancelMonthlyGiving,
+  createDonation,
+  getDonationByReference,
+  settleDonation,
+} from "./donations";
+import { resetEmailProviderForTests } from "./email";
 import { resetPaymentProviderForTests } from "./payments";
 import { getProjectBySlug, getFundStats, listRecentDonations } from "./projects";
 
@@ -17,6 +23,7 @@ const base = {
 beforeEach(() => {
   resetDbForTests();
   resetPaymentProviderForTests();
+  resetEmailProviderForTests();
 });
 
 describe("createDonation", () => {
@@ -107,6 +114,73 @@ describe("settleDonation", () => {
 
   it("returns null for a reference that does not exist", async () => {
     expect(await settleDonation({ reference: "MF-NOTHING" }, "completed")).toBeNull();
+  });
+});
+
+describe("monthly giving", () => {
+  const monthly = { ...base, frequency: "monthly" as const, projectSlug: GARISSA };
+
+  it("issues a management token for monthly gifts only", async () => {
+    const recurring = await createDonation(monthly);
+    const oneOff = await createDonation(base);
+
+    expect((await getDonationByReference(recurring.reference))?.manageToken).toBeTruthy();
+    expect((await getDonationByReference(oneOff.reference))?.manageToken).toBeNull();
+  });
+
+  it("records the provider's subscription reference on settlement", async () => {
+    const started = await createDonation(monthly);
+    await settleDonation(
+      { reference: started.reference, subscriptionRef: "sub_test_1" },
+      "completed",
+    );
+    expect((await getDonationByReference(started.reference))?.subscriptionRef).toBe("sub_test_1");
+  });
+
+  it("cancels from the donor's link and stays cancelled on a repeat click", async () => {
+    const started = await createDonation(monthly);
+    await settleDonation({ reference: started.reference }, "completed");
+    const token = (await getDonationByReference(started.reference))!.manageToken!;
+
+    const cancelled = await cancelMonthlyGiving(token);
+    expect(cancelled?.cancelledAt).toBeTruthy();
+
+    const again = await cancelMonthlyGiving(token);
+    expect(again?.cancelledAt).toBe(cancelled?.cancelledAt);
+  });
+
+  it("leaves money already given with its project after cancelling", async () => {
+    const before = await getProjectBySlug(GARISSA);
+    const started = await createDonation({ ...monthly, amountCents: 10000 });
+    await settleDonation({ reference: started.reference }, "completed");
+    const token = (await getDonationByReference(started.reference))!.manageToken!;
+    await cancelMonthlyGiving(token);
+
+    const after = await getProjectBySlug(GARISSA);
+    expect(after!.raisedCents).toBe(before!.raisedCents + 10000);
+  });
+
+  it("ignores an unknown or one-time token", async () => {
+    expect(await cancelMonthlyGiving("not-a-token")).toBeNull();
+    const oneOff = await createDonation(base);
+    const donation = await getDonationByReference(oneOff.reference);
+    expect(donation?.manageToken).toBeNull();
+  });
+});
+
+describe("receipts", () => {
+  it("marks a receipt as sent once the gift settles", async () => {
+    const started = await createDonation({ ...base, projectSlug: GARISSA });
+    expect((await getDonationByReference(started.reference))?.receiptSentAt).toBeNull();
+
+    await settleDonation({ reference: started.reference }, "completed");
+    expect((await getDonationByReference(started.reference))?.receiptSentAt).toBeTruthy();
+  });
+
+  it("sends no receipt for a failed payment", async () => {
+    const started = await createDonation({ ...base, projectSlug: GARISSA });
+    await settleDonation({ reference: started.reference }, "failed");
+    expect((await getDonationByReference(started.reference))?.receiptSentAt).toBeNull();
   });
 });
 

@@ -54,8 +54,19 @@ describe("StripeProvider.parseWebhook", () => {
     expect(event).toEqual({
       reference: "MF-ABCD1234",
       providerRef: "cs_123",
+      subscriptionRef: null,
       status: "completed",
     });
+  });
+
+  it("carries the subscription id through for a monthly gift", async () => {
+    const event = await parse({
+      type: "checkout.session.completed",
+      data: {
+        object: { id: "cs_m1", client_reference_id: "MF-MONTHLY1", subscription: "sub_9" },
+      },
+    });
+    expect(event).toMatchObject({ subscriptionRef: "sub_9", status: "completed" });
   });
 
   it("falls back to the metadata reference", async () => {

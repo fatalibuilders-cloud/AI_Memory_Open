@@ -30,6 +30,8 @@ export interface SettlementEvent {
   /** Our donation reference, recovered from the provider's payload. */
   reference: string | null;
   providerRef: string | null;
+  /** Recurring-agreement id, present when a monthly gift starts. */
+  subscriptionRef?: string | null;
   status: "completed" | "failed";
 }
 
@@ -52,4 +54,9 @@ export interface PaymentProvider {
    * not act on. Throws PaymentError when the signature does not verify.
    */
   parseWebhook(rawBody: string, headers: Headers): Promise<SettlementEvent | null>;
+  /**
+   * Stop a recurring agreement. Providers without recurring support, and the
+   * simulator, simply resolve — the donation is still marked cancelled here.
+   */
+  cancelSubscription(subscriptionRef: string): Promise<void>;
 }
