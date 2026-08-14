@@ -12,14 +12,20 @@ road design. Decision on scope + what was built.
   concrete block, with length + height → a costed "Boundary wall (external
   works)" BOQ section (trench, strip footing, walling by type). Default off.
 
-## Real new modules — buildable, but NOT a checkbox 🟡
-- **Timber-frame structure** and **steel-frame structure** are distinct structural
-  SYSTEMS. The current materials/cost engine is masonry + reinforced concrete.
-  Supporting them properly needs new quantity take-offs (timber: studs/plates/
-  joists/sheathing/fasteners; steel: sections/connections/base plates/cladding),
-  new rate data, and **licensed-engineer validation**. A first-pass estimator is
-  feasible as a follow-up module; it must not be presented as accurate without
-  validation. **Deferred pending owner go-ahead + rate data.**
+## Scope expanded by owner (2026-08-13): residential + commercial, 4 systems ✅ BUILT
+Owner directed: "let the app focus in residential and commercial projects —
+masonry, steel, concrete, timber." Built:
+- **projectCategory**: residential (default) | commercial. Commercial applies a
+  denser services multiplier (lighting/sockets ×1.6, toilets ×1.4).
+- **structureType**: masonry (load-bearing, no RC columns) | concrete_frame (RC,
+  the baseline; unset = this so existing estimates unchanged) | steel_frame
+  (structural steel ~55 kg/m² + metal-deck floors) | timber_frame (timber frame +
+  timber floors). Rates added: structuralSteelKg, metalDeckFloorM2, timberFrameM2,
+  timberFloorM2. Wizard selects + 5-language labels + review.
+- **Steel & timber remain INDICATIVE first-pass** (labelled in the UI/sections):
+  the ~55 kg/m² steel metric and timber per-m² rates are planning figures that
+  **must be validated by a licensed engineer** with real rate data before relied
+  on — same accuracy bar as the residential rate card.
 
 ## Out of scope — separate engineering products 🔴 (deliberately NOT faked)
 - **Bridges, stadiums, and roads** are different engineering disciplines (bridge
