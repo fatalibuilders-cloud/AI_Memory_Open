@@ -55,3 +55,21 @@ must clear the same accuracy bar (owner-engineer sign-off) before it ships as
   `Product_Development/Civil-Infrastructure-Product-Plan.md`. Separate product,
   roads-first, engineer-validated rate cards required. Not built into the house app.
 - Max floors raised to 23 (high-rise).
+
+## Renders/drawings expansion (2026-08-13) ✅
+Owner asked if the app generates renders like architect Lumion/Enscape images.
+Honest position: the app makes INDICATIVE drawings from dimensions, not
+photoreal architect renders (it has no room layout or 3D model). Built the
+realistic set (owner picked all):
+- **Concept sheet** (`lib/concept-sheet-pdf.ts`, `/api/projects/[id]/concept`):
+  shareable landscape PDF — massing render + spec + area/budget + 2D/structural
+  plans. DrawingsView "Concept sheet" button.
+- **AI concept render** (`lib/render-ai.ts`, `/api/projects/[id]/render-ai`):
+  photoreal-STYLE image via an image API when IMAGE_API_URL+IMAGE_API_KEY set
+  (mock-until-keys → schematic fallback). Illustrative concept, not final design.
+- **Room-layout floor plans** (`roomFloorPlanSvg`, `roomSchema` + `rooms[]`,
+  `RoomsEditor`, `/projects/[id]/rooms`, `?type=rooms&floor=N`): buyers list
+  rooms → real room-by-room 2D plan per floor (auto-packed schematic, not an
+  architect's design).
+- Schematic massing/plan drawings retained as the always-on fallback.
+Photoreal, to-scale architectural renders remain an architect's job (referred out).
