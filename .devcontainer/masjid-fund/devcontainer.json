@@ -1,0 +1,19 @@
+{
+  "name": "Masjid Fund",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/app-src/masjid-fund",
+  "onCreateCommand": "cd /workspaces/${localWorkspaceFolderBasename}/app-src/masjid-fund && npm install",
+  "postAttachCommand": "npm run dev",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Masjid Fund",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { TestModeBanner } from "@/components/TestModeBanner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        <TestModeBanner />
         <Header />
         <main id="main" className="flex-1">
           {children}

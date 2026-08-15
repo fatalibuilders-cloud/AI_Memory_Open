@@ -42,8 +42,25 @@ async function init(): Promise<Db> {
     };
   }
 
+  // A production deployment with no DATABASE_URL would run on a disposable
+  // database — donations recorded there vanish with the container. That is fine
+  // for a shared test deployment, but only when it is asked for explicitly.
+  const ephemeral = process.env.ALLOW_EPHEMERAL_DB === "1";
+  if (process.env.NODE_ENV === "production" && !ephemeral) {
+    throw new Error(
+      "DATABASE_URL is not set. Point it at a managed PostgreSQL instance, or set " +
+        "ALLOW_EPHEMERAL_DB=1 to run a throwaway test deployment whose donations are lost on restart.",
+    );
+  }
+  if (ephemeral) {
+    console.warn(
+      "[db] Running on an in-memory database — every donation is lost when this instance restarts.",
+    );
+  }
+
   const { PGlite } = await import("@electric-sql/pglite");
-  const target = process.env.NODE_ENV === "test" ? "memory://" : ".pglite";
+  const target =
+    process.env.NODE_ENV === "test" || ephemeral ? "memory://" : ".pglite";
   const pglite = new PGlite(target);
   await pglite.exec(BOOTSTRAP_SQL);
   if (process.env.SKIP_SEED !== "1") await pglite.exec(SEED_SQL);

@@ -102,8 +102,19 @@ export default async function AdminDonationsPage({
                 </td>
                 <td className="p-3">
                   {donation.status}
-                  {donation.cancelledAt && (
+                  {donation.cancelledAt ? (
                     <span className="block text-xs text-sand-700">cancelled</span>
+                  ) : (
+                    donation.frequency === "monthly" &&
+                    donation.manageToken && (
+                      // Support link: cancel on behalf of a donor who lost their receipt.
+                      <a
+                        href={`/giving/${donation.manageToken}`}
+                        className="block text-xs font-medium text-masjid-700 hover:underline"
+                      >
+                        manage
+                      </a>
+                    )
                   )}
                 </td>
                 <td className="p-3 text-xs text-sand-700">

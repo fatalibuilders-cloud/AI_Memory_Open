@@ -10,6 +10,16 @@ export class ConsoleProvider implements EmailProvider {
   readonly live = false;
 
   async send(message: EmailMessage): Promise<void> {
-    console.info(`[email:not-sent] to=${message.to} subject="${message.subject}"`);
+    // The plain-text body is printed too, so that while testing you can read
+    // the receipt — and follow the monthly-giving link it carries — without a
+    // mail service. Production always has a real provider configured.
+    console.info(
+      [
+        `[email:not-sent] to=${message.to}`,
+        `subject: ${message.subject}`,
+        message.text,
+        "[end of message]",
+      ].join("\n"),
+    );
   }
 }
