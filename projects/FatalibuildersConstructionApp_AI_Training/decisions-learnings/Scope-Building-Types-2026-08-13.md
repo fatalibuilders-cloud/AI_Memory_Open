@@ -42,3 +42,16 @@ masonry, steel, concrete, timber." Built:
 The moat is *credible, design-code-accurate* estimates. Every added building type
 must clear the same accuracy bar (owner-engineer sign-off) before it ships as
 "real," exactly like the residential rate card and services/fittings assumptions.
+
+## Contracts module + Civil plan (2026-08-13) ✅
+- **Contracts (JBCC/JBC-aligned):** built — `lib/contract-pdf.ts`,
+  `/api/projects/[id]/contract`, `ContractGenerator` on the project page (paid).
+  Generates project-specific **subcontractor** and **materials-supply**
+  agreements as PDFs (parties/scope/amount → numbered clauses + signature
+  blocks). **Original wording** aligned to JBCC/JBC principles — NOT the
+  copyrighted forms — with a "template, review with a lawyer, adopt official
+  JBCC/JBC forms" disclaimer on every page.
+- **Civil/Infrastructure (bridges/stadiums/roads):** plan only —
+  `Product_Development/Civil-Infrastructure-Product-Plan.md`. Separate product,
+  roads-first, engineer-validated rate cards required. Not built into the house app.
+- Max floors raised to 23 (high-rise).
