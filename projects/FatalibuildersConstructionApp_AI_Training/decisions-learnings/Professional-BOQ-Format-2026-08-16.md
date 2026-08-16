@@ -52,3 +52,40 @@ pattern is safe for the other PDF exporters.)
 ## Files
 - app: `src/lib/boq-pdf.ts`, `src/lib/boq-pdf.test.ts`,
   `src/app/api/projects/[id]/boq/route.ts`, `src/components/ExportBar.tsx`.
+
+## Follow-up (same day): consultants + PC sums, and drawing analysis ✅
+Owner: "yes [add consultants + PC sums to the wizard]" and "put an option of
+uploading pdf architectural and structural drawings including DWG or revit …
+it analyze and give out the data"; then clarified: "come up with realistic
+renders and numbers" and "can the app analyze the documents **without storing
+them**". Built both.
+
+### Project team + provisional sums on the BOQ
+- schema: optional `consultants[]` (role/name/address) and `provisionalSums[]`
+  (label/amountKes) on `ProjectData`.
+- wizard: optional "Professional details" section on the review step.
+- boq-pdf: cover prints the supplied team; grand summary lists each PC/
+  provisional sum and rolls it into the contract sum (and the form of tender).
+
+### In-memory drawing analysis (NO storage)
+`lib/drawing-analysis.ts` + `/api/projects/[id]/analyze-drawing` (POST multipart)
++ `DrawingAnalyzer` + `/projects/[id]/analyze`. **The file is parsed in memory
+and discarded — never written to disk/blob** (owner's explicit choice; also the
+right privacy default, and sidesteps Vercel's lack of file storage).
+- **DXF** (AutoCAD export) → bounding-box footprint in metres (via `$INSUNITS`),
+  entity/label counts. Real geometry.
+- **IFC** (Revit export) → storeys, walls/slabs/columns/beams/doors/windows
+  counts, space names, and areas/volumes from `IfcElementQuantity`. Real BIM data.
+- **PDF** → best-effort embedded text (handles hex `<...>` string tokens) +
+  detected `L × W` dimension pairs. **Advisory only** — a picture is not a
+  measured take-off.
+- **DWG / RVT** → closed binaries; detected only, with a one-click "export DXF/
+  IFC" instruction. (Cannot be read in a serverless app without a paid CAD cloud
+  — same honesty line as bridges/renders: don't fake it.)
+- Extracted inputs merge into the project → indicative estimate + render, and an
+  "Apply to project" (PUT) so the BOQ/drawings pick them up. Everything labelled
+  "indicative — verify with a licensed QS/engineer".
+
+Honesty reminder given to owner: real auto-quantities come from **IFC/DXF**;
+PDF is text/suggestion; DWG/RVT need export. Numbers still gated on validating
+the rate card with a QS. Suite: 217 green; tsc/lint/build clean.
