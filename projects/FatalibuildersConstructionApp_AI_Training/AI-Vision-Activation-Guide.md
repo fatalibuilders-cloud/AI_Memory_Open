@@ -95,9 +95,18 @@ Pricing changes; treat these as ballpark and check the provider's live rates.
   enough to run per upload. `gpt-4o` is more accurate but several times pricier.
 - **Image generation (`gpt-image-1` / `dall-e-3`)** — on the order of **~US$0.04
   per 1024×1024 image** at standard quality. This runs once per render.
-- **Control spend:** both features are paywalled (only lifetime buyers can call
-  them), and you can set a monthly usage cap in the OpenAI dashboard. If you want a
-  hard per-user or per-day limit in the app itself, that's a small add — ask.
+- **Control spend:** three layers protect the bill:
+  1. Both features are **paywalled** — only lifetime buyers can call them.
+  2. A built-in **per-user daily cap** (default **25 AI reads + 25 renders per user
+     per day**), set in Vercel env:
+     ```
+     AI_VISION_DAILY_LIMIT=25   # AI drawing reads / user / day (0 = unlimited)
+     AI_RENDER_DAILY_LIMIT=25   # AI renders / user / day (0 = unlimited)
+     AI_DAILY_LIMIT=            # optional fallback for both
+     ```
+     Over the cap, the app quietly returns the free schematic render / skips the AI
+     read (the deterministic DXF/IFC/PDF extraction still runs) — no error, no spend.
+  3. Your **provider spend cap** in the OpenAI dashboard as the hard backstop.
 
 ---
 
