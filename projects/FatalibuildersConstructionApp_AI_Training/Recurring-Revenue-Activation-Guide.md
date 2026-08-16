@@ -59,9 +59,27 @@ the app never moves money on its own. Keep the promise within `GUARANTEE_DAYS`.
 
 ---
 
+## SMS reminders (Africa's Talking) ✅ built
+Phone capture is live: optional phone at signup + editable on the account page
+(`users.phone`). The renewal cron texts users who gave a number. Turn on:
+```
+AT_USERNAME=            # Africa's Talking username ("sandbox" for testing)
+AT_API_KEY=             # AT API key
+AT_ENV=production       # or "sandbox"
+AT_SENDER=              # optional short-code / alphanumeric sender id
+```
+Until set, SMS is logged only (mock). `normalizePhone` maps 07../254../+254.. to
+E.164; only people with a number are texted.
+
+## Coupons / launch discounts ✅ built
+Percent-off codes (correct across USD & KES). Manage at **/admin/coupons**
+(owner-only): code, % off, product scope (any/lifetime/pro), max redemptions,
+expiry, active. Buyers enter a code on /pricing → `/api/coupon/validate` previews
+the discount; it's applied at checkout and redeemed on completion (redemption
+count enforced). e.g. create `LAUNCH50` = 50% off, 100 redemptions, expires in a
+month for the first wave.
+
 ## Not yet built (noted)
-- **SMS reminders** — the app doesn't collect phone numbers yet; add a phone field
-  at signup/checkout + an SMS provider (Africa's Talking/Twilio) to enable.
 - **True card auto-renew** (Paddle recurring subscriptions + renewal webhooks) —
   optional; the prepaid + reminder model gives predictable revenue without it.
 
