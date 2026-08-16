@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApplicationError, submitApplication } from "@/lib/applications";
 import { FILE_KINDS, FileError, validateUpload, type FileKind, type StoredFile } from "@/lib/files";
 import { parseAmountToCents } from "@/lib/money";
+import { clientIp } from "@/lib/rate-limit";
 
 /**
  * Public application intake. Multipart because of the documents; every file is
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
         consentPublish: form.get("consentPublish") === "on",
       },
       files,
-      { ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null },
+      { ip: clientIp(req.headers) },
     );
 
     return NextResponse.json(result, { status: 201 });

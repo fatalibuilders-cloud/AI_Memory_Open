@@ -61,12 +61,19 @@ export function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-sand-200/70 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-xs text-sand-200/70 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Masjid Fund. All rights reserved.</p>
-          <p>
-            Project figures are published from the build accounts. Donation receipts are
-            issued by email for every completed gift.
-          </p>
+          <nav className="flex flex-wrap gap-4">
+            <Link href="/privacy" className="hover:text-white">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-white">
+              Terms
+            </Link>
+            <Link href="/refunds" className="hover:text-white">
+              Refunds
+            </Link>
+          </nav>
         </div>
       </div>
     </footer>

@@ -38,6 +38,7 @@ npm run build      # production build
 | `/apply/status/[token]` | Applicant tracks the review and reads what is still needed |
 | `/checkout/[reference]` | Simulated hosted checkout (test mode only) |
 | `/about`, `/faq` | Governance, and the zakat/sadaqah questions donors ask |
+| `/privacy`, `/terms`, `/refunds` | Policies, filled in from the `ORG_*` values at request time |
 
 ### Admin
 
@@ -97,6 +98,10 @@ sign-in altogether.
   leading bytes, not the browser's content type; filenames are stripped of paths
   and odd characters; documents are served only to a signed-in staff session, as
   attachments, with `nosniff` and a `sandbox` CSP.
+- **Submissions are throttled by counting rows, not by an in-memory counter.**
+  That survives restarts and works across serverless instances. Limits live in
+  `src/lib/rate-limit.ts`; addresses are stored only as salted hashes, so the
+  table never holds a reversible IP.
 
 ## Going live
 
@@ -126,10 +131,12 @@ the donation flow talks to a payment API.
 - **M-Pesa, PayPal** — the provider boundary is ready; each is one adapter.
 - **Multi-currency** — donations carry a currency, but the UI and project budgets
   are USD only. M-Pesa settles in KES, so this lands with that adapter.
-- **Abuse hardening** — no rate limit on `POST /api/donations` yet. Donation forms
-  are a standard target for card-testing; add limits plus Stripe Radar rules
-  before announcing the site publicly. (Applications are already throttled per
-  email address and per network.)
+- **Stripe Radar rules** — the app throttles donation attempts per email and per
+  network, but the provider-side fraud rules still need configuring when the
+  Stripe account is live.
+- **Legal review** — the privacy, terms and refund pages are written to match what
+  the code actually does, but they are drafts. A Kenyan advocate should read them
+  against your registration before you take public donations.
 - **Object storage for documents** — uploads live in the database, capped at 4 MB
   each. That is a real constraint for large drawing sets, and serverless hosts cap
   request bodies around the same size. `src/lib/files/` is where an S3 or R2

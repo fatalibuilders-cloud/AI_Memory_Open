@@ -134,14 +134,24 @@ stay with their project, and show no cancel button when you revisit it.
    can never run as a formula.
 5. **Sign out**, then visit `/admin` again — it should send you back to sign-in.
 
+### Abuse limits and policies
+
+- **Try to hammer the donation form.** Twelve attempts an hour from one network,
+  or six from one email address, and the next is refused with a plain message.
+  Giving to two or three projects in one sitting stays well inside that.
+- **Read `/privacy`, `/terms` and `/refunds`.** They are linked in the footer and
+  fill themselves in from the `ORG_*` environment values — set those and the
+  registration number appears; leave them unset and the pages say so rather than
+  implying a charity status. These are drafts: an advocate should read them
+  against your registration before you take public donations.
+
 ## What is deliberately not there yet
 
 - **M-Pesa, PayPal, bank-transfer instructions** — Stripe is written and tested
   but inactive until keys are set; the other rails come next.
 - **Prices are USD.** Multi-currency lands with M-Pesa, which settles in KES.
-- **No rate limiting** on the donation endpoint yet. Fine for testing, needs to
-  be in place before the site is public.
-- **No privacy, terms or refund pages.**
+- **Stripe Radar rules** are not configured — the app's own throttling is in
+  place, but the provider-side fraud rules wait on a live Stripe account.
 - **The five listed masajid are sample data** — plausible but invented, so that
   there is something to click. Replace them through `/admin` before launch.
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetDbForTests } from "@/db";
+import { getDb, resetDbForTests } from "@/db";
+import { DONATION_LIMITS, hashIp } from "./rate-limit";
 import { DonationError } from "./donation";
 import {
   cancelMonthlyGiving,
@@ -114,6 +115,49 @@ describe("settleDonation", () => {
 
   it("returns null for a reference that does not exist", async () => {
     expect(await settleDonation({ reference: "MF-NOTHING" }, "completed")).toBeNull();
+  });
+});
+
+describe("abuse limits", () => {
+  it("stops a burst of attempts from one network before they reach the provider", async () => {
+    const ip = "203.0.113.9";
+    for (let i = 0; i < DONATION_LIMITS.perIp.max; i++) {
+      // Vary the email so the per-address limit is not what trips first.
+      await createDonation({ ...base, donorEmail: `donor${i}@example.com` }, { ip });
+    }
+    await expect(
+      createDonation({ ...base, donorEmail: "one-more@example.com" }, { ip }),
+    ).rejects.toMatchObject({ status: 429 });
+  });
+
+  it("stops repeat attempts from one address even across networks", async () => {
+    for (let i = 0; i < DONATION_LIMITS.perEmail.max; i++) {
+      await createDonation(base, { ip: `198.51.100.${i}` });
+    }
+    await expect(createDonation(base, { ip: "198.51.100.200" })).rejects.toMatchObject({
+      status: 429,
+    });
+  });
+
+  it("lets an ordinary donor give to several projects in one sitting", async () => {
+    const ip = "192.0.2.44";
+    for (const slug of [GARISSA, null, GARISSA]) {
+      const started = await createDonation({ ...base, projectSlug: slug }, { ip });
+      expect(started.reference).toBeTruthy();
+    }
+  });
+
+  it("stores only a hash of the address, never the address itself", async () => {
+    const ip = "203.0.113.55";
+    const started = await createDonation(base, { ip });
+    const db = await getDb();
+    const [row] = await db.query<{ ip_hash: string | null }>(
+      "SELECT ip_hash FROM donations WHERE reference = $1",
+      [started.reference],
+    );
+    expect(row.ip_hash).toBeTruthy();
+    expect(row.ip_hash).not.toContain("203.0.113");
+    expect(row.ip_hash).toBe(hashIp(ip));
   });
 });
 

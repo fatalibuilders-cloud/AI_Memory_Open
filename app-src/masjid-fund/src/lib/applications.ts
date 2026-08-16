@@ -1,4 +1,3 @@
-import { createHash } from "crypto";
 import { getDb } from "@/db";
 import {
   ApplicationError,
@@ -18,6 +17,7 @@ import {
   type StoredFile,
 } from "./files";
 import { toCents } from "./money";
+import { APPLICATION_LIMITS, countRecent, hashIp } from "./rate-limit";
 import { newManageToken } from "./reference";
 
 export * from "./application";
@@ -62,10 +62,6 @@ export interface Application extends ApplicationInput {
 }
 
 const REQUIRED_KINDS: FileKind[] = ["title_deed", "drawings", "boq"];
-
-/** Applications per contact address, and per network, within a day. */
-const MAX_PER_EMAIL_PER_DAY = 3;
-const MAX_PER_IP_PER_DAY = 10;
 
 export async function submitApplication(
   raw: unknown,
@@ -285,12 +281,13 @@ async function recordEvent(
 }
 
 async function assertNotFlooding(email: string, ipHash: string | null): Promise<void> {
-  const db = await getDb();
-  const [byEmail] = await db.query<{ count: string | number }>(
-    "SELECT COUNT(*) AS count FROM applications WHERE contact_email = $1 AND created_at > now() - interval '1 day'",
-    [email],
+  const byEmail = await countRecent(
+    "applications",
+    "contact_email",
+    email,
+    APPLICATION_LIMITS.perEmail.minutes,
   );
-  if (Number(byEmail?.count ?? 0) >= MAX_PER_EMAIL_PER_DAY) {
+  if (byEmail >= APPLICATION_LIMITS.perEmail.max) {
     throw new ApplicationError(
       "We already have several applications from this address today. Email us if you need to add anything to them.",
       429,
@@ -298,11 +295,13 @@ async function assertNotFlooding(email: string, ipHash: string | null): Promise<
   }
 
   if (!ipHash) return;
-  const [byIp] = await db.query<{ count: string | number }>(
-    "SELECT COUNT(*) AS count FROM applications WHERE ip_hash = $1 AND created_at > now() - interval '1 day'",
-    [ipHash],
+  const byIp = await countRecent(
+    "applications",
+    "ip_hash",
+    ipHash,
+    APPLICATION_LIMITS.perIp.minutes,
   );
-  if (Number(byIp?.count ?? 0) >= MAX_PER_IP_PER_DAY) {
+  if (byIp >= APPLICATION_LIMITS.perIp.max) {
     throw new ApplicationError("Too many applications from this connection today.", 429);
   }
 }
@@ -311,12 +310,6 @@ async function assertNotFlooding(email: string, ipHash: string | null): Promise<
 function listPhrase(items: string[]): string {
   if (items.length <= 1) return items[0] ?? "";
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
-
-/** Salted so the applications table never holds a reversible address. */
-function hashIp(ip: string): string {
-  const salt = process.env.IP_HASH_SALT ?? "masjid-fund";
-  return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }
 
 function newApplicationReference(): string {

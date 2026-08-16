@@ -69,6 +69,8 @@ ALTER TABLE donations ADD COLUMN IF NOT EXISTS manage_token text;
 ALTER TABLE donations ADD COLUMN IF NOT EXISTS subscription_ref text;
 ALTER TABLE donations ADD COLUMN IF NOT EXISTS cancelled_at timestamptz;
 ALTER TABLE donations ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;
+-- Salted hash of the submitting address, for throttling only.
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS ip_hash text;
 
 CREATE TABLE IF NOT EXISTS admin_sessions (
   token text PRIMARY KEY,
@@ -153,6 +155,8 @@ CREATE INDEX IF NOT EXISTS application_documents_application_idx ON application_
 CREATE INDEX IF NOT EXISTS application_events_application_idx ON application_events (application_id);
 CREATE INDEX IF NOT EXISTS donations_project_idx ON donations (project_id);
 CREATE INDEX IF NOT EXISTS donations_status_idx ON donations (status);
+CREATE INDEX IF NOT EXISTS donations_ip_hash_idx ON donations (ip_hash, created_at);
+CREATE INDEX IF NOT EXISTS applications_ip_hash_idx ON applications (ip_hash, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS donations_manage_token_idx ON donations (manage_token);
 CREATE INDEX IF NOT EXISTS project_costs_project_idx ON project_costs (project_id);
 CREATE INDEX IF NOT EXISTS project_updates_project_idx ON project_updates (project_id);

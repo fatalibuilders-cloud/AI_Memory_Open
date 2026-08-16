@@ -10,6 +10,7 @@ import {
 import { sendCancellation, sendReceipt } from "./email";
 import { DEFAULT_CURRENCY, toCents } from "./money";
 import { appUrl, getPaymentProvider } from "./payments";
+import { DONATION_LIMITS, countRecent, hashIp } from "./rate-limit";
 import { newDonationReference, newManageToken } from "./reference";
 
 /**
@@ -50,9 +51,15 @@ export interface StartedDonation {
   liveMode: boolean;
 }
 
-export async function createDonation(raw: unknown): Promise<StartedDonation> {
+export async function createDonation(
+  raw: unknown,
+  meta: { ip?: string | null } = {},
+): Promise<StartedDonation> {
   const input = parseDonationInput(raw);
   const db = await getDb();
+
+  const ipHash = meta.ip ? hashIp(meta.ip) : null;
+  await assertWithinDonationLimits(input.donorEmail, ipHash);
 
   let projectId: string | null = null;
   let projectName: string | null = null;
@@ -90,8 +97,8 @@ export async function createDonation(raw: unknown): Promise<StartedDonation> {
   await db.query(
     `INSERT INTO donations
        (reference, project_id, amount_cents, currency, frequency, intent,
-        donor_name, donor_email, anonymous, dedication, message, status, provider, manage_token)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13)`,
+        donor_name, donor_email, anonymous, dedication, message, status, provider, manage_token, ip_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13, $14)`,
     [
       reference,
       projectId,
@@ -106,6 +113,7 @@ export async function createDonation(raw: unknown): Promise<StartedDonation> {
       input.message || null,
       provider.name,
       manageToken,
+      ipHash,
     ],
   );
 
@@ -133,6 +141,32 @@ export async function createDonation(raw: unknown): Promise<StartedDonation> {
     checkoutUrl: session.checkoutUrl,
     liveMode: provider.liveMode,
   };
+}
+
+/**
+ * Stolen cards are validated by firing many small donations at a form, so a
+ * burst from one source is stopped before it reaches the payment provider —
+ * where each attempt would cost a fee and count against the account's fraud
+ * ratio. The wording stays neutral: a real donor who has hit the limit should
+ * not be told they look like a criminal.
+ */
+async function assertWithinDonationLimits(email: string, ipHash: string | null): Promise<void> {
+  const tooMany = new DonationError(
+    "We have taken several donation attempts from here recently. Please wait a few minutes and try again, or email us and we will take it manually.",
+    429,
+  );
+
+  const byEmail = await countRecent(
+    "donations",
+    "donor_email",
+    email,
+    DONATION_LIMITS.perEmail.minutes,
+  );
+  if (byEmail >= DONATION_LIMITS.perEmail.max) throw tooMany;
+
+  if (!ipHash) return;
+  const byIp = await countRecent("donations", "ip_hash", ipHash, DONATION_LIMITS.perIp.minutes);
+  if (byIp >= DONATION_LIMITS.perIp.max) throw tooMany;
 }
 
 export function describeDonation(projectName: string | null, intent: Intent): string {
