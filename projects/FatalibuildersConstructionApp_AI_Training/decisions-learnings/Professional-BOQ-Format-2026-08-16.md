@@ -89,3 +89,19 @@ right privacy default, and sidesteps Vercel's lack of file storage).
 Honesty reminder given to owner: real auto-quantities come from **IFC/DXF**;
 PDF is text/suggestion; DWG/RVT need export. Numbers still gated on validating
 the rate card with a QS. Suite: 217 green; tsc/lint/build clean.
+
+### Follow-up: IFC→rooms + AI vision read ("all of them") ✅ 224 green
+- **IFC spaces → room list** (`extractIfcRooms`): walks the STEP graph — IfcSpace
+  → IfcRelDefinesByProperties → IfcElementQuantity → IfcQuantityArea (area, room
+  size = √area), and IfcRelAggregates(storey→spaces) for the floor number. Applying
+  it populates `data.rooms` so the room-layout plan draws itself from the model.
+  Gotcha fixed: the RelatingObject is the **last #ref before the related ()-list**
+  (GlobalId/OwnerHistory/etc. come first), not `refs[0]`.
+- **AI vision read** (`lib/drawing-vision.ts`, mock-until-keys on VISION_API_URL/
+  KEY/MODEL): rasterize first PDF page via **mupdf (WASM, dynamic import, server
+  only)** or an uploaded image via sharp → OpenAI-compatible vision chat → strict
+  JSON {footprintLengthM,footprintWidthM,floors,rooms[]}. Parsed + bounded
+  (`parseVisionSuggestion`), shown as a **separate "AI suggestion — verify"** block
+  with its own apply (`aiMergedData`). Deterministic extraction unchanged when no
+  vision key. New dep: `mupdf`.
+- Env: added VISION_API_URL / VISION_API_KEY / VISION_API_MODEL to `.env.example`.
