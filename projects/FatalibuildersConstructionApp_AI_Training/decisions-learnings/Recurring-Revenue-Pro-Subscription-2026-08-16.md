@@ -54,6 +54,19 @@ ids for the Pro plans.
 - `CRON_SECRET` for the renewal cron (already used by the social cron).
 - Decide final price points; consider a launch discount.
 
+## Conversion model — "combine free preview + free trial + guarantee" ✅
+Owner chose to combine the free-preview model with the free-trial + money-back
+guarantee (make paying feel safe). Layered on:
+- Pricing page: "See your full estimate free" hero + badge row (free trial ·
+  money-back guarantee · cancel anytime · sample link) + reassurance panel
+  (guarantee, secure checkout, M-Pesa/Visa/Mastercard, "we never store your PIN").
+- `GUARANTEE_DAYS` env (default 14) drives the messaging (matches the existing
+  14-day guarantee in the refund legal page).
+- **Actionable guarantee:** `/api/refund-request` records the request
+  (`REFUND_REQUESTED` event → owner processes the provider-side refund) and cancels
+  any active subscription; `RefundRequest` control on the account page for paid
+  users. Honest MVP — money movement stays provider-side.
+
 ## Files
 `pricing.ts`, `subscriptions.ts`, `auth.ts`, `payments.ts`, `paddle.ts`,
 `db/schema.ts`, `app/pricing/page.tsx`, `components/PlanChooser.tsx`,
