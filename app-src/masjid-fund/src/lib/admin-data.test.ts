@@ -195,6 +195,7 @@ describe("donationsToCsv", () => {
     projectName: "Masjid al-Noor",
     cancelledAt: null,
     receiptSentAt: null,
+    manageToken: null,
   };
 
   it("writes a header and formats money in whole units", () => {

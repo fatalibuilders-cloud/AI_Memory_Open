@@ -5,7 +5,12 @@ import { appUrl } from "@/lib/payments";
 import { ConsoleProvider } from "./console";
 import { ResendProvider } from "./resend";
 import type { EmailMessage, EmailProvider } from "./provider";
-import { cancellationEmail, receiptEmail } from "./templates";
+import {
+  applicationReceivedEmail,
+  applicationStatusEmail,
+  cancellationEmail,
+  receiptEmail,
+} from "./templates";
 
 export * from "./provider";
 
@@ -93,4 +98,46 @@ export async function sendReceipt(donation: Donation): Promise<boolean> {
 
 export async function sendCancellation(donation: Donation): Promise<boolean> {
   return deliver(cancellationEmail(donation, getOrg()), "cancellation", donation.reference);
+}
+
+export async function sendApplicationReceived(application: {
+  reference: string;
+  masjidName: string;
+  contactName: string;
+  contactEmail: string;
+  manageToken: string;
+}): Promise<boolean> {
+  return deliver(
+    applicationReceivedEmail(
+      application,
+      getOrg(),
+      `${appUrl()}/apply/status/${application.manageToken}`,
+    ),
+    "application_received",
+    application.reference,
+  );
+}
+
+export async function sendApplicationStatus(
+  application: {
+    reference: string;
+    masjidName: string;
+    contactName: string;
+    contactEmail: string;
+    status: string;
+    manageToken: string;
+    projectSlug: string | null;
+  },
+  statusLabel: string,
+  note: string | null,
+): Promise<boolean> {
+  const base = appUrl();
+  return deliver(
+    applicationStatusEmail(application, statusLabel, note, getOrg(), {
+      statusUrl: `${base}/apply/status/${application.manageToken}`,
+      projectUrl: application.projectSlug ? `${base}/projects/${application.projectSlug}` : null,
+    }),
+    "application_status",
+    application.reference,
+  );
 }

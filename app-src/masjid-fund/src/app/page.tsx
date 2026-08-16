@@ -221,6 +221,28 @@ export default async function Home() {
         </section>
       )}
 
+      {/* For communities */}
+      <section className="border-y border-sand-200 bg-sand-100 py-16">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="font-display text-2xl font-semibold sm:text-3xl">
+              Building a masjid? Apply to be funded.
+            </h2>
+            <p className="mt-2 leading-relaxed text-sand-700">
+              If your community has the land titled and drawings prepared, send us the deed, the
+              drawings and your bill of quantities. We verify each one and visit the site — and if
+              it is approved, your masjid is published here for donors to fund.
+            </p>
+          </div>
+          <Link
+            href="/apply"
+            className="shrink-0 rounded-xl bg-masjid-700 px-6 py-3.5 font-semibold text-white hover:bg-masjid-800"
+          >
+            Apply for funding
+          </Link>
+        </div>
+      </section>
+
       {/* Closing CTA */}
       <section className="mx-auto max-w-4xl px-4 pb-24 text-center">
         <h2 className="font-display text-3xl font-semibold sm:text-4xl">

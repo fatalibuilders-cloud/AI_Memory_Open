@@ -93,6 +93,33 @@ Make a monthly donation, open the link from the receipt (or the *manage* link in
 admin), and cancel. The page should confirm the cancellation, say that past gifts
 stay with their project, and show no cancel button when you revisit it.
 
+### As a community applying for funding
+
+1. **`/apply`** — fill it in and attach documents. Any PDF, JPG or PNG will do for
+   testing; the three marked *required* must be there.
+2. **Try to fool it.** Rename a `.txt` or `.docx` to `.pdf` and attach it — it is
+   rejected, because the format is read from the file's leading bytes rather than
+   its name. Submitting without the bill of quantities is refused too.
+3. **Submit properly.** You get a reference and a tracking link, and the same link
+   is printed to the terminal as an email.
+4. **Check nothing leaked.** The masjid should *not* appear on `/projects` — an
+   application is private until staff publish it.
+5. **Open your status page** and confirm it lists the documents you sent without
+   exposing them.
+
+### As staff reviewing an application
+
+1. **`/admin/applications`** — open the one you just sent.
+2. **Download a document.** It saves rather than opening in the browser. Copy that
+   URL into a private window: it returns 401, not the file.
+3. **Ask for more information** with the note empty — it refuses, because the note
+   is what the applicant actually reads. Write one, then check it appears on the
+   applicant's status page.
+4. **Publish it as a project.** Check the budget and summary first — this is the
+   step that makes it public and sets the fundraising goal. The masjid should now
+   be on `/projects`, and the applicant's status page should show it as approved
+   with a link to the live page.
+
 ### As staff
 
 1. **`/admin`** — the dashboard flags anything unconfigured, which on a test run

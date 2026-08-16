@@ -34,6 +34,8 @@ npm run build      # production build
 | `/donate` | Donation form — amount, one-time/monthly, project, intent, dedication |
 | `/donate/thank-you` | Receipt with reference and donation status |
 | `/giving/[token]` | Donor self-service: view and cancel a monthly gift, no account needed |
+| `/apply` | Communities apply for funding — details plus title deed, drawings and BoQ |
+| `/apply/status/[token]` | Applicant tracks the review and reads what is still needed |
 | `/checkout/[reference]` | Simulated hosted checkout (test mode only) |
 | `/about`, `/faq` | Governance, and the zakat/sadaqah questions donors ask |
 
@@ -47,6 +49,7 @@ sign-in altogether.
 | Route | Purpose |
 | --- | --- |
 | `/admin` | Totals, latest donations, and warnings for anything not configured |
+| `/admin/applications` | Review applications, read the documents, decide, publish |
 | `/admin/projects` | Add and edit projects, costed items and build updates |
 | `/admin/donations` | Filterable ledger; record bank-transfer or cash gifts |
 | `/admin/donations/export` | CSV of the ledger for the accounts |
@@ -85,6 +88,15 @@ sign-in altogether.
 - **Receipts never overstate the organisation.** Wording comes from `ORG_*` env
   values, and with no registration number configured the receipt says so rather
   than implying a charity status that does not exist.
+- **An application is never public.** It becomes visible only when staff publish
+  it as a project, and the project is created from staff-checked values rather
+  than straight from the form. Approving is not a separate button — it is what
+  publishing does, so the site can never show an "approved" masjid that has no
+  page, or a page for something nobody approved.
+- **Uploads are trusted as far as their bytes.** Format is decided by the file's
+  leading bytes, not the browser's content type; filenames are stripped of paths
+  and odd characters; documents are served only to a signed-in staff session, as
+  attachments, with `nosniff` and a `sandbox` CSP.
 
 ## Going live
 
@@ -116,7 +128,14 @@ the donation flow talks to a payment API.
   are USD only. M-Pesa settles in KES, so this lands with that adapter.
 - **Abuse hardening** — no rate limit on `POST /api/donations` yet. Donation forms
   are a standard target for card-testing; add limits plus Stripe Radar rules
-  before announcing the site publicly.
+  before announcing the site publicly. (Applications are already throttled per
+  email address and per network.)
+- **Object storage for documents** — uploads live in the database, capped at 4 MB
+  each. That is a real constraint for large drawing sets, and serverless hosts cap
+  request bodies around the same size. `src/lib/files/` is where an S3 or R2
+  adapter with direct-to-storage uploads would go.
+- **Virus scanning** — format and size are checked, contents are not. Worth adding
+  a scanner before staff open attachments routinely.
 - **Legal pages** — privacy, terms and refund policy.
 - **Real migrations** — schema is bootstrapped idempotently on boot, which is fine
   so far but is not a migration history.

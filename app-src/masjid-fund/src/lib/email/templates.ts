@@ -109,6 +109,100 @@ export function cancellationEmail(donation: Donation, org: Org): EmailMessage {
   };
 }
 
+/** Sent the moment an application arrives, carrying its status link. */
+export function applicationReceivedEmail(
+  application: { reference: string; masjidName: string; contactName: string; contactEmail: string },
+  org: Org,
+  statusUrl: string,
+): EmailMessage {
+  const greeting = `Assalamu alaikum ${application.contactName},`;
+  const text = [
+    greeting,
+    "",
+    `We have received your application for ${application.masjidName}. Its reference is ${application.reference}.`,
+    "",
+    "What happens next: we check the title deed and the trust registration, review the bill of quantities, and arrange a site visit before any project is listed. That usually takes a few weeks, and we will come back to you if anything is missing.",
+    "",
+    `Track it here: ${statusUrl}`,
+    "",
+    `${org.name} · ${org.email}`,
+  ].join("\n");
+
+  return {
+    to: application.contactEmail,
+    subject: `Application received — ${application.masjidName} (${application.reference})`,
+    html: layout(
+      org,
+      `
+      <p style="margin:0 0 16px">${escapeHtml(greeting)}</p>
+      <p style="margin:0 0 16px">We have received your application for
+        <strong>${escapeHtml(application.masjidName)}</strong>. Its reference is
+        <strong>${escapeHtml(application.reference)}</strong>.</p>
+      <p style="margin:0 0 16px">We check the title deed and trust registration, review the bill
+        of quantities, and arrange a site visit before any project is listed. That usually takes a
+        few weeks, and we will come back to you if anything is missing.</p>
+      <p style="margin:24px 0 0"><a href="${statusUrl}" style="background:#175943;color:#faf8f3;padding:12px 20px;border-radius:10px;text-decoration:none;display:inline-block">Track your application</a></p>
+    `,
+    ),
+    text,
+  };
+}
+
+/** Sent whenever staff move an application on, with the note they wrote. */
+export function applicationStatusEmail(
+  application: {
+    reference: string;
+    masjidName: string;
+    contactName: string;
+    contactEmail: string;
+    status: string;
+  },
+  statusLabel: string,
+  note: string | null,
+  org: Org,
+  links: { statusUrl: string; projectUrl: string | null },
+): EmailMessage {
+  const greeting = `Assalamu alaikum ${application.contactName},`;
+  const headline =
+    application.status === "approved"
+      ? `${application.masjidName} has been approved and is now open for donations.`
+      : application.status === "rejected"
+        ? `We are not able to take ${application.masjidName} forward.`
+        : application.status === "needs_info"
+          ? `We need a little more from you on ${application.masjidName}.`
+          : `Your application for ${application.masjidName} is now ${statusLabel.toLowerCase()}.`;
+
+  const text = [
+    greeting,
+    "",
+    headline,
+    note ? `\n${note}` : "",
+    links.projectUrl ? `\nSee the project: ${links.projectUrl}` : "",
+    `\nYour application: ${links.statusUrl}`,
+    "",
+    `${org.name} · ${org.email}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    to: application.contactEmail,
+    subject: `${application.reference} — ${statusLabel}`,
+    html: layout(
+      org,
+      `
+      <p style="margin:0 0 16px">${escapeHtml(greeting)}</p>
+      <p style="margin:0 0 16px">${escapeHtml(headline)}</p>
+      ${note ? `<p style="margin:0 0 16px;padding:12px 16px;background:#f3efe4;border-radius:10px">${escapeHtml(note)}</p>` : ""}
+      <p style="margin:24px 0 0"><a href="${links.projectUrl ?? links.statusUrl}" style="background:#175943;color:#faf8f3;padding:12px 20px;border-radius:10px;text-decoration:none;display:inline-block">${
+        links.projectUrl ? "See the project" : "View your application"
+      }</a></p>
+    `,
+    ),
+    text,
+  };
+}
+
 function layout(org: Org, body: string): string {
   return `<!doctype html>
 <html><body style="margin:0;background:#faf8f3;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0c3227">

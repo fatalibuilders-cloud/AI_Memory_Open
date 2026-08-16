@@ -37,6 +37,11 @@ export function Footer() {
           <p className="font-semibold text-white">About</p>
           <ul className="mt-3 space-y-2 text-sand-200/80">
             <li>
+              <Link href="/apply" className="hover:text-white">
+                Apply for funding
+              </Link>
+            </li>
+            <li>
               <Link href="/about" className="hover:text-white">
                 How it works
               </Link>

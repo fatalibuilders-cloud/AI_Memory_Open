@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/admin";
 import { getAdminStats, listDonationsForAdmin } from "@/lib/admin-data";
+import { listApplications } from "@/lib/applications";
 import { formatMoney } from "@/lib/money";
 import { getEmailProvider } from "@/lib/email";
 import { getPaymentProvider } from "@/lib/payments";
@@ -12,7 +13,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   if (!(await getAdminSession())) redirect("/admin/login");
 
-  const [stats, recent] = await Promise.all([getAdminStats(), listDonationsForAdmin({ limit: 10 })]);
+  const [stats, recent, waiting] = await Promise.all([
+    getAdminStats(),
+    listDonationsForAdmin({ limit: 10 }),
+    listApplications("submitted"),
+  ]);
   const payments = getPaymentProvider();
   const email = getEmailProvider();
   const org = getOrg();
@@ -28,6 +33,15 @@ export default async function AdminDashboard() {
   return (
     <div>
       <h1 className="font-display text-3xl font-semibold">Dashboard</h1>
+
+      {waiting.length > 0 && (
+        <Link
+          href="/admin/applications?status=submitted"
+          className="mt-6 block rounded-xl border border-masjid-200 bg-masjid-50 px-4 py-3 text-sm font-semibold text-masjid-800 hover:bg-masjid-100"
+        >
+          {waiting.length} new application{waiting.length === 1 ? "" : "s"} waiting for review →
+        </Link>
+      )}
 
       {warnings.length > 0 && (
         <ul className="mt-6 space-y-2">

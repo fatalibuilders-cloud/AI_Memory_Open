@@ -91,6 +91,66 @@ CREATE TABLE IF NOT EXISTS email_log (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Applications from communities asking for their masjid to be funded. Nothing
+-- here is public until staff approve it and publish a project.
+CREATE TABLE IF NOT EXISTS applications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  reference text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'submitted',
+  masjid_name text NOT NULL,
+  city text NOT NULL,
+  country text NOT NULL,
+  location_note text,
+  congregation_now integer NOT NULL DEFAULT 0,
+  capacity_planned integer NOT NULL DEFAULT 0,
+  estimated_cost_cents bigint NOT NULL,
+  already_raised_cents bigint NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'USD',
+  land_title_number text NOT NULL,
+  land_ownership text NOT NULL,
+  titled_to_trust boolean NOT NULL DEFAULT false,
+  trust_name text,
+  trust_registration text,
+  contact_name text NOT NULL,
+  contact_role text NOT NULL,
+  contact_email text NOT NULL,
+  contact_phone text NOT NULL,
+  story text NOT NULL,
+  status_note text,
+  manage_token text NOT NULL UNIQUE,
+  ip_hash text,
+  project_id uuid REFERENCES projects(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz
+);
+
+-- Supporting documents: title deed, drawings, bill of quantities and the rest.
+-- Bytes live in the database so the app needs no object store to run; the
+-- FileStore boundary in src/lib/files/ is where S3 or R2 would slot in.
+CREATE TABLE IF NOT EXISTS application_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  filename text NOT NULL,
+  content_type text NOT NULL,
+  byte_size integer NOT NULL,
+  data bytea NOT NULL,
+  uploaded_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Audit trail: who moved an application to which state, and why.
+CREATE TABLE IF NOT EXISTS application_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  actor text NOT NULL,
+  action text NOT NULL,
+  note text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS applications_status_idx ON applications (status);
+CREATE INDEX IF NOT EXISTS application_documents_application_idx ON application_documents (application_id);
+CREATE INDEX IF NOT EXISTS application_events_application_idx ON application_events (application_id);
 CREATE INDEX IF NOT EXISTS donations_project_idx ON donations (project_id);
 CREATE INDEX IF NOT EXISTS donations_status_idx ON donations (status);
 CREATE UNIQUE INDEX IF NOT EXISTS donations_manage_token_idx ON donations (manage_token);

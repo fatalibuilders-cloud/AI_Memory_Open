@@ -4,6 +4,7 @@ import Link from "next/link";
 // short links and the donate button only.
 const NAV = [
   { href: "/projects", label: "Projects", wide: false },
+  { href: "/apply", label: "Apply for funding", wide: true },
   { href: "/about", label: "How it works", wide: true },
   { href: "/faq", label: "FAQ", wide: false },
 ];

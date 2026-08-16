@@ -14,9 +14,17 @@ import {
   updateProject,
   updateSchema,
 } from "@/lib/admin-data";
+import {
+  APPLICATION_STATUSES,
+  getApplicationById,
+  linkApplicationToProject,
+  setApplicationStatus,
+  type ApplicationStatus,
+} from "@/lib/applications";
 import { INTENTS, type Intent } from "@/lib/donation";
 import { recordOfflineDonation } from "@/lib/donations";
 import { parseAmountToCents } from "@/lib/money";
+import { getProjectBySlug } from "@/lib/projects";
 
 /**
  * Server actions behind the admin forms. Each one runs the work, then
@@ -162,6 +170,63 @@ export async function recordOfflineAction(formData: FormData) {
       return "/admin/donations?recorded=1";
     },
     (message) => `/admin/donations?error=${encodeURIComponent(message)}`,
+  );
+  redirect(destination);
+}
+
+export async function setApplicationStatusAction(id: string, formData: FormData) {
+  const destination = await run(
+    async () => {
+      const { email } = await requireAdmin();
+      const status = String(formData.get("status") ?? "");
+      if (!(APPLICATION_STATUSES as readonly string[]).includes(status)) {
+        throw new AdminError("Unknown status.", 400);
+      }
+      const note = String(formData.get("note") ?? "").trim() || null;
+      if ((status === "needs_info" || status === "rejected") && !note) {
+        throw new AdminError(
+          "Write a note — it is what the applicant reads, and it is the difference between a useful answer and a dead end.",
+          400,
+        );
+      }
+      await setApplicationStatus(id, status as ApplicationStatus, note, email);
+      return `/admin/applications/${id}?saved=1`;
+    },
+    (message) => `/admin/applications/${id}?error=${encodeURIComponent(message)}`,
+  );
+  redirect(destination);
+}
+
+/**
+ * Publish an approved application: create the project from staff-checked
+ * values, link the two, and tell the applicant it is live.
+ */
+export async function publishApplicationAction(id: string, formData: FormData) {
+  const destination = await run(
+    async () => {
+      const { email } = await requireAdmin();
+      const application = await getApplicationById(id);
+      if (!application) throw new AdminError("That application no longer exists.", 404);
+      if (application.projectId) throw new AdminError("This application is already published.", 409);
+
+      const input = parseOrThrow(projectSchema, readProject(formData));
+      await createProject(input);
+
+      const project = await getProjectBySlug(input.slug);
+      if (!project) throw new AdminError("The project could not be created.", 500);
+
+      await linkApplicationToProject(id, project.id, email);
+      await setApplicationStatus(
+        id,
+        "approved",
+        String(formData.get("note") ?? "").trim() || null,
+        email,
+      );
+
+      revalidatePath("/projects");
+      return `/admin/projects/${input.slug}?saved=1`;
+    },
+    (message) => `/admin/applications/${id}?error=${encodeURIComponent(message)}`,
   );
   redirect(destination);
 }

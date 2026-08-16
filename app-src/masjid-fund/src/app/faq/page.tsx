@@ -48,6 +48,10 @@ const FAQS = [
     q: "How do you verify a project is real?",
     a: "Land title checked, trust registration checked, a site visit before listing, and a quantity surveyor's priced bill of quantities. Build updates are published against each project as work progresses.",
   },
+  {
+    q: "Our community wants a masjid built. Can we apply?",
+    a: "Yes — use the 'Apply for funding' page. You will need a certified title deed, architectural drawings, a priced bill of quantities, and one person on the committee we can reach. We verify each document and visit the site before listing anything, and we will come back to you for what is missing rather than simply refusing. Your documents and contact details are never published.",
+  },
 ];
 
 export default function FaqPage() {
