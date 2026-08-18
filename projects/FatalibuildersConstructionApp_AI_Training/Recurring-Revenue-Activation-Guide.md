@@ -79,6 +79,30 @@ the discount; it's applied at checkout and redeemed on completion (redemption
 count enforced). e.g. create `LAUNCH50` = 50% off, 100 redemptions, expires in a
 month for the first wave.
 
+## Launch coupon — auto-seeded ✅
+Set `LAUNCH_COUPON_CODE` (e.g. `LAUNCH50`) + `LAUNCH_COUPON_PERCENT` (default 50)
+and it is created automatically (on the daily cron and when you open
+/admin/coupons), without overwriting any edits you make there. Optional
+`LAUNCH_COUPON_MAX` (total cap) and `LAUNCH_COUPON_DAYS` (expiry). Buyers enter it
+on /pricing; admin metrics show redemptions + active-coupon counts.
+
+## Referral program ✅ ("invite a builder, you both get a free month")
+- `REFERRAL_REWARD_DAYS` (env, default 30; 0 disables). Every account gets a
+  referral link on the Account page (copy + WhatsApp share) and sees invited /
+  rewarded counts. Admin metrics show global referred-signups + rewards.
+- New signups via `/signup?ref=CODE` are linked to the referrer. **Reward triggers
+  on the referee's FIRST PAID purchase** (anti-abuse: real money first), granting
+  BOTH parties a complimentary Pro period; idempotent.
+
+## Concurrent-session note (2026-08-16)
+While this was built, another session reworked monetization on the same repo and
+it was merged in: **the yearly plan replaced lifetime**, entitlement is now
+`user.canDownload` (a **trial can view/generate every result on screen but cannot
+download/share** until subscribed), and **renders are a paid/owner-free** feature.
+The subscription/referral/coupon engine here sits on top of that model unchanged
+(access still flows through subscriptions + `current_period_end`). 294 tests green
+after the merge.
+
 ## Not yet built (noted)
 - **True card auto-renew** (Paddle recurring subscriptions + renewal webhooks) —
   optional; the prepaid + reminder model gives predictable revenue without it.
