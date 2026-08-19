@@ -94,21 +94,44 @@ Owner: "both" (M-Pesa membership checkout + payouts, AND lead notifications).
 - Approval status set now: pending_payment → requested → assigned → approved →
   paid (payout settled); + rejected/cancelled.
 
+## Round 4 — live M-Pesa Daraja STK + B2C (commit e3a0c76, 337 tests)
+Owner pasted a Daraja consumer key + secret (advised to ROTATE — shared in chat;
+never stored in repo, env only).
+- **STK push (collection) is real now** (`mpesa.ts`): `getAccessToken` (cached
+  OAuth), `stkPush` (Lipa na M-Pesa Online), `darajaBaseUrl` per env. The
+  `/api/checkout/mpesa` route replaces the old 501 stub with a live push and
+  stores the **CheckoutRequestID** on the pending purchase; the callback route now
+  matches on CheckoutRequestID (how Daraja IDs the txn) and completes idempotently
+  — so it grants ANY product: subscription, professional membership, paid approval
+  request, verified build. Sandbox behaviour unchanged when keys absent.
+- **B2C (payouts) implemented**: `b2cConfig`/`b2cConfigured`/`b2cPayment`. The
+  `/admin/payouts` route disburses via B2C when configured + the pro has a Kenyan
+  phone; else marks for manual send. Ledger settlement recorded regardless. Added
+  `b2c-result` / `b2c-timeout` ack routes.
+- Helpers: `getPurchaseForCharge`, `setPurchaseCheckoutRef`,
+  `getPurchaseByCheckoutRef` on payments.ts.
+
 ## Still open
-- Live Daraja **STK push** for the approval-fee/membership charge is still the
-  intentional 501 stub in `/api/checkout/mpesa` (sandbox completes instantly);
-  wire the real STK HTTP when Daraja keys are set.
-- **M-Pesa B2C** disbursement not implemented — settle marks paid + notifies;
-  owner sends the money until B2C creds wired.
-- Where the mock/M-Pesa success page returns to after membership/approval_fee is
-  the generic success page (fine for MVP; could deep-link back to the project).
+- Owner must add the remaining M-Pesa env (below) for STK to actually fire; STK
+  also needs a real live-tested SHORTCODE + PASSKEY (consumer key/secret alone
+  aren't enough). B2C needs the encrypted SECURITY_CREDENTIAL (Safaricom cert).
+- **ROTATE the pasted Daraja key/secret** — they were shared in chat.
+- Mock/M-Pesa success page returns to the generic success page (could deep-link
+  back to the project/professional console).
 - Seed real, vetted suppliers per country (deliberately not fabricated).
 - Other countries' regulator maps cover only the core 4 disciplines.
 
-## Env for go-live (owner)
-- Payments: `PAYMENTS_PROVIDER=mpesa`, Daraja `MPESA_CONSUMER_KEY/SECRET/
-  SHORTCODE/PASSKEY/ENV`, `APP_URL`; B2C: `MPESA_B2C_SHORTCODE` (+ B2C creds).
-- Fees/tiers (all optional, sensible defaults): `PLATFORM_APPROVAL_COMMISSION_PCT`
+## Env for go-live (owner) — set in Vercel, NOT the repo
+- **STK (collection)**: `PAYMENTS_PROVIDER=mpesa`, `MPESA_CONSUMER_KEY`,
+  `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE` (Paybill/Till), `MPESA_PASSKEY`
+  (Lipa na M-Pesa Online passkey), `MPESA_ENV=production` (or sandbox), `APP_URL`
+  (for the callback). Optional `MPESA_TX_TYPE=till` for Buy Goods (default Paybill);
+  `MPESA_CALLBACK_URL` to override. Callback: `/api/payments/mpesa/callback`.
+- **B2C (payouts)**: `MPESA_B2C_SHORTCODE`, `MPESA_INITIATOR_NAME`,
+  `MPESA_SECURITY_CREDENTIAL` (initiator password encrypted with Safaricom's prod
+  cert). Result/timeout URLs default to `/api/payments/mpesa/b2c-result` &
+  `/b2c-timeout` (override via `MPESA_B2C_RESULT_URL`/`MPESA_B2C_TIMEOUT_URL`).
+- Fees/tiers (optional, sensible defaults): `PLATFORM_APPROVAL_COMMISSION_PCT`
   (0.10), `PROFESSIONAL_MEMBERSHIP_KES/USD`, `APPROVAL_FEE_PCT_*`/`_MIN_*`,
   `SUPPLIER_COMMISSION_PCT`.
 - Notifications: `EMAIL_API_URL`/`EMAIL_API_KEY`/`EMAIL_FROM`; SMS provider keys.
