@@ -54,7 +54,30 @@ own stamp and registration. Supplier listings are admin-activated, not fabricate
   (mock extends membership 30 days end-to-end). Payouts to professionals are
   settled off-platform per the professional agreement (no payout rail wired yet).
 
+## Round 2 — open the marketplace to EVERY discipline (commit fdd7764, 330 tests)
+Owner: "attract all kinds of professionals in construction industry."
+- **Disciplines 3 → 16**: QS, architect, structural/civil/geotechnical/services
+  (MEP)/electrical/mechanical engineers, land surveyor, construction manager,
+  clerk of works, interior designer, landscape architect, physical planner, EIA
+  expert, contractor — each with regulator per country (Kenya filled: EBK, BORAQS,
+  LSB, NCA, IDAK, LAAK, PPB, NEMA).
+- **Stampable documents 3 → 11**: + MEP, electrical, mechanical, civil,
+  geotechnical, survey, physical-planning, environmental (each mapped to a
+  discipline, own fee % + floor). Project Approval tab: statutory 3 + a "more
+  approvals & consultant reports" toggle.
+- **Professional directory** (`/directory`, `listVerifiedDirectory`): clients
+  find/connect with ANY verified pro in their country, incl. non-stamping trades
+  (PM, clerk of works, interior/landscape, contractor). Free listing = reward for
+  verification; membership only gates paid approval jobs. Leads tracked
+  (`professional_lead`) for routing. Nav: "Find a professional".
+- **Supplier admin activation** (`/admin/suppliers` + `/api/admin/suppliers`):
+  review & activate applications into the public marketplace. Admin nav link.
+- Tier kept: flat monthly membership + 10% approval commission (predictable).
+
 ## Still open
 - Payout rail for professionals + real membership checkout on live provider.
-- Admin activation UI for suppliers (currently `setSupplierActive` lib only).
+- Lead routing/notification to professionals (currently records an event only;
+  email/SMS not wired).
 - Seed real, vetted suppliers per country (deliberately not fabricated).
+- Other countries' regulator maps only cover the core 4 disciplines (rest fall
+  back to a neutral label).
