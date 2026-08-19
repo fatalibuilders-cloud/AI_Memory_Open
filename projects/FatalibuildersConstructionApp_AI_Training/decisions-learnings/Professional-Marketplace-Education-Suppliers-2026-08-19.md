@@ -74,10 +74,42 @@ Owner: "attract all kinds of professionals in construction industry."
   review & activate applications into the public marketplace. Admin nav link.
 - Tier kept: flat monthly membership + 10% approval commission (predictable).
 
+## Round 3 — close the money loop + notifications (commit 87838bc, 334 tests)
+Owner: "both" (M-Pesa membership checkout + payouts, AND lead notifications).
+- **Membership checkout**: new `professional_membership` product routed through the
+  existing `createCheckout`/`completePurchase` machinery → works on mock + M-Pesa
+  now, live gateway on callback later. On success `extendMembership` 30d + notify.
+- **Approval-fee payment**: approval requests now start `pending_payment`; new
+  `approval_fee` product priced from the request; on payment `markRequestPaid`
+  publishes it to pros (`requested`) and alerts matching members. ApprovalsPanel
+  redirects to checkout; "Pay fee" state. This is why requests are unpaid-first.
+- **Payouts**: `owed` = approved-but-unpaid `payout_cents`; `/admin/payouts` +
+  `/api/admin/payouts`; `settleProfessional` marks jobs `paid` (the ledger) and
+  notifies the pro. Real disbursement = M-Pesa **B2C when wired** (env
+  `MPESA_B2C_SHORTCODE`), else manual/owner-side.
+- **Notifications** (email + SMS, mock-until-keys, best-effort): new approval job →
+  matching members; directory lead → the pro (with client contact); approval
+  decision → client; membership + payout → pro. Builders in notify.ts/sms.ts +
+  `marketplace-notify.ts`; `professionalContact`/`availableContacts` lookups.
+- Approval status set now: pending_payment → requested → assigned → approved →
+  paid (payout settled); + rejected/cancelled.
+
 ## Still open
-- Payout rail for professionals + real membership checkout on live provider.
-- Lead routing/notification to professionals (currently records an event only;
-  email/SMS not wired).
+- Live Daraja **STK push** for the approval-fee/membership charge is still the
+  intentional 501 stub in `/api/checkout/mpesa` (sandbox completes instantly);
+  wire the real STK HTTP when Daraja keys are set.
+- **M-Pesa B2C** disbursement not implemented — settle marks paid + notifies;
+  owner sends the money until B2C creds wired.
+- Where the mock/M-Pesa success page returns to after membership/approval_fee is
+  the generic success page (fine for MVP; could deep-link back to the project).
 - Seed real, vetted suppliers per country (deliberately not fabricated).
-- Other countries' regulator maps only cover the core 4 disciplines (rest fall
-  back to a neutral label).
+- Other countries' regulator maps cover only the core 4 disciplines.
+
+## Env for go-live (owner)
+- Payments: `PAYMENTS_PROVIDER=mpesa`, Daraja `MPESA_CONSUMER_KEY/SECRET/
+  SHORTCODE/PASSKEY/ENV`, `APP_URL`; B2C: `MPESA_B2C_SHORTCODE` (+ B2C creds).
+- Fees/tiers (all optional, sensible defaults): `PLATFORM_APPROVAL_COMMISSION_PCT`
+  (0.10), `PROFESSIONAL_MEMBERSHIP_KES/USD`, `APPROVAL_FEE_PCT_*`/`_MIN_*`,
+  `SUPPLIER_COMMISSION_PCT`.
+- Notifications: `EMAIL_API_URL`/`EMAIL_API_KEY`/`EMAIL_FROM`; SMS provider keys.
+- `ADMIN_EMAIL` gates the /admin/* verify/activate/payout screens.
