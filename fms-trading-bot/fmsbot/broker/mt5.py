@@ -26,6 +26,11 @@ _RETCODE_HELP = {
             "Click the 'Algo Trading' button in the toolbar so it turns green "
             "(or Tools -> Options -> Expert Advisors -> Allow algorithmic trading). "
             "NOTHING will trade until you do."),
+    10017: ("Trading is disabled for this SYMBOL on your account type. The "
+            "symbol exists and streams prices, but the broker will not accept "
+            "orders on it — remove it from SYMBOLS, or ask the broker to enable "
+            "it. (Exness 24/7 variants like XAUUSD247m are often view-only on "
+            "trial accounts.)"),
     10018: "The market for this symbol is closed right now.",
     10019: "Not enough money in the account for this volume.",
     10014: "Invalid volume — below the symbol's minimum or off its step size.",
@@ -274,6 +279,34 @@ class MT5Broker(Broker):
             volume=float(result.volume), price=float(result.price),
             sl=request["sl"], tp=request["tp"],
         )
+
+    def current_price(self, symbol: str, side: str) -> float:
+        mt5 = self._require()
+        symbol = self._resolve(symbol)
+        tick = mt5.symbol_info_tick(symbol)
+        if tick is None:
+            raise BrokerError(f"No tick for {symbol}")
+        return float(tick.ask if side == "buy" else tick.bid)
+
+    def modify_position(self, ticket: int, sl: float, tp: float) -> None:
+        mt5 = self._require()
+        raw = mt5.positions_get(ticket=ticket)
+        if not raw:
+            raise BrokerError(f"Position {ticket} not found")
+        info = mt5.symbol_info(raw[0].symbol)
+        digits = info.digits if info else 5
+        result = mt5.order_send({
+            "action": mt5.TRADE_ACTION_SLTP,
+            "position": int(ticket),
+            "symbol": raw[0].symbol,
+            "sl": round(sl, digits),
+            "tp": round(tp, digits),
+        })
+        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            retcode = getattr(result, "retcode", None)
+            raise BrokerError(
+                f"Could not adjust SL/TP on {ticket} ({retcode}): "
+                f"{getattr(result, 'comment', mt5.last_error())}{_explain(retcode)}")
 
     def positions(self, symbol: Optional[str] = None) -> list[Position]:
         mt5 = self._require()

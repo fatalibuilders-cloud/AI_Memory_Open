@@ -202,6 +202,14 @@ class BinanceBroker(Broker):
                             sl=self._round_price(symbol, sl),
                             tp=self._round_price(symbol, tp))
 
+    def current_price(self, symbol: str, side: str) -> float:
+        self._require()
+        data = self._request("GET", "/fapi/v1/ticker/bookTicker",
+                             {"symbol": symbol.upper()})
+        key = "askPrice" if side == "buy" else "bidPrice"
+        price = float(data.get(key) or 0)
+        return price or self._mark_price(symbol)
+
     def positions(self, symbol: Optional[str] = None) -> list[Position]:
         self._require()
         rows = self._request("GET", "/fapi/v2/positionRisk", signed=True)

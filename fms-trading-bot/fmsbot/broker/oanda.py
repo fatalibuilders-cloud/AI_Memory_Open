@@ -183,6 +183,21 @@ class OandaBroker(Broker):
             tp=float(body["order"]["takeProfitOnFill"]["price"]),
         )
 
+    def current_price(self, symbol: str, side: str) -> float:
+        self._require()
+        name = normalize_symbol(symbol)
+        data = self._request("GET", f"/v3/accounts/{self.account_id}/pricing",
+                             params={"instruments": name})
+        prices = data.get("prices") or []
+        if not prices:
+            raise BrokerError(f"No pricing for {name}")
+        book = prices[0]
+        quotes = book.get("asks" if side == "buy" else "bids") or []
+        if quotes:
+            return float(quotes[0]["price"])
+        # fall back to the mid if the book side is empty
+        return float(book.get("closeoutAsk" if side == "buy" else "closeoutBid", 0))
+
     def positions(self, symbol: Optional[str] = None) -> list[Position]:
         self._require()
         trades = self._request(

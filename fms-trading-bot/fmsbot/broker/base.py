@@ -65,6 +65,20 @@ class Broker(ABC):
                      sl: float, tp: float, comment: str = "") -> OrderReceipt: ...
 
     @abstractmethod
+    def current_price(self, symbol: str, side: str) -> float:
+        """The price a market order would fill at right now.
+
+        Ask for a buy, bid for a sell. Stops and targets must be measured
+        from this, not from the signal candle's close: on fast timeframes
+        the gap between them is a large share of the stop distance and
+        silently ruins the intended reward:risk.
+        """
+
+    def modify_position(self, ticket: int, sl: float, tp: float) -> None:
+        """Adjust an open position's stop and target. Optional per broker."""
+        raise BrokerError("modify_position is not supported by this broker")
+
+    @abstractmethod
     def positions(self, symbol: Optional[str] = None) -> list[Position]: ...
 
     @abstractmethod

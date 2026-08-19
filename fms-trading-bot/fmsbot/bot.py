@@ -195,10 +195,19 @@ class TradingBot:
             log.warning("[%s] sizing failed for %s: %s", session.name, symbol, exc)
             return
 
+        # Measure the stop and target from the price we would fill at NOW, not
+        # from the signal candle's close. On fast timeframes the drift between
+        # them is a large share of the stop distance, which silently turns an
+        # intended 1:1.5 reward:risk into something far worse.
+        try:
+            reference = broker.current_price(symbol, signal.side)
+        except BrokerError:
+            reference = price
+
         if signal.side == "buy":
-            sl, tp = price - signal.sl_distance, price + signal.tp_distance
+            sl, tp = reference - signal.sl_distance, reference + signal.tp_distance
         else:
-            sl, tp = price + signal.sl_distance, price - signal.tp_distance
+            sl, tp = reference + signal.sl_distance, reference - signal.tp_distance
 
         try:
             receipt = broker.market_order(symbol, signal.side, volume, sl, tp,
@@ -210,6 +219,10 @@ class TradingBot:
                                   f"{symbol} {signal.side}: {exc}")
             return
 
+        # If the fill still landed away from the reference, the stop and target
+        # are no longer the distances the strategy asked for. Restore them.
+        receipt = self._correct_exits(session, receipt, signal)
+
         risk.record_entry(symbol)
         session.known_tickets.add(receipt.ticket)
         msg = (f"📈 [{session.name}] OPENED {receipt.side.upper()} {receipt.symbol} "
@@ -218,6 +231,40 @@ class TradingBot:
                f"({signal.reason}; {sizing})")
         log.info(msg.replace("\n", " | "))
         self.remote.broadcast(msg)
+
+    def _correct_exits(self, session: BrokerSession, receipt, signal):
+        """Re-anchor SL/TP to the actual fill when slippage moved them.
+
+        Fixed once in the wrong place, a 1:1.5 reward:risk can become 1:0.45,
+        which destroys the strategy's edge regardless of how good the signals
+        are. Only corrects when the drift is material, to avoid pointless
+        modify requests.
+        """
+        fill = receipt.price
+        if not fill:
+            return receipt
+        if signal.side == "buy":
+            want_sl, want_tp = fill - signal.sl_distance, fill + signal.tp_distance
+            actual_risk = fill - receipt.sl
+        else:
+            want_sl, want_tp = fill + signal.sl_distance, fill - signal.tp_distance
+            actual_risk = receipt.sl - fill
+
+        drift = abs(actual_risk - signal.sl_distance)
+        if drift <= signal.sl_distance * 0.10:      # within 10% — leave it
+            return receipt
+        try:
+            session.broker.modify_position(receipt.ticket, want_sl, want_tp)
+        except BrokerError as exc:
+            log.warning("[%s] could not re-anchor SL/TP on %s: %s",
+                        session.name, receipt.symbol, exc)
+            return receipt
+        log.info("[%s] %s re-anchored to fill %.5f: SL %.5f TP %.5f "
+                 "(was risking %.5f, wanted %.5f)",
+                 session.name, receipt.symbol, fill, want_sl, want_tp,
+                 actual_risk, signal.sl_distance)
+        receipt.sl, receipt.tp = want_sl, want_tp
+        return receipt
 
     def _notify_closed_positions(self, session: BrokerSession) -> None:
         """Detect positions that hit SL/TP (closed broker-side) and notify."""
