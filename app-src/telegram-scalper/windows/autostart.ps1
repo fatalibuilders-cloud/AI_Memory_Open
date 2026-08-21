@@ -27,7 +27,10 @@ param(
     # Leave the machine's power settings alone.
     [switch]$KeepSleepSettings,
     # Register the task but do not start it now.
-    [switch]$NoStart
+    [switch]$NoStart,
+    # Try Windows Task Scheduler as well. Off by default: on locked-down
+    # machines its cmdlets deny or hang rather than failing cleanly.
+    [switch]$UseTask
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,12 +45,12 @@ function Write-Warn { param($m) Write-Host "    !   $m" -ForegroundColor Yellow 
 $startupCmd = Join-Path ([Environment]::GetFolderPath('Startup')) 'tgscalper.cmd'
 
 if ($Remove) {
-    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-        Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    # schtasks.exe, not the CIM cmdlets: those hang where the Task Scheduler
+    # service is disabled, which would wedge an uninstall.
+    & schtasks.exe /end /tn $TaskName 2>&1 | Out-Null
+    & schtasks.exe /delete /tn $TaskName /f 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
         Write-Host "Removed scheduled task '$TaskName'." -ForegroundColor Green
-    } else {
-        Write-Host "No scheduled task named '$TaskName'." -ForegroundColor Yellow
     }
     if (Test-Path $startupCmd) {
         Remove-Item $startupCmd -Force
@@ -105,48 +108,44 @@ if (-not $KeepSleepSettings) {
     Write-Warn 'Power settings untouched - if this machine sleeps, copying stops'
 }
 
-# ---------------------------------------------------------------------- task
-Write-Step 'Registering the scheduled task'
+# ------------------------------------------------------------------ autostart
+Write-Step 'Setting up autostart'
 
-$action = New-ScheduledTaskAction `
-    -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$runScript`" run" `
-    -WorkingDirectory $projectDir
-
-$triggers = @(New-ScheduledTaskTrigger -AtLogOn)
-
-$settings = New-ScheduledTaskSettingsSet `
-    -AllowStartIfOnBatteries `
-    -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable `
-    -RestartCount 999 `
-    -RestartInterval (New-TimeSpan -Minutes 1) `
-    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
-    -MultipleInstances IgnoreNew
-
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
-}
-
-# Registering a task can be refused outright — group policy, security software,
-# or a machine that simply requires elevation for the task store. Claiming
-# success here regardless is worse than failing: it sends you away believing
-# the copier will come back after a reboot when nothing has been set up.
+# The Startup folder is the default because it always works: no elevation, no
+# Task Scheduler service, nothing for group policy to refuse. On locked-down
+# machines the scheduled-task cmdlets do not fail cleanly — Register denies and
+# Get hangs — so they are only touched when -UseTask is asked for explicitly.
 $method = ''
-try {
-    Register-ScheduledTask `
-        -TaskName $TaskName `
-        -Action $action `
-        -Trigger $triggers `
-        -Settings $settings `
-        -Description 'Telegram signal copier (tgscalper)' `
-        -ErrorAction Stop | Out-Null
-    $method = 'task'
-    Write-Ok "task '$TaskName' registered - starts at logon, retries every minute"
-} catch {
-    Write-Warn "Windows refused to register the task: $($_.Exception.Message)"
-    Write-Warn 'Falling back to the Startup folder, which never needs admin rights.'
+
+if ($UseTask) {
+    $action = New-ScheduledTaskAction `
+        -Execute 'powershell.exe' `
+        -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$runScript`" run" `
+        -WorkingDirectory $projectDir
+    $triggers = @(New-ScheduledTaskTrigger -AtLogOn)
+    $settings = New-ScheduledTaskSettingsSet `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries `
+        -StartWhenAvailable `
+        -RestartCount 999 `
+        -RestartInterval (New-TimeSpan -Minutes 1) `
+        -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
+        -MultipleInstances IgnoreNew
+    try {
+        & schtasks.exe /delete /tn $TaskName /f 2>&1 | Out-Null
+        Register-ScheduledTask `
+            -TaskName $TaskName `
+            -Action $action `
+            -Trigger $triggers `
+            -Settings $settings `
+            -Description 'Telegram signal copier (tgscalper)' `
+            -ErrorAction Stop | Out-Null
+        $method = 'task'
+        Write-Ok "task '$TaskName' registered - starts at logon, retries every minute"
+    } catch {
+        Write-Warn "Windows refused to register the task: $($_.Exception.Message)"
+        Write-Warn 'Using the Startup folder instead.'
+    }
 }
 
 if (-not $method) {
@@ -158,13 +157,12 @@ if (-not $method) {
         "start """" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""$runScript"" run"
     )
     [System.IO.File]::WriteAllLines($startupCmd, $body, [System.Text.ASCIIEncoding]::new())
-    if (Test-Path $startupCmd) {
-        $method = 'startup'
-        Write-Ok "startup entry created: $startupCmd"
-        Write-Warn 'This starts it at logon but will NOT restart it if it crashes.'
-    } else {
-        throw "Could not set up autostart by either method. Start it by hand with: .\windows\run.ps1 run"
+    if (-not (Test-Path $startupCmd)) {
+        throw "Could not set up autostart. Start it by hand with: .\windows\run.ps1 run"
     }
+    $method = 'startup'
+    Write-Ok "startup entry created: $startupCmd"
+    Write-Warn 'Starts at logon. Will NOT restart it if it crashes mid-session.'
 }
 
 # --------------------------------------------------------------- start it now

@@ -60,20 +60,32 @@ if ($running.Count -gt 0) {
 
 # --------------------------------------------------------- 2. autostart
 Head '2. Autostart (brings it back after a reboot)'
-$task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 $startupCmd = Join-Path ([Environment]::GetFolderPath('Startup')) 'tgscalper.cmd'
 $autostart = $false
 
-if ($task) {
-    $info = Get-ScheduledTaskInfo -TaskName $TaskName
-    Ok "scheduled task registered, state: $($task.State)"
-    Note "last run    : $($info.LastRunTime)"
-    Note "last result : $($info.LastTaskResult)  (0 = ok, 267009 = currently running)"
-    $autostart = $true
-    if ($info.LastTaskResult -ne 0 -and $info.LastTaskResult -ne 267009) {
-        $problems.Add("scheduled task exited with code $($info.LastTaskResult)")
-    }
+# schtasks.exe rather than Get-ScheduledTask: where the Task Scheduler service
+# is disabled or locked down, the CIM cmdlet hangs indefinitely instead of
+# failing, taking this whole report down with it. The exe returns an error and
+# exits.
+$taskInfo = $null
+try {
+    $taskOutput = & schtasks.exe /query /tn $TaskName /fo LIST 2>&1
+    if ($LASTEXITCODE -eq 0) { $taskInfo = $taskOutput | Out-String }
+} catch {
+    $taskInfo = $null
 }
+
+if ($taskInfo) {
+    Ok 'scheduled task registered'
+    foreach ($line in ($taskInfo -split "`n")) {
+        if ($line -match '^\s*(Status|Last Run Time|Last Result):') { Note $line.Trim() }
+    }
+    $autostart = $true
+} else {
+    Note 'no scheduled task (this machine appears to block them - not a problem'
+    Note 'on its own, the startup entry below does the same job)'
+}
+
 if (Test-Path $startupCmd) {
     Ok "startup entry present: $startupCmd"
     Note 'Starts at logon. Does not restart it if it crashes.'
