@@ -101,11 +101,17 @@ class ControlBot:
 
         if settings.owner_id:
             try:
-                await self.client.send_message(
-                    settings.owner_id,
-                    f"<b>Started.</b> Mode: {self._mode()}. Send /status for details.",
-                    parse_mode="html",
-                )
+                greeting = f"<b>Started.</b> Mode: {self._mode()}."
+                if not self.engine.broker_ready:
+                    greeting += (
+                        "\n\n⚠️ <b>But the broker is NOT connected, so nothing "
+                        "can be traded:</b>\n"
+                        f"<code>{_esc(self.engine.broker_error or 'unavailable')}</code>\n\n"
+                        "Open MetaTrader 5, log in, enable Algo Trading, then /connect."
+                    )
+                else:
+                    greeting += " Send /status for details."
+                await self.client.send_message(settings.owner_id, greeting, parse_mode="html")
             except Exception as exc:
                 log.warning("could not greet the owner: %s", exc)
 
@@ -187,6 +193,15 @@ class ControlBot:
             lines.append(f"<i>{_esc(self.config.execution.live_block_reason)}</i>")
         if self.engine.paused:
             lines.append("<b>PAUSED</b> — no new trades will be opened")
+        if not self.engine.broker_ready:
+            # Lead with this: nothing can trade while it is true, and it is the
+            # single most common reason for a bot that looks alive but does
+            # nothing.
+            lines.append(
+                f"\n⚠️ <b>BROKER NOT CONNECTED — no trades can be placed.</b>\n"
+                f"<code>{_esc(self.engine.broker_error or 'unavailable')}</code>\n"
+                "Open MetaTrader 5, log in, enable Algo Trading, then send /connect.\n"
+            )
 
         try:
             account = await asyncio.to_thread(self.engine.broker.account_info)
@@ -405,11 +420,14 @@ class ControlBot:
             await event.respond(f"Not connected ({_esc(exc)}). Reconnecting…", parse_mode="html")
 
         try:
-            await asyncio.to_thread(broker.connect)
+            # Go through the engine so broker_ready and broker_error move with
+            # it; reconnecting the broker behind its back would leave the
+            # engine still refusing every signal.
+            ok = await asyncio.to_thread(self.engine.retry_broker, 0.0)
+            if not ok:
+                raise RuntimeError(self.engine.broker_error or "still unreachable")
             account = await asyncio.to_thread(broker.account_info)
             symbols = await asyncio.to_thread(broker.available_symbols)
-            if symbols:
-                self.engine.resolver.load_available(symbols)
             await event.respond(
                 f"<b>Reconnected.</b> Balance {account.balance:,.2f} {account.currency}, "
                 f"{len(symbols) or 'n/a'} symbols.",

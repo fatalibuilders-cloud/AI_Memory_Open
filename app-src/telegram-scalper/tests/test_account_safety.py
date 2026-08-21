@@ -14,7 +14,7 @@ from tgscalper.brokers.base import BrokerError
 from tgscalper.brokers.paper import PaperBroker
 from tgscalper.engine import Engine
 from tgscalper.journal import Journal
-from tgscalper.models import AccountInfo
+from tgscalper.models import AccountInfo, MessageRef
 
 
 class FakeLiveBroker(PaperBroker):
@@ -82,13 +82,28 @@ class TestRealMoneyGuard:
 
     def test_real_account_is_refused_by_default(self, config, tmp_path):
         engine = engine_for(FakeLiveBroker("REAL"), config, tmp_path)
-        with pytest.raises(BrokerError) as excinfo:
-            engine.start()
-        message = str(excinfo.value)
+        # start() must not raise: killing the process hides the reason and
+        # looks identical to the bot being dead. Trading is what gets refused.
+        engine.start()
+        assert not engine.broker_ready
+        message = engine.broker_error
         assert "REAL MONEY" in message
         # The message must name the account, or it is not actionable.
         assert "41187584" in message
         assert "allow_real_money" in message
+
+    def test_a_refused_account_places_no_trades(self, config, tmp_path):
+        config.risk.hours.days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+        broker = FakeLiveBroker("REAL")
+        engine = engine_for(broker, config, tmp_path)
+        engine.start()
+        decision = engine.handle(
+            "GOLD BUY 2350\nSL 2344\nTP 2360",
+            MessageRef(chat_id=-1, message_id=1),
+        )
+        assert not decision.accepted
+        assert "broker not connected" in decision.reason
+        assert broker.positions() == []
 
     def test_real_account_runs_once_explicitly_allowed(self, config, tmp_path):
         config.execution.allow_real_money = True
@@ -126,3 +141,84 @@ class TestLiveSwitchIsStillRequired:
         )
         assert config.execution.live_enabled
         assert config.execution.allow_real_money
+
+
+class UnreachableBroker(PaperBroker):
+    """A broker whose connect() fails, like MT5 with the terminal closed."""
+
+    name = "unreachable-mt5"
+
+    def __init__(self, fail_times: int = 99) -> None:
+        super().__init__()
+        self.attempts = 0
+        self.fail_times = fail_times
+
+    @property
+    def is_live(self) -> bool:
+        return True
+
+    def connect(self) -> None:
+        self.attempts += 1
+        if self.attempts <= self.fail_times:
+            raise BrokerError("MT5 initialize failed (-10005): IPC timeout")
+        super().connect()
+
+
+class TestBrokerOutageIsNotFatal:
+    """MT5 being closed must never take the Telegram side down.
+
+    It used to raise out of start(), killing listener and control bot sixty
+    seconds after every launch — indistinguishable from the bot being dead,
+    and hiding the one fact that explained it.
+    """
+
+    def test_start_survives_an_unreachable_broker(self, config, tmp_path):
+        engine = engine_for(UnreachableBroker(), config, tmp_path)
+        engine.start()  # must not raise
+        assert not engine.broker_ready
+        assert "IPC timeout" in engine.broker_error
+
+    def test_signals_are_refused_with_the_broker_reason(self, config, tmp_path):
+        config.risk.hours.days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+        engine = engine_for(UnreachableBroker(), config, tmp_path)
+        engine.start()
+        decision = engine.handle(
+            "GOLD BUY 2350\nSL 2344\nTP 2360", MessageRef(chat_id=-1, message_id=1)
+        )
+        assert not decision.accepted
+        assert "broker not connected" in decision.reason
+        assert "IPC timeout" in decision.reason
+
+    def test_the_outage_is_journalled(self, config, tmp_path):
+        journal = Journal(tmp_path / "journal.sqlite")
+        engine = Engine(config, UnreachableBroker(), journal)
+        engine.start()
+        rows = journal._read("SELECT kind, detail FROM events WHERE kind = 'broker_error'")
+        assert rows and "IPC timeout" in rows[0]["detail"]
+
+    def test_it_recovers_when_the_terminal_comes_back(self, config, tmp_path):
+        broker = UnreachableBroker(fail_times=1)
+        engine = engine_for(broker, config, tmp_path)
+        engine.start()
+        assert not engine.broker_ready
+        # MT5 has since been opened; the next retry should succeed.
+        assert engine.retry_broker(min_interval=0)
+        assert engine.broker_ready
+        assert engine.broker_error == ""
+
+    def test_retries_are_rate_limited(self, config, tmp_path):
+        broker = UnreachableBroker()
+        engine = engine_for(broker, config, tmp_path)
+        engine.start()
+        attempts = broker.attempts
+        # A failing MT5 connect blocks for a minute; retrying per signal would
+        # stall every message behind a dead terminal.
+        for _ in range(5):
+            engine.retry_broker(min_interval=120)
+        assert broker.attempts == attempts
+
+    def test_a_healthy_broker_reports_ready(self, config, tmp_path):
+        engine = engine_for(PaperBroker(), config, tmp_path)
+        engine.start()
+        assert engine.broker_ready
+        assert engine.broker_error == ""

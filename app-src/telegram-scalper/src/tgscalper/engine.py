@@ -7,6 +7,7 @@ listener. `Engine.handle()` is the whole contract.
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -52,11 +53,54 @@ class Engine:
         # already open must keep working, exactly like the daily-loss halt.
         self.paused = False
         self.paused_reason = ""
+        # A broker that will not connect must not stop the Telegram side.
+        self.broker_ready = False
+        self.broker_error = ""
+        self._last_broker_attempt = 0.0
 
     # --- lifecycle ---
 
     def start(self) -> None:
-        self.broker.connect()
+        """Bring the engine up. A broker that will not connect is not fatal.
+
+        MetaTrader 5 being closed used to raise here and take the whole process
+        down — Telegram listener, control bot and all — sixty seconds after
+        every start. From the outside that is indistinguishable from the bot
+        being dead, and it hides the one fact that would explain it. The
+        Telegram side now comes up regardless, refuses trades with a clear
+        reason, and keeps retrying the broker in the background.
+        """
+        self._connect_broker()
+
+    def _connect_broker(self) -> bool:
+        self._last_broker_attempt = time.monotonic()
+        try:
+            self.broker.connect()
+            self._verify_broker()
+        except Exception as exc:
+            self.broker_ready = False
+            self.broker_error = str(exc)
+            log.error("broker unavailable: %s", exc)
+            self.journal.record_event("broker_error", str(exc))
+            return False
+        self.broker_ready = True
+        self.broker_error = ""
+        return True
+
+    def retry_broker(self, min_interval: float = 120.0) -> bool:
+        """Reconnect if it is down and we have not tried too recently.
+
+        Rate-limited because a failing MT5 connect blocks for a full minute;
+        retrying on every signal would stall the queue behind a dead terminal.
+        """
+        if self.broker_ready:
+            return True
+        if time.monotonic() - self._last_broker_attempt < min_interval:
+            return False
+        log.info("retrying the broker connection...")
+        return self._connect_broker()
+
+    def _verify_broker(self) -> None:
         symbols = self.broker.available_symbols()
         if symbols:
             self.resolver.load_available(symbols)
@@ -68,6 +112,8 @@ class Engine:
         # MT5" was intended is the one mistake here that costs actual money, so
         # it stops the run rather than warning and carrying on.
         if self.broker.is_live and account.is_real_money and not self.config.execution.allow_real_money:
+            # Raised, then caught by _connect_broker: trading stays off and the
+            # reason is reportable, rather than the process simply vanishing.
             raise BrokerError(
                 f"REFUSING TO START: {self.broker.name} account {account.login} on "
                 f"{account.server} is a REAL MONEY account.\n"
@@ -149,6 +195,12 @@ class Engine:
             reason = f"paused{f' ({self.paused_reason})' if self.paused_reason else ''}"
             self.journal.record_signal(signal, accepted=False, reason=reason)
             log.info("ignored %s: %s", signal.summary(), reason)
+            return Decision(accepted=False, reason=reason, signal=signal)
+
+        if not self.broker_ready and not self.retry_broker():
+            reason = f"broker not connected: {self.broker_error or 'unavailable'}"
+            self.journal.record_signal(signal, accepted=False, reason=reason)
+            log.warning("cannot trade %s — %s", signal.summary(), reason)
             return Decision(accepted=False, reason=reason, signal=signal)
 
         broker_symbol = self.resolver.resolve(signal.symbol)

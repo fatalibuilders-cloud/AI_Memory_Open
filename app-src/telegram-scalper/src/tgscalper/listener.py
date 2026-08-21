@@ -286,13 +286,25 @@ class TelegramListener:
         while True:
             await asyncio.sleep(interval)
             try:
-                account = self.engine.broker.account_info()
-                log.info(
-                    "heartbeat: connected=%s equity=%.2f %s",
-                    self.client.is_connected(),
-                    account.equity,
-                    account.currency,
-                )
+                if not self.engine.broker_ready:
+                    # Keep trying: the usual cause is MetaTrader 5 not being
+                    # open yet, which fixes itself the moment it is launched.
+                    if await asyncio.to_thread(self.engine.retry_broker, 0.0):
+                        log.info("broker reconnected")
+                        if self.control_bot is not None:
+                            await self.control_bot.notify(
+                                "<b>Broker reconnected.</b> Trading is live again."
+                            )
+                    else:
+                        log.warning("broker still down: %s", self.engine.broker_error)
+                else:
+                    account = self.engine.broker.account_info()
+                    log.info(
+                        "heartbeat: connected=%s equity=%.2f %s",
+                        self.client.is_connected(),
+                        account.equity,
+                        account.currency,
+                    )
             except Exception as exc:
                 log.warning("heartbeat could not read the account: %s", exc)
             for chat_id in list(self._groups):
