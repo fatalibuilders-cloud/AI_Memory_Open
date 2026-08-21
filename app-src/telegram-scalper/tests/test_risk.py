@@ -300,3 +300,74 @@ def self_config():
     from tgscalper import config as config_module
 
     return config_module.load("does-not-exist.yaml", env={})
+
+
+class TestPerSymbolLimits:
+    """One points value cannot suit gold, EURUSD and Bitcoin at once.
+
+    100 points is $1.00 on gold, one pip on EURUSD and one cent on Bitcoin. As
+    a single global spread ceiling it blocks every crypto signal while barely
+    constraining gold, which is exactly what a mixed watchlist runs into.
+    """
+
+    def _config(self):
+        config = self_config()
+        config.risk.max_spread_points = 100
+        config.risk.min_stop_points = 50
+        config.risk.symbol_limits = {
+            "BTCUSD": {"max_spread_points": 20000, "min_stop_points": 5000}
+        }
+        return config
+
+    def test_the_global_still_applies_to_gold(self):
+        config = self._config()
+        # $1.20 spread = 120 points, past the 100-point gold limit.
+        gate = risk_rules.check_guards(
+            gold_buy(), gold_info(bid=2349.4, ask=2350.6), state(), config
+        )
+        assert not gate.ok
+        assert "XAUUSD" in gate.reason
+
+    def test_an_override_widens_it_for_crypto(self):
+        config = self._config()
+        btc = Signal(
+            action=Action.OPEN,
+            symbol="BTCUSD",
+            side=Side.BUY,
+            entry=61000.0,
+            stop_loss=60000.0,
+            take_profits=[62000.0],
+        )
+        # A $150 spread: far past the gold limit, fine for Bitcoin.
+        info = gold_info(bid=60925.0, ask=61075.0, name="BTCUSD")
+        assert risk_rules.check_guards(btc, info, state(), config).ok
+
+    def test_a_symbol_without_an_override_uses_the_global(self):
+        config = self._config()
+        assert config.risk.limits_for("EURUSD") == (50.0, 100.0)
+
+    def test_overrides_are_case_insensitive(self):
+        config = self._config()
+        assert config.risk.limits_for("btcusd") == (5000.0, 20000.0)
+
+    def test_a_partial_override_keeps_the_other_global(self):
+        config = self_config()
+        config.risk.min_stop_points = 50
+        config.risk.max_spread_points = 100
+        config.risk.symbol_limits = {"XAGUSD": {"max_spread_points": 200}}
+        assert config.risk.limits_for("XAGUSD") == (50.0, 200.0)
+
+    def test_limits_load_from_yaml(self, tmp_path):
+        from tgscalper import config as config_module
+
+        path = tmp_path / "config.yaml"
+        path.write_text(
+            "risk:\n"
+            "  max_spread_points: 100\n"
+            "  symbol_limits:\n"
+            "    btcusd:\n"
+            "      max_spread_points: 20000\n"
+        )
+        config = config_module.load(path, env={})
+        # Keys are upper-cased on load, so YAML casing does not matter.
+        assert config.risk.limits_for("BTCUSD")[1] == 20000.0

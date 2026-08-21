@@ -159,10 +159,20 @@ class RiskConfig:
     min_stop_points: float = 0.0
     # Reject entries when the spread is abnormally wide (news, rollover).
     max_spread_points: float = 0.0  # 0 disables
+    # Both limits above are counted in points, which mean wildly different
+    # amounts per instrument: 100 points is $1.00 on gold, one pip on EURUSD
+    # and a rounding error on Bitcoin. A single global value therefore cannot
+    # suit a mixed watchlist — it either lets gold through unguarded or blocks
+    # every crypto signal. These per-symbol values override the globals.
+    #   symbol_limits:
+    #     XAUUSD: {max_spread_points: 100, min_stop_points: 50}
+    #     BTCUSD: {max_spread_points: 20000}
+    symbol_limits: dict[str, dict[str, float]] = field(default_factory=dict)
     dedupe_window_minutes: int = 30
     allow_symbols: list[str] = field(default_factory=list)  # empty = allow all
     block_symbols: list[str] = field(default_factory=list)
     hours: TradingHours = field(default_factory=TradingHours)
+
     breakeven_offset_points: float = 0.0
     partial_close_default: float = 0.5
     # Admins do sometimes move a stop further away — widening a zone entry, or
@@ -170,6 +180,14 @@ class RiskConfig:
     # accepted when the trade opened, so it is refused by default and the
     # refusal is journalled. Set true to follow the admin exactly.
     allow_stop_widening: bool = False
+
+    def limits_for(self, symbol: str) -> tuple[float, float]:
+        """(min_stop_points, max_spread_points) for one instrument."""
+        override = self.symbol_limits.get(symbol.upper(), {})
+        return (
+            float(override.get("min_stop_points", self.min_stop_points)),
+            float(override.get("max_spread_points", self.max_spread_points)),
+        )
     # If a signal has no stop at all and require_stop_loss is off, use this many
     # points as an emergency stop rather than trading naked.
     fallback_stop_points: float = 0.0
@@ -285,6 +303,7 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
             "max_signals_per_hour",
             "min_stop_points",
             "max_spread_points",
+            "symbol_limits",
             "dedupe_window_minutes",
             "allow_symbols",
             "block_symbols",
@@ -296,6 +315,10 @@ def load(path: str | os.PathLike[str] = "config.yaml", env: Optional[dict[str, s
     )
     if hours_raw:
         risk.hours = TradingHours(**_pick(hours_raw, "start", "end", "days"))
+    risk.symbol_limits = {
+        str(name).upper(): {str(k): float(v) for k, v in (values or {}).items()}
+        for name, values in (risk.symbol_limits or {}).items()
+    }
 
     broker = BrokerConfig(
         **_pick(

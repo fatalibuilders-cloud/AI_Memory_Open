@@ -105,19 +105,22 @@ def check_guards(
         )
 
     if info is not None:
-        if risk.max_spread_points > 0 and info.spread_points > risk.max_spread_points:
+        # Point-denominated limits mean different amounts per instrument, so
+        # take whatever this symbol was configured with.
+        min_stop_points, max_spread_points = risk.limits_for(symbol)
+        if max_spread_points > 0 and info.spread_points > max_spread_points:
             return _deny(
                 f"spread {info.spread_points:.0f} points is above the "
-                f"{risk.max_spread_points:.0f} point limit"
+                f"{max_spread_points:.0f} point limit for {symbol}"
             )
         stop = signal.stop_loss
         reference = signal.entry or info.mid
         if stop is not None and reference and info.point > 0:
             distance_points = abs(reference - stop) / info.point
-            if risk.min_stop_points > 0 and distance_points < risk.min_stop_points:
+            if min_stop_points > 0 and distance_points < min_stop_points:
                 return _deny(
                     f"stop is only {distance_points:.0f} points away "
-                    f"(min {risk.min_stop_points:.0f})"
+                    f"(min {min_stop_points:.0f} for {symbol})"
                 )
             if info.stops_level_points and distance_points < info.stops_level_points:
                 return _deny(

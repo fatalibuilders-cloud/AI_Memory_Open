@@ -1,0 +1,135 @@
+# Multi-instrument profile — gold plus crypto, FX majors and indices.
+#
+# For rooms that post more than one market: gold desks that also call BTC, or
+# a mixed VIP feed. If every room you follow only trades gold, config.gold.yaml
+# is the tighter choice.
+#
+# Apply it without losing your group selection:
+#     Copy-Item config.multi.yaml config.yaml -Force
+# Groups chosen with /selectgroup live in data\groups.json and override this
+# file, so switching profiles never loses them.
+
+telegram:
+  session_name: tgscalper
+  session_dir: data
+  admin_only: true
+  notify_to: me
+  notify_skips: false
+  max_groups: 5
+  groups: []          # /selectgroup is in charge
+
+control_bot:
+  notify: true
+  notify_skips: true  # turn off once you trust what it is doing
+
+execution:
+  mode: paper
+  allow_real_money: false
+  entry: market
+  tp_mode: first
+  max_tps: 3
+  require_stop_loss: true
+  # Measured against the signal's own stop, so one value is right for gold at
+  # 4,200, EURUSD at 1.08 and Bitcoin at 60,000 alike.
+  max_entry_slippage_pct_of_stop: 50
+  max_entry_slippage_points: 0
+  paper_balance: 10000
+
+risk:
+  risk_per_trade_pct: 1.0
+  max_lot: 1.0
+
+  # More instruments means more signals get through, so the ceiling rises a
+  # little — but one position per symbol still stands, which is what stops
+  # three rooms calling the same gold move from tripling the risk.
+  max_open_trades: 5
+  max_open_per_symbol: 1
+  max_daily_loss_pct: 5.0
+  max_signals_per_hour: 12
+  dedupe_window_minutes: 45
+
+  allow_symbols:
+    # Metals
+    - XAUUSD
+    - XAGUSD
+    # Crypto
+    - BTCUSD
+    - ETHUSD
+    # FX majors
+    - EURUSD
+    - GBPUSD
+    - USDJPY
+    - AUDUSD
+    - USDCAD
+    - NZDUSD
+    - USDCHF
+    # FX crosses these rooms call often
+    - GBPJPY
+    - EURJPY
+    # Indices
+    - US30
+    - NAS100
+    - SPX500
+  block_symbols: []
+
+  # Globals, overridden per symbol below. A single value cannot work across
+  # instruments: 100 points is $1.00 on gold, one pip on EURUSD, and one cent
+  # on Bitcoin — as a global spread ceiling it would block every crypto and
+  # most FX signal while barely constraining gold.
+  min_stop_points: 0
+  max_spread_points: 0
+
+  symbol_limits:
+    XAUUSD:
+      min_stop_points: 50       # $0.50 — tighter than that is a misread
+      max_spread_points: 100    # $1.00 — gold widens hard at rollover
+    XAGUSD:
+      max_spread_points: 200
+    BTCUSD:
+      min_stop_points: 5000     # $50 — crypto stops are wide by nature
+      max_spread_points: 20000  # $200
+    ETHUSD:
+      min_stop_points: 300
+      max_spread_points: 3000
+    # 5-digit FX: 10 points = 1 pip.
+    EURUSD:  {min_stop_points: 50, max_spread_points: 30}
+    GBPUSD:  {min_stop_points: 50, max_spread_points: 40}
+    AUDUSD:  {min_stop_points: 50, max_spread_points: 40}
+    NZDUSD:  {min_stop_points: 50, max_spread_points: 50}
+    USDCAD:  {min_stop_points: 50, max_spread_points: 50}
+    USDCHF:  {min_stop_points: 50, max_spread_points: 50}
+    # 3-digit JPY quotes: 10 points = 1 pip here too.
+    USDJPY:  {min_stop_points: 50, max_spread_points: 40}
+    GBPJPY:  {min_stop_points: 80, max_spread_points: 80}
+    EURJPY:  {min_stop_points: 60, max_spread_points: 60}
+    # Indices quote in whole points.
+    US30:    {min_stop_points: 100, max_spread_points: 80}
+    NAS100:  {min_stop_points: 100, max_spread_points: 80}
+    SPX500:  {min_stop_points: 50, max_spread_points: 60}
+
+  # Gold and FX close at the weekend; crypto does not. Left open all week so
+  # weekend BTC calls are not silently dropped — the market being shut is
+  # enough to stop the rest.
+  hours:
+    start: "00:00"
+    end: "23:59"
+    days: [MON, TUE, WED, THU, FRI, SAT, SUN]
+
+  breakeven_offset_points: 20
+  partial_close_default: 0.5
+  fallback_stop_points: 0
+  allow_stop_widening: false
+
+broker:
+  provider: mt5
+  suffix: ""
+  symbol_overrides: {}
+  deviation_points: 50
+  magic: 770077
+
+journal:
+  path: data/journal.sqlite
+
+logging:
+  level: INFO
+  file: logs/tgscalper.log
