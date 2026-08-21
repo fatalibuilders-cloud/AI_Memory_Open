@@ -36,6 +36,12 @@ class BrokerSession:
     known_tickets: set[int] = field(default_factory=set)
     reconnect_attempt: int = 0
     last_block: str = ""          # why the most recent signal was refused
+    #: symbols the broker permanently refuses (trade disabled, unknown), so the
+    #: bot stops retrying them every signal. name -> reason
+    disabled_symbols: dict[str, str] = field(default_factory=dict)
+
+    def active_symbols(self) -> list[str]:
+        return [s for s in self.symbols if s not in self.disabled_symbols]
 
     @property
     def label(self) -> str:

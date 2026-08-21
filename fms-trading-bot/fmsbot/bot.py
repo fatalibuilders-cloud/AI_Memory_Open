@@ -25,6 +25,22 @@ _TF_SECONDS = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
                "H1": 3600, "H4": 14400, "D1": 86400}
 
 
+#: Order rejections that will not resolve by retrying: the account simply
+#: cannot trade this instrument.
+_PERMANENT_SYMBOL_ERRORS = (
+    "10017",             # trade disabled for the symbol
+    "trade disabled",
+    "does not exist",
+    "not offered",
+    "market closed" ,    # not permanent, but retrying all session is pointless
+)
+
+
+def _is_permanent_symbol_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(marker in text for marker in _PERMANENT_SYMBOL_ERRORS[:4])
+
+
 def sizing_label(settings) -> str:
     if settings.fixed_lot > 0:
         return f"{settings.fixed_lot} lot (fixed)"
@@ -129,14 +145,17 @@ class TradingBot:
         self._notify_closed_positions(session)
         if self.paused:
             return
+        active = session.active_symbols()
+        if not active:
+            return
         failures = 0
-        for symbol in session.symbols:
+        for symbol in active:
             try:
                 self._check_symbol(session, symbol)
             except BrokerError as exc:
                 failures += 1
                 session.warn_symbol(symbol, exc)
-        if failures and failures == len(session.symbols):
+        if failures and failures == len(active):
             raise BrokerError(f"all {failures} symbol(s) failing on {session.name}")
 
     def _check_symbol(self, session: BrokerSession, symbol: str) -> None:
@@ -215,8 +234,22 @@ class TradingBot:
         except BrokerError as exc:
             log.error("[%s] order failed %s %s: %s",
                       session.name, symbol, signal.side, exc)
-            self.remote.broadcast(f"❌ {session.name}: order failed "
-                                  f"{symbol} {signal.side}: {exc}")
+            if _is_permanent_symbol_error(exc):
+                # Retrying this every signal only spams the phone — the broker
+                # will keep refusing until the account or symbol list changes.
+                reason = str(exc).split("\n")[0]
+                session.disabled_symbols[symbol] = reason
+                remaining = session.active_symbols()
+                log.warning("[%s] disabling %s for this session: %s",
+                            session.name, symbol, reason)
+                self.remote.broadcast(
+                    f"🚫 {session.name}: {symbol} disabled — the broker refuses "
+                    f"orders on it.\n{reason}\n"
+                    f"Still trading: {', '.join(remaining) or 'nothing'}\n"
+                    f"Fix it permanently with:  python pick_symbols.py --apply")
+            else:
+                self.remote.broadcast(f"❌ {session.name}: order failed "
+                                      f"{symbol} {signal.side}: {exc}")
             return
 
         # If the fill still landed away from the reference, the stop and target
@@ -308,9 +341,13 @@ class TradingBot:
                     lines.append(f"\n• {s.name}: OFFLINE (retrying)")
                     continue
                 balance, equity = s.broker.balance(), s.broker.equity()
+                symbol_line = ", ".join(s.active_symbols()) or "none active"
+                if s.disabled_symbols:
+                    symbol_line += (f"\n  🚫 disabled: "
+                                    f"{', '.join(s.disabled_symbols)}")
                 lines.append(
                     f"\n• {s.name} ({s.cfg.kind})\n"
-                    f"  {', '.join(s.symbols)}\n"
+                    f"  {symbol_line}\n"
                     f"  bal {balance:.2f} | eq {equity:.2f} | "
                     f"open {len(s.broker.positions())}\n"
                     f"  {s.risk.day_summary(balance, equity)}")
@@ -386,8 +423,11 @@ class TradingBot:
                     continue
                 balance, equity = s.broker.balance(), s.broker.equity()
                 positions = s.broker.positions()
-                for line in s.risk.explain(balance, equity, len(positions), s.symbols):
+                for line in s.risk.explain(balance, equity, len(positions),
+                                           s.active_symbols()):
                     lines.append(f"  {line}")
+                for symbol, reason in s.disabled_symbols.items():
+                    lines.append(f"  🚫 {symbol} disabled: {reason[:90]}")
                 # when was the last signal actually seen, per symbol
                 for symbol in s.symbols:
                     seen = s.last_bar.get(symbol)
