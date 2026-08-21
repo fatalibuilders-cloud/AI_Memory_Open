@@ -19,8 +19,15 @@
 param(
     [string]$TaskName = 'tgscalper',
     # Try to start whatever is not running.
-    [switch]$Fix
+    [switch]$Fix,
+    # Also write everything to health-report.txt, for sharing.
+    [switch]$Save
 )
+
+if ($Save) {
+    $reportPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'health-report.txt'
+    Start-Transcript -Path $reportPath -Force | Out-Null
+}
 
 $projectDir = Split-Path -Parent $PSScriptRoot
 Set-Location $projectDir
@@ -112,8 +119,47 @@ if (Test-Path 'data\groups.json') {
     $problems.Add('no groups selected')
 }
 
-# ----------------------------------------------------------- 5. the log
-Head '5. Recent log'
+# -------------------------------------------------- 5. control bot token
+Head '5. Control bot token'
+$token = ''
+if (Test-Path '.env') {
+    foreach ($line in Get-Content '.env') {
+        if ($line -match '^\s*TG_BOT_TOKEN\s*=\s*(.+)$') { $token = $Matches[1].Trim() }
+    }
+}
+if (-not $token) {
+    Note 'no TG_BOT_TOKEN set - the control bot is off, which is fine if you'
+    Note 'drive everything from PowerShell.'
+} else {
+    # Ask Telegram directly. A revoked token is invisible from the outside:
+    # the copier keeps working and the bot simply never answers, which looks
+    # exactly like the copier being down.
+    try {
+        $reply = Invoke-RestMethod -Uri "https://api.telegram.org/bot$token/getMe" `
+            -TimeoutSec 15 -ErrorAction Stop
+        if ($reply.ok) {
+            Ok "token valid - bot is @$($reply.result.username)"
+        } else {
+            Bad 'Telegram rejected the token'
+            $problems.Add('bot token rejected')
+        }
+    } catch {
+        if ("$_" -match '401|Unauthorized') {
+            Bad 'token REJECTED by Telegram (401) - it has been revoked or changed'
+            Note 'This alone explains a bot that never replies, even while the'
+            Note 'copier is running normally and copying signals.'
+            Note 'Get a fresh token: @BotFather -> /mybots -> your bot -> API Token'
+            Note 'then run: .\windows\credentials.ps1'
+            $problems.Add('bot token revoked')
+        } else {
+            Note "could not reach Telegram to check the token: $_"
+            Note '(no internet, or a firewall - not necessarily a token problem)'
+        }
+    }
+}
+
+# ----------------------------------------------------------- 6. the log
+Head '6. Recent log'
 if (Test-Path 'logs\tgscalper.log') {
     $log = Get-Item 'logs\tgscalper.log'
     $age = (Get-Date) - $log.LastWriteTime
@@ -121,6 +167,24 @@ if (Test-Path 'logs\tgscalper.log') {
     if ($age.TotalMinutes -gt 15 -and $running.Count -gt 0) {
         Note 'Quiet for a while, which is normal when no signals have arrived.'
     }
+    # Named failures worth calling out before the raw tail, because they are
+    # easy to scroll past and each has a specific fix.
+    $log = Get-Content 'logs\tgscalper.log' -Tail 400
+    if ($log -match 'control bot failed to start') {
+        Bad 'the log says the control bot failed to start'
+        Note 'The copier may still be running and copying signals - it is only'
+        Note 'the Telegram replies that are missing. Usually a revoked token.'
+        $problems.Add('control bot failed to start')
+    }
+    if ($log -match 'cannot commit|API misuse') {
+        Note 'old database errors present - fixed on 2026-08-06, run: git pull'
+    }
+    if ($log -match 'REFUSING TO START') {
+        Bad 'refused to start: MT5 is logged into a REAL MONEY account'
+        Note 'Log MT5 into your demo account, or set execution.allow_real_money.'
+        $problems.Add('real-money account refused')
+    }
+
     Write-Host ''
     Get-Content 'logs\tgscalper.log' -Tail 25 | ForEach-Object {
         $colour = if ($_ -match 'ERROR|CRITICAL') { 'Red' }
@@ -156,3 +220,9 @@ if ($problems.Count -eq 0) {
     }
 }
 Write-Host ''
+
+if ($Save) {
+    Stop-Transcript | Out-Null
+    Write-Host "  Saved to $reportPath - send that file if you need help." -ForegroundColor Cyan
+    Write-Host ''
+}
