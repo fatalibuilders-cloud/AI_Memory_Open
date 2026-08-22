@@ -228,6 +228,22 @@ class TradingBot:
         # the trade starts that far behind and must recover it before the
         # signal can pay anything. Silver and gold on M1 are the usual cases.
         sl_distance, tp_distance = signal.sl_distance, signal.tp_distance
+
+        # Fixed cash exits, when configured, replace the ATR multiples.
+        # money = distance * lots * value-per-price-unit.
+        if self.s.tp_money or self.s.sl_money:
+            try:
+                per_price = broker.value_per_price(symbol, volume)
+            except BrokerError:
+                per_price = 0.0
+            if per_price > 0:
+                if self.s.sl_money:
+                    sl_distance = self.s.sl_money / per_price
+                if self.s.tp_money:
+                    tp_distance = self.s.tp_money / per_price
+            else:
+                log.warning("[%s] %s: cannot convert money targets, "
+                            "falling back to ATR distances", session.name, symbol)
         if self.s.max_spread_ratio > 0:
             try:
                 spread = broker.spread(symbol)

@@ -280,6 +280,13 @@ class MT5Broker(Broker):
             sl=request["sl"], tp=request["tp"],
         )
 
+    def value_per_price(self, symbol: str, volume: float) -> float:
+        mt5 = self._require()
+        info = mt5.symbol_info(self._resolve(symbol))
+        if info is None or not info.trade_tick_size:
+            return 0.0
+        return (info.trade_tick_value / info.trade_tick_size) * float(volume)
+
     def spread(self, symbol: str) -> float:
         mt5 = self._require()
         tick = mt5.symbol_info_tick(self._resolve(symbol))

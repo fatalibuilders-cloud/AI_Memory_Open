@@ -193,6 +193,15 @@ class Settings:
     bb_std: float = 2.0
     donchian_period: int = 20
 
+    # --- Money-based exits (override the ATR multiples when > 0) ----------
+    # Close at a fixed cash profit rather than a multiple of ATR. When
+    # tp_runner_money is also set, reaching tp_money moves the stop to
+    # break-even and extends the target to tp_runner_money, so a trade that
+    # keeps going can pay more while no longer being able to lose.
+    tp_money: float = 0.0            # e.g. 0.50 = close at +$0.50
+    tp_runner_money: float = 0.0     # e.g. 2.00 = let a confirmed winner run
+    sl_money: float = 0.0            # e.g. 0.30 = cap the loss at $0.30
+
     # Refuse a trade when the spread eats more than this share of the stop
     # distance. Paying 50% of your risk in spread makes a trade close to
     # unwinnable regardless of how good the signal is — silver on M1 is the
@@ -306,6 +315,9 @@ class Settings:
             donchian_period=_i("DONCHIAN_PERIOD", 20),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
+            tp_money=_f("TP_MONEY", 0.0),
+            tp_runner_money=_f("TP_RUNNER_MONEY", 0.0),
+            sl_money=_f("SL_MONEY", 0.0),
             max_spread_ratio=_f("MAX_SPREAD_RATIO", 0.25),
             fixed_lot=_f("FIXED_LOT", 0.0),
             risk_pct=_f("RISK_PCT", 0.5),

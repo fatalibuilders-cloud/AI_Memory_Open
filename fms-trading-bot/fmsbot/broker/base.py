@@ -64,6 +64,14 @@ class Broker(ABC):
     def market_order(self, symbol: str, side: str, volume: float,
                      sl: float, tp: float, comment: str = "") -> OrderReceipt: ...
 
+    def value_per_price(self, symbol: str, volume: float) -> float:
+        """Account currency gained per 1.0 of price movement at this size.
+
+        Lets a cash target be turned into a price distance:
+        distance = money / value_per_price. 0.0 when unknown.
+        """
+        return 0.0
+
     def spread(self, symbol: str) -> float:
         """Current ask - bid, in price units. 0.0 if the broker cannot say."""
         return 0.0

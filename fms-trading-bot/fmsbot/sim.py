@@ -30,6 +30,7 @@ class SimTrade:
     exit: Optional[float] = None
     pnl: float = 0.0
     reason: str = ""
+    promoted: bool = False        # target extended, stop moved to break-even
 
 
 @dataclass
@@ -92,11 +93,31 @@ def simulate(bars: list[Bar], strategy: VecStrategy, settings,
     open_trades: list[SimTrade] = []
     equity = balance
 
+    # Money targets are fixed cash amounts, so convert them to price distance:
+    # money = distance * lots * point_value.
+    lots = settings.fixed_lot or 0.01
+    per_price = lots * point_value
+    money_sl = (settings.sl_money / per_price) if settings.sl_money and per_price else 0.0
+    money_tp = (settings.tp_money / per_price) if settings.tp_money and per_price else 0.0
+    runner_distance = ((settings.tp_runner_money / per_price)
+                       if settings.tp_runner_money and per_price else 0.0)
+
     for i in range(warmup, len(bars) - 1):
         bar, nxt = bars[i], bars[i + 1]
 
         still_open = []
         for t in open_trades:
+            # Runner: once the first target is reached, move the stop to
+            # break-even and extend the target. The trade can then pay more
+            # while no longer being able to lose.
+            if runner_distance and not t.promoted:
+                reached = (bar.high >= t.tp) if t.side == "buy" else (bar.low <= t.tp)
+                if reached:
+                    t.promoted = True
+                    t.sl = t.entry
+                    t.tp = (t.entry + runner_distance if t.side == "buy"
+                            else t.entry - runner_distance)
+
             hit_sl = bar.low <= t.sl if t.side == "buy" else bar.high >= t.sl
             hit_tp = bar.high >= t.tp if t.side == "buy" else bar.low <= t.tp
             if hit_sl:
@@ -121,6 +142,8 @@ def simulate(bars: list[Bar], strategy: VecStrategy, settings,
             continue
 
         entry = nxt.open + (spread if signal.side == "buy" else -spread)
+        sl_d = money_sl or signal.sl_distance
+        tp_d = money_tp or signal.tp_distance
         if settings.fixed_lot > 0:
             lots = settings.fixed_lot
         else:
@@ -128,9 +151,9 @@ def simulate(bars: list[Bar], strategy: VecStrategy, settings,
             lots = max(round(equity * settings.risk_pct / 100.0 / denom, 2), 0.01) \
                 if denom > 0 else 0.01
         if signal.side == "buy":
-            sl, tp = entry - signal.sl_distance, entry + signal.tp_distance
+            sl, tp = entry - sl_d, entry + tp_d
         else:
-            sl, tp = entry + signal.sl_distance, entry - signal.tp_distance
+            sl, tp = entry + sl_d, entry - tp_d
         open_trades.append(SimTrade(nxt.time, signal.side, entry, sl, tp, lots))
 
     res.end_balance = equity
