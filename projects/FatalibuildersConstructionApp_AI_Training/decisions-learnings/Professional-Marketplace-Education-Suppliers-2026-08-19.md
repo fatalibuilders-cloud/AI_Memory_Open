@@ -121,6 +121,37 @@ never stored in repo, env only).
 - Seed real, vetted suppliers per country (deliberately not fabricated).
 - Other countries' regulator maps cover only the core 4 disciplines.
 
+## Round 5 — board auto-verify, expanded Learning, password recovery (commit f535226, 356 tests)
+Owner: auto-update professionals by checking the board register (EBK) for a valid,
+up-to-date membership; admit immediately if the registration matches the account
+owner, but require an up-to-date board membership before earning; expand Learning
+(materials, tests, who-does-what, QA, duties, formulas); add password recovery.
+- **Board verification** (`lib/board-verify.ts`): pluggable — per-country/
+  discipline/board endpoint via env (`BOARD_VERIFY_URL[_<...>]` + `_KEY`); no
+  public EBK API exists, so when unset it returns null → professional stays
+  PENDING (manual). Never fabricates "verified". Auto-admit on register-name match
+  to the account owner (title/order-insensitive `namesMatch`). Records
+  `board_verified` / `board_valid_until` / `board_checked_at` on professionals.
+  `canTakeWork` now also requires `boardMembershipCurrent` (up-to-date licence).
+  `/api/professionals/recheck` + console board panel + re-check button.
+- **Learning** (`lib/education.ts` + `/learn`): MATERIALS, TESTS (with standards),
+  ROLES (duties across 10 disciplines), QA_STAGES, and FORMULAS (quantities,
+  concrete mixes, reinforcement incl. d²/162, loads & structure, survey, finishes,
+  cost, conversions). Page has anchored sections + quick-nav.
+- **Password recovery**: `password_resets` table; `createPasswordReset`/
+  `resetPassword` in auth.ts (single-use, SHA-256-hashed, 1-hour tokens; drops all
+  sessions on reset; no email enumeration). `/api/auth/forgot` + `/reset`;
+  `/forgot` + `/reset/[token]` pages; login "Forgot password?" link; reset email.
+
+## Board verification env (optional — enables auto-admit; else manual)
+- `BOARD_VERIFY_URL_KENYA_STRUCTURAL_ENGINEER` (most specific) or
+  `BOARD_VERIFY_URL_EBK` (per board) or `BOARD_VERIFY_URL` (global), plus a
+  matching `BOARD_VERIFY_KEY*` bearer token. Endpoint receives
+  `{country, discipline, board, registrationNo}` and returns JSON with any of
+  `found/exists`, `name/registeredName`, `status`, `validUntil/expiry`,
+  `upToDate/current/inGoodStanding`. No EBK public API today — connect a data
+  source/agent when available; until then verification is manual via /admin.
+
 ## Env for go-live (owner) — set in Vercel, NOT the repo
 - **STK (collection)**: `PAYMENTS_PROVIDER=mpesa`, `MPESA_CONSUMER_KEY`,
   `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE` (Paybill/Till), `MPESA_PASSKEY`
