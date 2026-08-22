@@ -249,6 +249,21 @@ class TradingBot:
                 spread = broker.spread(symbol)
             except BrokerError:
                 spread = 0.0
+            # A sudden widening usually means news or thin liquidity — the
+            # worst moments to be opening short-duration trades.
+            if spread > 0:
+                history = session.spread_history.setdefault(symbol, [])
+                if len(history) >= 20:
+                    typical = sorted(history)[len(history) // 2]
+                    if typical > 0 and spread > typical * self.s.spread_spike_factor:
+                        reason = (f"spread {spread:.5f} is {spread/typical:.1f}x its "
+                                  f"typical {typical:.5f} — abnormal conditions")
+                        log.info("[%s] %s skipped: %s", session.name, symbol, reason)
+                        session.last_block = f"{symbol} skipped — {reason}"
+                        return
+                history.append(spread)
+                del history[:-100]
+
             if spread > 0 and sl_distance > 0:
                 ratio = spread / sl_distance
                 if ratio > self.s.max_spread_ratio:
@@ -271,6 +286,23 @@ class TradingBot:
             log.info("[%s] %s stop %.5f below broker minimum %.5f — widening "
                      "both legs x%.2f", session.name, symbol, sl_distance, floor, scale)
             sl_distance, tp_distance = floor, tp_distance * scale
+
+        # The target has to beat the round trip, or the trade cannot pay even
+        # when it is right. Costs are the spread plus any commission.
+        if self.s.min_reward_cost_ratio > 0:
+            try:
+                per_price = broker.value_per_price(symbol, volume)
+                cost = broker.spread(symbol) * per_price
+            except BrokerError:
+                per_price = cost = 0.0
+            if cost > 0 and per_price > 0:
+                reward = tp_distance * per_price
+                if reward < cost * self.s.min_reward_cost_ratio:
+                    reason = (f"target ${reward:.3f} is below {self.s.min_reward_cost_ratio}x "
+                              f"the ${cost:.3f} cost of the trade")
+                    log.info("[%s] %s skipped: %s", session.name, symbol, reason)
+                    session.last_block = f"{symbol} skipped — {reason}"
+                    return
 
         signal = replace(signal, sl_distance=sl_distance, tp_distance=tp_distance)
 
@@ -302,6 +334,24 @@ class TradingBot:
                 self.remote.broadcast(f"❌ {session.name}: order failed "
                                       f"{symbol} {signal.side}: {exc}")
             return
+
+        # A fill far from the quote means the market moved through us. Close
+        # it immediately rather than run a trade whose terms we did not agree.
+        slip = abs(receipt.price - reference)
+        if (self.s.max_slippage_ratio > 0 and signal.sl_distance > 0
+                and slip > signal.sl_distance * self.s.max_slippage_ratio):
+            log.warning("[%s] %s slipped %.5f (%.0f%% of the stop) — closing it",
+                        session.name, symbol, slip, 100*slip/signal.sl_distance)
+            try:
+                broker.close_position(receipt.ticket)
+                self.remote.broadcast(
+                    f"⚠️ [{session.name}] {symbol} filled {slip:.5f} away from the "
+                    f"quote ({100*slip/signal.sl_distance:.0f}% of the stop) — "
+                    f"closed immediately.")
+                return
+            except BrokerError as exc:
+                log.error("[%s] could not close slipped position: %s",
+                          session.name, exc)
 
         # If the fill still landed away from the reference, the stop and target
         # are no longer the distances the strategy asked for. Restore them.
@@ -351,16 +401,73 @@ class TradingBot:
         return receipt
 
     def _notify_closed_positions(self, session: BrokerSession) -> None:
-        """Detect positions that hit SL/TP (closed broker-side) and notify."""
-        current = {p.ticket for p in session.broker.positions()}
+        """Detect positions closed broker-side, record the result, notify."""
+        positions = session.broker.positions()
+        current = {p.ticket for p in positions}
         vanished = session.known_tickets - current
         for ticket in vanished:
             session.known_tickets.discard(ticket)
+            pnl = self._realised_pnl(session, ticket)
+            equity = session.broker.equity()
+            if pnl is None:
+                self.remote.broadcast(
+                    f"🏁 [{session.name}] position {ticket} closed. "
+                    f"Equity: {equity:.2f}")
+                continue
+            mark = "✅" if pnl > 0 else "🔻"
             self.remote.broadcast(
-                f"🏁 [{session.name}] position {ticket} closed (SL/TP or manual). "
-                f"Equity: {session.broker.equity():.2f}")
-        # adopt tickets opened manually so we also notify when they close
+                f"{mark} [{session.name}] position {ticket} closed "
+                f"{pnl:+.2f}. Equity: {equity:.2f}")
+            pause_msg = session.risk.record_result(pnl)
+            if pause_msg:
+                self.remote.broadcast(f"⏸ [{session.name}] {pause_msg}")
         session.known_tickets |= current
+        self._protect_profits(session, positions)
+
+    def _realised_pnl(self, session: BrokerSession, ticket: int) -> Optional[float]:
+        """Profit of a just-closed position, from the broker's own history."""
+        broker = session.broker
+        mt5 = getattr(broker, "mt5", None)
+        if mt5 is None:
+            return None
+        try:
+            from datetime import datetime, timedelta
+            deals = mt5.history_deals_get(datetime.now() - timedelta(hours=12),
+                                          datetime.now() + timedelta(minutes=5))
+            for d in deals or []:
+                if int(getattr(d, "position_id", 0)) == int(ticket) and d.entry == 1:
+                    return (float(d.profit) + float(d.commission) + float(d.swap))
+        except Exception as exc:
+            log.debug("Could not read realised PnL for %s: %s", ticket, exc)
+        return None
+
+    def _protect_profits(self, session: BrokerSession, positions) -> None:
+        """Move the stop to break-even once a position is far enough ahead.
+
+        Only ever tightens: a stop is never moved further from price.
+        """
+        threshold = self.s.breakeven_at_money
+        if threshold <= 0:
+            return
+        for p in positions:
+            if p.ticket in session.breakeven_done or p.profit < threshold:
+                continue
+            better = (p.sl < p.entry_price) if p.side == "buy" else (p.sl > p.entry_price)
+            if p.sl and not better:
+                session.breakeven_done.add(p.ticket)
+                continue                      # already at or beyond break-even
+            try:
+                session.broker.modify_position(p.ticket, p.entry_price, p.tp)
+            except BrokerError as exc:
+                log.debug("[%s] break-even move failed on %s: %s",
+                          session.name, p.symbol, exc)
+                continue
+            session.breakeven_done.add(p.ticket)
+            log.info("[%s] %s #%s at +%.2f — stop moved to break-even %.5f",
+                     session.name, p.symbol, p.ticket, p.profit, p.entry_price)
+            self.remote.broadcast(
+                f"🔒 [{session.name}] {p.symbol} #{p.ticket} at {p.profit:+.2f} — "
+                f"stop moved to break-even. This trade can no longer lose.")
 
     # ------------------------------------------------------------------
     # phone commands

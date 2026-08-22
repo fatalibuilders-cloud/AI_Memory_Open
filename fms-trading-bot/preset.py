@@ -77,6 +77,32 @@ PRESETS["highfreq"] = {
     "COOLDOWN_SECONDS": "30",
 }
 
+PRESETS["riskfirst"] = {
+    # Capital preservation > frequency > profit target.
+    # The 1,000/day ceiling is a cap, never a quota: the gates below decide
+    # how many trades actually happen, and most days will be far fewer.
+    "ENTRY_MODE": "signal",
+    "TIMEFRAME": "M5",
+    "EMA_FAST": "20", "EMA_SLOW": "50",
+    "RSI_FLOOR": "45", "RSI_CEILING": "55",
+    "ATR_SL_MULT": "1.5", "ATR_TP_MULT": "2.0",
+    "FIXED_LOT": "0.01",
+    "RISK_PCT": "0.25",
+    "TP_MONEY": "0.50",
+    "BREAKEVEN_AT_MONEY": "0.25",
+    "MAX_OPEN_POSITIONS": "5", "MAX_POSITIONS_PER_SYMBOL": "1",
+    "MAX_TRADES_PER_DAY": "1000",
+    "ROLLING_TRADE_WINDOW_HOURS": "24",
+    "DAILY_LOSS_LIMIT_PCT": "1",
+    "MAX_CONSECUTIVE_LOSSES": "3",
+    "LOSS_PAUSE_MINUTES": "60",
+    "MAX_SPREAD_RATIO": "0.25",
+    "SPREAD_SPIKE_FACTOR": "3.0",
+    "MAX_SLIPPAGE_RATIO": "0.5",
+    "MIN_REWARD_COST_RATIO": "2.0",
+    "COOLDOWN_SECONDS": "60",
+}
+
 NOTES = {
     "conservative": "A handful of trades a day. Slowest growth, smallest drawdowns.",
     "balanced": "The shipped default: a few trades a day per symbol.",
@@ -85,6 +111,13 @@ NOTES = {
         "  bigger swings BOTH ways — a bad day can now cost 15% before the daily\n"
         "  stop trips. This is the realistic ceiling; anything beyond it is\n"
         "  gambling, not aggression."
+    ),
+    "riskfirst": (
+        "Capital preservation first: 0.25% risk, 1% daily stop, 5 positions,\n"
+        "  pause after 3 losses in a row, break-even stop at +$0.25, and every\n"
+        "  entry gated on spread, spread stability, slippage and reward vs cost.\n"
+        "  1,000 trades/day is a CEILING, not a target — expect far fewer, and\n"
+        "  days with none at all when conditions do not qualify."
     ),
     "highfreq": (
         "Targets ~100 trades/day. DEMO ONLY.\n"

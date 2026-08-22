@@ -193,6 +193,28 @@ class Settings:
     bb_std: float = 2.0
     donchian_period: int = 20
 
+    # --- Safety controls --------------------------------------------------
+    # Pause after this many losses in a row. The point is to stop while a
+    # market regime is clearly against the strategy rather than keep paying
+    # to find out. 0 disables.
+    max_consecutive_losses: int = 3
+    # How long the pause lasts before trading may resume.
+    loss_pause_minutes: int = 60
+    # Count trades over a rolling window rather than a calendar day, so a
+    # burst just before midnight cannot be followed by another at 00:01.
+    rolling_trade_window_hours: int = 24
+    # Move the stop to break-even once a position is this far in profit
+    # (account currency). 0 disables.
+    breakeven_at_money: float = 0.0
+    # Refuse a fill that slipped further than this from the expected price,
+    # as a fraction of the stop distance.
+    max_slippage_ratio: float = 0.5
+    # Treat the spread as abnormal when it exceeds this multiple of its
+    # recent typical value, which usually means news or thin liquidity.
+    spread_spike_factor: float = 3.0
+    # Require the target to beat the round-trip cost by this multiple.
+    min_reward_cost_ratio: float = 2.0
+
     # --- Money-based exits (override the ATR multiples when > 0) ----------
     # Close at a fixed cash profit rather than a multiple of ATR. When
     # tp_runner_money is also set, reaching tp_money moves the stop to
@@ -315,6 +337,13 @@ class Settings:
             donchian_period=_i("DONCHIAN_PERIOD", 20),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
+            max_consecutive_losses=_i("MAX_CONSECUTIVE_LOSSES", 3),
+            loss_pause_minutes=_i("LOSS_PAUSE_MINUTES", 60),
+            rolling_trade_window_hours=_i("ROLLING_TRADE_WINDOW_HOURS", 24),
+            breakeven_at_money=_f("BREAKEVEN_AT_MONEY", 0.0),
+            max_slippage_ratio=_f("MAX_SLIPPAGE_RATIO", 0.5),
+            spread_spike_factor=_f("SPREAD_SPIKE_FACTOR", 3.0),
+            min_reward_cost_ratio=_f("MIN_REWARD_COST_RATIO", 2.0),
             tp_money=_f("TP_MONEY", 0.0),
             tp_runner_money=_f("TP_RUNNER_MONEY", 0.0),
             sl_money=_f("SL_MONEY", 0.0),
