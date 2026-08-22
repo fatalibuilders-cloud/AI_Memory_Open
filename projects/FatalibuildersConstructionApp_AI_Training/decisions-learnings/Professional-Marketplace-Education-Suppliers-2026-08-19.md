@@ -160,6 +160,26 @@ Owner shared `https://engineers.ebk.go.ke/search/search-card/UFJPRjAxMjE4OQ==`
   it's the single place to tune. Only covers EBK engineers; BORAQS/NCA/etc. still
   use the generic env endpoint or manual.
 
+## Multi-board generalization (commit 9a7afa3)
+Owner asked to "add other equivalent" boards + shared their links (BORAQS
+boraqs.or.ke/registered/qs, NCA nca.go.ke, LSB lsb.go.ke, IDAK idak.org, LAAK
+iflaworld.com/membership/laak, NEMA nema.go.ke).
+- Generalized EBK scraper → `parseRegisterCard` + `cardCheck(board, reg)` for ANY
+  board; EBK aliases kept. Per-board card URL via `BOARD_CARD_URL_<BOARD>`
+  ({code}=base64 / {reg}=raw; `BOARD_CARD_ENCODE_<BOARD>`). `checkBoard` tries the
+  card provider for any board, then the generic JSON endpoint.
+- IMPORTANT: the links the owner gave are **register/home pages, not per-member
+  lookup endpoints** like EBK's `/search/search-card/{code}` (BORAQS is a full
+  list; the rest are homepages). So those boards can't be auto-scraped by reg
+  number yet — they stay MANUAL. Stored each board's `registerUrl`;
+  `boardRegisterUrl()` + a "check ↗" link on `/admin/professionals` lets the admin
+  open the board register in one click. When a board exposes a real per-member
+  URL, set `BOARD_CARD_URL_<BOARD>` and it auto-verifies like EBK.
+- `listCardBoards()` shows which boards are wired (EBK) vs pending a URL.
+- Try `B18906` (owner's EBK no.) at
+  https://engineers.ebk.go.ke/search/search-card/QjE4OTA2 — sandbox egress to
+  ebk.go.ke is blocked (gateway 403), so live confirmation must happen in prod.
+
 ## Board verification env (optional — enables auto-admit; else manual)
 - `BOARD_VERIFY_URL_KENYA_STRUCTURAL_ENGINEER` (most specific) or
   `BOARD_VERIFY_URL_EBK` (per board) or `BOARD_VERIFY_URL` (global), plus a
