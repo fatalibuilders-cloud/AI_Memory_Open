@@ -15,6 +15,8 @@ export interface CheckoutRequest {
   /** Line-item description shown on the provider's payment page. */
   description: string;
   donorEmail: string;
+  /** Normalised MSISDN, for rails that push a prompt to a phone. */
+  phone?: string | null;
   successUrl: string;
   cancelUrl: string;
 }
@@ -32,6 +34,8 @@ export interface SettlementEvent {
   providerRef: string | null;
   /** Recurring-agreement id, present when a monthly gift starts. */
   subscriptionRef?: string | null;
+  /** The donor's own receipt from the provider — an M-Pesa code, say. */
+  externalRef?: string | null;
   status: "completed" | "failed";
 }
 

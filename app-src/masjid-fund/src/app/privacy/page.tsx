@@ -34,6 +34,11 @@ export default function PrivacyPage() {
         <p>If you tick &ldquo;give anonymously&rdquo;, your name is not shown anywhere public.
           It stays in our records, because the accounts have to add up and a refund has to be
           traceable.</p>
+        <p>
+          <strong>Giving by M-Pesa</strong> means we also hold the phone number you paid from. It
+          is needed to send the payment prompt and to match the gift against the M-Pesa statement.
+          It is never published and never used to market to you.
+        </p>
       </section>
 
       <section>

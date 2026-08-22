@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   formatMoney,
+  fromBase,
+  toBase,
+  usdToKesRate,
   formatMoneyCompact,
   parseAmountToCents,
   progressPercent,
@@ -52,6 +55,32 @@ describe("unitsCovered", () => {
     expect(unitsCovered(5000, 900)).toBe(5); // $50 buys 5 bags of cement
     expect(unitsCovered(500, 900)).toBe(0);
     expect(unitsCovered(5000, 0)).toBe(0);
+  });
+});
+
+describe("currency conversion", () => {
+  it("leaves the base currency untouched", () => {
+    expect(fromBase(5000, "USD")).toBe(5000);
+    expect(toBase(5000, "USD")).toBe(5000);
+  });
+
+  it("converts to whole shillings, because M-Pesa cannot charge cents", () => {
+    const rate = usdToKesRate();
+    const kes = fromBase(5000, "KES"); // $50
+    expect(kes % 100).toBe(0);
+    expect(kes).toBe(Math.round((5000 * rate) / 100) * 100);
+  });
+
+  it("round-trips close enough to be worth publishing", () => {
+    for (const usd of [100, 2500, 100000]) {
+      const back = toBase(fromBase(usd, "KES"), "KES");
+      expect(Math.abs(back - usd)).toBeLessThanOrEqual(1); // within a cent
+    }
+  });
+
+  it("formats shillings the way a Kenyan donor reads them", () => {
+    expect(formatMoney(645000, "KES")).toContain("6,450");
+    expect(formatMoney(645000, "KES")).not.toContain("$");
   });
 });
 

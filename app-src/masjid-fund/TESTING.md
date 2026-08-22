@@ -80,6 +80,20 @@ want to reach `/admin` there.
 8. **Go back to the project.** The raised total and donor count should have moved
    by exactly your donation.
 
+### Giving by M-Pesa
+
+1. On the donate form choose **M-Pesa**. The amount switches to shillings at the
+   configured rate — $50 shows as Ksh 6,450.
+2. Switch to **Give monthly**: M-Pesa greys out. Daraja has no recurring mandate,
+   so the form refuses rather than taking one payment and calling it monthly.
+3. Enter a deliberately bad number (`12345`) — refused before any payment starts.
+4. Enter a real-looking one (`0722 000 000`) and continue. You land on a waiting
+   page; in test mode it offers buttons to play out either ending.
+5. Press **Simulate entering the PIN**. The page moves to the receipt by itself,
+   and the project total goes up by the **dollar** amount, not the shilling one.
+6. The receipt email in your terminal shows both currencies, the rate, and the
+   M-Pesa code.
+
 ### Reading the receipt email
 
 Nothing is actually sent in test mode, so the receipt is printed in the terminal
@@ -150,6 +164,7 @@ stay with their project, and show no cancel button when you revisit it.
 - **M-Pesa, PayPal, bank-transfer instructions** — Stripe is written and tested
   but inactive until keys are set; the other rails come next.
 - **Prices are USD.** Multi-currency lands with M-Pesa, which settles in KES.
+- **Monthly giving over M-Pesa** — not possible on this rail; card only.
 - **Stripe Radar rules** are not configured — the app's own throttling is in
   place, but the provider-side fraud rules wait on a live Stripe account.
 - **The five listed masajid are sample data** — plausible but invented, so that

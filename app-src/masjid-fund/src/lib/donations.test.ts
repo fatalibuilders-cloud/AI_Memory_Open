@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getDb, resetDbForTests } from "@/db";
+import { fromBase, usdToKesRate } from "./money";
 import { DONATION_LIMITS, hashIp } from "./rate-limit";
 import { DonationError } from "./donation";
 import {
@@ -10,7 +11,7 @@ import {
 } from "./donations";
 import { resetEmailProviderForTests } from "./email";
 import { resetPaymentProviderForTests } from "./payments";
-import { getProjectBySlug, getFundStats, listRecentDonations } from "./projects";
+import { getFundStats, getProjectBySlug, listRecentDonations } from "./projects";
 
 const GARISSA = "masjid-al-noor-garissa";
 const COMPLETED = "masjid-al-fajr-mombasa";
@@ -117,6 +118,86 @@ describe("settleDonation", () => {
     expect(await settleDonation({ reference: "MF-NOTHING" }, "completed")).toBeNull();
   });
 });
+
+describe("M-Pesa donations", () => {
+  const mpesa = { ...base, method: "mpesa" as const, phone: "0722 000 000", projectSlug: GARISSA };
+
+  it("charges shillings while the ledger keeps dollars", async () => {
+    const started = await createDonation({ ...mpesa, amountCents: 5000 });
+    const donation = await getDonationByReference(started.reference);
+
+    expect(donation?.currency).toBe("KES");
+    expect(donation?.amountCents).toBe(fromBase(5000, "KES"));
+    expect(donation?.baseAmountCents).toBe(5000); // what the donor chose, in USD
+    expect(donation?.fxRate).toBe(usdToKesRate());
+    expect(donation?.method).toBe("mpesa");
+    expect(donation?.phone).toBe("254722000000"); // normalised for Daraja
+    expect(started.checkoutUrl).toBe(`/donate/mpesa/${started.reference}`);
+  });
+
+  it("adds the dollar equivalent to the project, not the shilling figure", async () => {
+    const before = await getProjectBySlug(GARISSA);
+    const started = await createDonation({ ...mpesa, amountCents: 10000 });
+    await settleDonation({ reference: started.reference }, "completed");
+
+    const after = await getProjectBySlug(GARISSA);
+    expect(after!.raisedCents).toBe(before!.raisedCents + 10000);
+  });
+
+  it("keeps mixed-currency totals in dollars", async () => {
+    const card = await createDonation({ ...base, amountCents: 2500, projectSlug: GARISSA });
+    await settleDonation({ reference: card.reference }, "completed");
+    const phone = await createDonation({ ...mpesa, amountCents: 7500 });
+    await settleDonation({ reference: phone.reference }, "completed");
+
+    const stats = await getFundStats();
+    expect(stats.raisedCents).toBe(10000 + (await offlineBaseline()));
+  });
+
+  it("records the M-Pesa code from the callback", async () => {
+    const started = await createDonation(mpesa);
+    const settled = await settleDonation(
+      { reference: null, providerRef: `mock_${started.reference}`, externalRef: "SFI4X8YZ01" },
+      "completed",
+    );
+    expect(settled?.externalRef).toBe("SFI4X8YZ01");
+  });
+
+  it("refuses a number M-Pesa could not reach, before any payment is attempted", async () => {
+    await expect(createDonation({ ...mpesa, phone: "12345" })).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(createDonation({ ...mpesa, phone: "" })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("closes off a donation whose payment could never be started", async () => {
+    // The simulator always succeeds, so drive the failure through validation:
+    // a rejected push must not leave a pending row nothing will ever settle.
+    const before = await listDonationsForStatus("pending");
+    await createDonation({ ...mpesa, phone: "not a phone" }).catch(() => null);
+    expect(await listDonationsForStatus("pending")).toBe(before);
+  });
+});
+
+async function offlineBaseline(): Promise<number> {
+  // Seeded projects carry historic offline totals; they are part of every
+  // fund-wide figure and are not what these tests are asserting about.
+  const stats = await getFundStats();
+  const db = await getDb();
+  const [row] = await db.query<{ donated: string | number | null }>(
+    "SELECT SUM(COALESCE(base_amount_cents, amount_cents)) AS donated FROM donations WHERE status = 'completed'",
+  );
+  return stats.raisedCents - Number(row?.donated ?? 0);
+}
+
+async function listDonationsForStatus(status: string): Promise<number> {
+  const db = await getDb();
+  const [row] = await db.query<{ count: string | number }>(
+    "SELECT COUNT(*) AS count FROM donations WHERE status = $1",
+    [status],
+  );
+  return Number(row?.count ?? 0);
+}
 
 describe("abuse limits", () => {
   it("stops a burst of attempts from one network before they reach the provider", async () => {

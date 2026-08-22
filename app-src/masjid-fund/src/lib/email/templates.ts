@@ -23,10 +23,21 @@ export function receiptEmail(
   const rows: [string, string][] = [
     ["Reference", donation.reference],
     ["Amount", amount],
+  ];
+  // A gift charged in shillings shows both figures and the rate that linked
+  // them, so the donor can reconcile their M-Pesa message against our totals.
+  if (donation.currency !== "USD") {
+    rows.push([
+      "In US dollars",
+      `${formatMoney(donation.baseAmountCents, "USD")} at ${donation.fxRate.toFixed(2)} KES/USD`,
+    ]);
+  }
+  if (donation.externalRef) rows.push(["M-Pesa code", donation.externalRef]);
+  rows.push(
     ["Type", INTENT_LABELS[donation.intent]],
     ["Goes to", destination],
     ["Received", new Date(donation.completedAt ?? donation.createdAt).toUTCString()],
-  ];
+  );
   if (donation.dedication) rows.push(["Dedication", donation.dedication]);
 
   const text = [

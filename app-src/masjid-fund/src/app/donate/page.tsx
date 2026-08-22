@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DonateForm } from "@/components/DonateForm";
 import { MAX_DONATION_CENTS, MIN_DONATION_CENTS } from "@/lib/money";
-import { getPaymentProvider } from "@/lib/payments";
+import { METHOD_LABELS, PAYMENT_METHODS, getPaymentProvider } from "@/lib/payments";
 import { listProjects } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,15 @@ export default async function DonatePage({
 }) {
   const params = await searchParams;
   const projects = (await listProjects()).filter((p) => p.status !== "completed");
-  const liveMode = getPaymentProvider().liveMode;
+  // Card is offered everywhere; M-Pesa only where it makes sense to a donor —
+  // which for now is always, since the simulator stands in until Daraja keys
+  // arrive. "liveMode" is true only when at least one real rail is configured.
+  const methods = PAYMENT_METHODS.map((value) => ({
+    value,
+    label: METHOD_LABELS[value],
+    hint: value === "mpesa" ? "Pay from your phone in shillings" : "Visa, Mastercard, Apple Pay",
+  }));
+  const liveMode = PAYMENT_METHODS.some((method) => getPaymentProvider(method).liveMode);
 
   const requested = Number(params.amount);
   const defaultAmountCents =
@@ -56,6 +64,7 @@ export default async function DonatePage({
           defaultFrequency={params.frequency === "monthly" ? "monthly" : "one_time"}
           defaultAmountCents={defaultAmountCents}
           liveMode={liveMode}
+          methods={methods}
         />
       </div>
     </div>

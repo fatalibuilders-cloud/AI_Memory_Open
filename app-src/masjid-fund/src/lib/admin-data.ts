@@ -316,8 +316,8 @@ export async function getAdminStats(): Promise<AdminStats> {
            COUNT(*) FILTER (WHERE status = 'completed') AS completed,
            COUNT(*) FILTER (WHERE status = 'failed')    AS failed,
            COUNT(*) FILTER (WHERE frequency = 'monthly' AND status = 'completed' AND cancelled_at IS NULL) AS monthly_active,
-           SUM(amount_cents) FILTER (WHERE status = 'completed') AS settled_cents,
-           SUM(amount_cents) FILTER (WHERE status = 'completed' AND completed_at > now() - interval '30 days') AS last_30
+           SUM(COALESCE(base_amount_cents, amount_cents)) FILTER (WHERE status = 'completed') AS settled_cents,
+           SUM(COALESCE(base_amount_cents, amount_cents)) FILTER (WHERE status = 'completed' AND completed_at > now() - interval '30 days') AS last_30
     FROM donations
   `);
   const [emails] = await db.query<{ failed: string | number }>(

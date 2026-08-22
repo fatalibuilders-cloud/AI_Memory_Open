@@ -6,6 +6,9 @@ follow the build through to handover.
 
 Built with Next.js 15 (App Router), React 19, Tailwind CSS 4 and PostgreSQL.
 
+How it was built, and why each decision went the way it did:
+[`session-summary/AI-Session-Summary-2026-08-21_1451.md`](../../session-summary/AI-Session-Summary-2026-08-21_1451.md).
+
 ## Quick start
 
 ```bash
@@ -36,6 +39,7 @@ npm run build      # production build
 | `/giving/[token]` | Donor self-service: view and cancel a monthly gift, no account needed |
 | `/apply` | Communities apply for funding — details plus title deed, drawings and BoQ |
 | `/apply/status/[token]` | Applicant tracks the review and reads what is still needed |
+| `/donate/mpesa/[reference]` | Waiting page while the donor enters their M-Pesa PIN |
 | `/checkout/[reference]` | Simulated hosted checkout (test mode only) |
 | `/about`, `/faq` | Governance, and the zakat/sadaqah questions donors ask |
 | `/privacy`, `/terms`, `/refunds` | Policies, filled in from the `ORG_*` values at request time |
@@ -63,7 +67,8 @@ sign-in altogether.
 | `GET /api/stats` | Fund-wide totals |
 | `POST /api/donations` | Validate a gift, record it as pending, return a checkout URL |
 | `GET /api/donations/[reference]` | Public receipt lookup (no personal data) |
-| `POST /api/payments/webhook` | Provider settlement callback (signature-verified) |
+| `POST /api/payments/webhook` | Stripe settlement callback (signature-verified) |
+| `POST /api/payments/mpesa/callback` | Daraja STK callback (unsigned — matched on CheckoutRequestID) |
 | `POST /api/payments/mock-complete` | Simulated settlement; refuses to run in live mode |
 | `GET /api/health` | Liveness with a database round-trip |
 
@@ -74,6 +79,13 @@ sign-in altogether.
 - **Nothing counts until it settles.** A donation is written as `pending` and only
   joins project totals once the provider confirms it. Settlement is idempotent, so
   a retried webhook cannot double-count a gift.
+- **One accounting currency.** Project budgets and every published total are USD.
+  A donation charged in shillings stores both figures and the rate that linked
+  them, fixed at creation, so a receipt and the ledger can never disagree later.
+- **M-Pesa callbacks are unsigned, so they are treated as hints.** A settlement
+  is accepted only when its CheckoutRequestID matches a donation already waiting
+  on it; an unsolicited callback settles nothing. Restrict that path to
+  Safaricom's IP ranges at the edge too.
 - **Zakat never funds construction.** Selecting Zakat detaches the gift from any
   building project and records it in a separate pool for eligible recipients —
   masjid construction is not one of the eight categories in Surah at-Tawbah (9:60).
@@ -114,23 +126,32 @@ sign-in altogether.
    One-time gifts use Checkout in `payment` mode; monthly gifts use `subscription`
    mode with an inline monthly price. The simulator disables itself automatically
    once a live provider is configured.
-3. **Email** — set `RESEND_API_KEY` and `EMAIL_FROM`, and add SPF and DKIM records
+3. **M-Pesa** — set `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`,
+   `MPESA_SHORTCODE`, `MPESA_PASSKEY` and `MPESA_SHORTCODE_TYPE`, register
+   `POST /api/payments/mpesa/callback` as the Daraja callback URL, and set
+   `MPESA_ENV=production` when leaving the sandbox. Check `USD_KES_RATE`. The
+   callback is unsigned, so restrict that path to Safaricom's published IP
+   ranges at the edge.
+4. **Email** — set `RESEND_API_KEY` and `EMAIL_FROM`, and add SPF and DKIM records
    for the sending domain, or receipts land in spam.
-4. **Organisation** — set the `ORG_*` values so receipts carry the real
+5. **Organisation** — set the `ORG_*` values so receipts carry the real
    registration; until then they say plainly that none is configured.
-5. **Admin** — set `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`.
-6. **Real projects** — set `SKIP_SEED=1`, then add projects through `/admin`
+6. **Admin** — set `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`.
+7. **Real projects** — set `SKIP_SEED=1`, then add projects through `/admin`
    (the sample rows only load into an unseeded database).
 
-Another payment provider (M-Pesa, PayPal, bank transfer reconciliation) means one
-new file implementing `PaymentProvider` in `src/lib/payments/` — nothing else in
+Another payment rail (PayPal, bank transfer reconciliation) means one new file
+implementing `PaymentProvider` in `src/lib/payments/` — nothing else in
 the donation flow talks to a payment API.
 
 ## Not yet built
 
-- **M-Pesa, PayPal** — the provider boundary is ready; each is one adapter.
-- **Multi-currency** — donations carry a currency, but the UI and project budgets
-  are USD only. M-Pesa settles in KES, so this lands with that adapter.
+- **PayPal** — the provider boundary is ready; it is one adapter.
+- **Recurring M-Pesa** — Daraja has no recurring mandate, so monthly giving is
+  card-only and the form says so rather than taking one payment and calling it
+  monthly.
+- **A live FX rate** — `USD_KES_RATE` is set by hand; see the note in `money.ts`
+  for why that is deliberate, and review it when the rate moves.
 - **Stripe Radar rules** — the app throttles donation attempts per email and per
   network, but the provider-side fraud rules still need configuring when the
   Stripe account is live.

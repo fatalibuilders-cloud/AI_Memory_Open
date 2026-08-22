@@ -8,8 +8,9 @@ import {
   type Intent,
 } from "./donation";
 import { sendCancellation, sendReceipt } from "./email";
-import { DEFAULT_CURRENCY, toCents } from "./money";
-import { appUrl, getPaymentProvider } from "./payments";
+import { BASE_CURRENCY, DEFAULT_CURRENCY, fromBase, toCents, usdToKesRate } from "./money";
+import { METHOD_CURRENCY, appUrl, getPaymentProvider, type PaymentMethod } from "./payments";
+import { normalizeMsisdn } from "./payments/mpesa";
 import { DONATION_LIMITS, countRecent, hashIp } from "./rate-limit";
 import { newDonationReference, newManageToken } from "./reference";
 
@@ -26,6 +27,13 @@ export interface Donation {
   projectSlug: string | null;
   amountCents: number;
   currency: string;
+  /** USD equivalent — what every published total is summed from. */
+  baseAmountCents: number;
+  fxRate: number;
+  method: PaymentMethod;
+  phone: string | null;
+  /** The donor's receipt from the rail, e.g. an M-Pesa code. */
+  externalRef: string | null;
   frequency: Frequency;
   intent: Intent;
   donorName: string | null;
@@ -88,22 +96,46 @@ export async function createDonation(
     projectName = null;
   }
 
+  // The donor names the gift in USD; the rail decides what they are charged.
+  // Both figures are stored, along with the rate that linked them, so a receipt
+  // and the ledger can never disagree later.
+  const method = input.method;
+  const currency = METHOD_CURRENCY[method];
+  const chargedCents = fromBase(input.amountCents, currency);
+  const fxRate = currency === BASE_CURRENCY ? 1 : usdToKesRate();
+
+  let phone: string | null = null;
+  if (method === "mpesa") {
+    phone = normalizeMsisdn(input.phone ?? "");
+    if (!phone) {
+      throw new DonationError(
+        "Enter the M-Pesa number to send the prompt to, for example 0722 000 000.",
+        400,
+      );
+    }
+  }
+
   const reference = newDonationReference();
-  const provider = getPaymentProvider();
+  const provider = getPaymentProvider(method);
   // Monthly gifts carry a management secret from the start, so the receipt can
   // link straight to a cancel page without the donor needing an account.
   const manageToken = input.frequency === "monthly" ? newManageToken() : null;
 
   await db.query(
     `INSERT INTO donations
-       (reference, project_id, amount_cents, currency, frequency, intent,
-        donor_name, donor_email, anonymous, dedication, message, status, provider, manage_token, ip_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13, $14)`,
+       (reference, project_id, amount_cents, currency, base_amount_cents, fx_rate, method, phone,
+        frequency, intent, donor_name, donor_email, anonymous, dedication, message,
+        status, provider, manage_token, ip_hash)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending',$16,$17,$18)`,
     [
       reference,
       projectId,
+      chargedCents,
+      currency,
       input.amountCents,
-      DEFAULT_CURRENCY,
+      fxRate,
+      method,
+      phone,
       input.frequency,
       input.intent,
       input.donorName || null,
@@ -118,16 +150,25 @@ export async function createDonation(
   );
 
   const base = appUrl();
-  const session = await provider.createCheckout({
-    reference,
-    amountCents: input.amountCents,
-    currency: DEFAULT_CURRENCY,
-    frequency: input.frequency,
-    description: describeDonation(projectName, input.intent),
-    donorEmail: input.donorEmail,
-    successUrl: `${base}/donate/thank-you?ref=${reference}`,
-    cancelUrl: `${base}/donate?cancelled=${reference}`,
-  });
+  let session;
+  try {
+    session = await provider.createCheckout({
+      reference,
+      amountCents: chargedCents,
+      currency,
+      frequency: input.frequency,
+      description: describeDonation(projectName, input.intent),
+      donorEmail: input.donorEmail,
+      phone,
+      successUrl: `${base}/donate/thank-you?ref=${reference}`,
+      cancelUrl: `${base}/donate?cancelled=${reference}`,
+    });
+  } catch (err) {
+    // The row exists but no payment was ever started — close it off rather than
+    // leaving a pending donation that nothing will ever settle.
+    await db.query("UPDATE donations SET status = 'failed' WHERE reference = $1", [reference]);
+    throw err;
+  }
 
   if (session.providerRef) {
     await db.query("UPDATE donations SET provider_ref = $1 WHERE reference = $2", [
@@ -208,6 +249,7 @@ export async function settleDonation(
     reference?: string | null;
     providerRef?: string | null;
     subscriptionRef?: string | null;
+    externalRef?: string | null;
   },
   status: "completed" | "failed",
 ): Promise<Donation | null> {
@@ -216,11 +258,18 @@ export async function settleDonation(
     `UPDATE donations
      SET status = $1,
          completed_at = CASE WHEN $1 = 'completed' THEN now() ELSE completed_at END,
-         subscription_ref = COALESCE($4, subscription_ref)
+         subscription_ref = COALESCE($4, subscription_ref),
+         external_ref = COALESCE($5, external_ref)
      WHERE status = 'pending'
        AND (($2::text IS NOT NULL AND reference = $2) OR ($3::text IS NOT NULL AND provider_ref = $3))
      RETURNING reference`,
-    [status, lookup.reference ?? null, lookup.providerRef ?? null, lookup.subscriptionRef ?? null],
+    [
+      status,
+      lookup.reference ?? null,
+      lookup.providerRef ?? null,
+      lookup.subscriptionRef ?? null,
+      lookup.externalRef ?? null,
+    ],
   );
   if (rows.length === 0) return null; // Unknown reference, or already settled.
 
@@ -287,9 +336,9 @@ export async function recordOfflineDonation(input: {
   const reference = newDonationReference();
   await db.query(
     `INSERT INTO donations
-       (reference, project_id, amount_cents, currency, frequency, intent,
-        donor_name, donor_email, anonymous, message, status, provider, completed_at)
-     VALUES ($1, $2, $3, $4, 'one_time', $5, $6, $7, $8, $9, 'completed', 'offline', now())`,
+       (reference, project_id, amount_cents, currency, base_amount_cents, fx_rate, method,
+        frequency, intent, donor_name, donor_email, anonymous, message, status, provider, completed_at)
+     VALUES ($1, $2, $3, $4, $3, 1, 'offline', 'one_time', $5, $6, $7, $8, $9, 'completed', 'offline', now())`,
     [
       reference,
       projectId,
@@ -315,6 +364,11 @@ interface DonationRow {
   project_slug: string | null;
   amount_cents: string | number;
   currency: string;
+  base_amount_cents: string | number | null;
+  fx_rate: string | number | null;
+  method: string | null;
+  phone: string | null;
+  external_ref: string | null;
   frequency: string;
   intent: string;
   donor_name: string | null;
@@ -339,6 +393,11 @@ function toDonation(row: DonationRow): Donation {
     projectSlug: row.project_slug,
     amountCents: toCents(row.amount_cents),
     currency: row.currency,
+    baseAmountCents: toCents(row.base_amount_cents ?? row.amount_cents),
+    fxRate: Number(row.fx_rate ?? 1),
+    method: (row.method ?? "card") as PaymentMethod,
+    phone: row.phone,
+    externalRef: row.external_ref,
     frequency: row.frequency as Frequency,
     intent: row.intent as Intent,
     donorName: row.donor_name,

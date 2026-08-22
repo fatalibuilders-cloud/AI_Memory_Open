@@ -93,7 +93,7 @@ const PROJECT_SELECT = `
   FROM projects p
   LEFT JOIN (
     SELECT project_id,
-           SUM(amount_cents) AS donated_cents,
+           SUM(COALESCE(base_amount_cents, amount_cents)) AS donated_cents,
            COUNT(*)          AS donor_count
     FROM donations
     WHERE status = 'completed'
@@ -155,7 +155,7 @@ export async function getFundStats(): Promise<FundStats> {
     donated_cents: string | number | null;
     donor_count: string | number | null;
   }>(
-    "SELECT SUM(amount_cents) AS donated_cents, COUNT(*) AS donor_count FROM donations WHERE status = 'completed'",
+    "SELECT SUM(COALESCE(base_amount_cents, amount_cents)) AS donated_cents, COUNT(*) AS donor_count FROM donations WHERE status = 'completed'",
   );
   const [projects] = await db.query<{
     offline_cents: string | number | null;
@@ -189,7 +189,7 @@ export async function listRecentDonations(limit = 6): Promise<RecentDonation[]> 
     dedication: string | null;
     created_at: string | Date;
   }>(
-    `SELECT d.donor_name, d.anonymous, d.amount_cents, d.dedication, d.created_at, p.name AS project_name
+    `SELECT d.donor_name, d.anonymous, COALESCE(d.base_amount_cents, d.amount_cents) AS amount_cents, d.dedication, d.created_at, p.name AS project_name
      FROM donations d
      LEFT JOIN projects p ON p.id = d.project_id
      WHERE d.status = 'completed'

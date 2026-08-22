@@ -3,11 +3,57 @@
  * app; they are only turned into decimals at the display edge.
  */
 
-export const DEFAULT_CURRENCY = "USD";
+/**
+ * The accounting currency. Project budgets and every published total are in
+ * USD; a donation made in another currency is converted once, at the moment it
+ * is created, and both figures are kept.
+ */
+export const BASE_CURRENCY = "USD";
+export const DEFAULT_CURRENCY = BASE_CURRENCY;
+
+export const CURRENCIES = ["USD", "KES"] as const;
+export type Currency = (typeof CURRENCIES)[number];
 
 /** $1 minimum keeps card fees from exceeding the gift; $50,000 ceiling routes large gifts to a human. */
 export const MIN_DONATION_CENTS = 100;
 export const MAX_DONATION_CENTS = 5_000_000;
+
+/**
+ * USD → KES rate, set in the environment and reviewed by hand.
+ *
+ * Deliberately not a live feed: a rate that moves between the page load and the
+ * charge makes receipts disagree with the ledger, and an outage in a rate
+ * service would stop donations. A stale rate is a small, visible accounting
+ * discrepancy; a broken donate button is a lost gift.
+ */
+export function usdToKesRate(): number {
+  const configured = Number(process.env.USD_KES_RATE);
+  return Number.isFinite(configured) && configured > 0 ? configured : 129;
+}
+
+/** Smallest step a currency can actually be charged in, in minor units. */
+export function minorUnitStep(currency: Currency): number {
+  // M-Pesa moves whole shillings only, so KES amounts are always a round 100.
+  return currency === "KES" ? 100 : 1;
+}
+
+/** Convert a base-currency (USD) amount into what the donor will be charged. */
+export function fromBase(baseCents: number, currency: Currency): number {
+  if (currency === BASE_CURRENCY) return baseCents;
+  const converted = baseCents * usdToKesRate();
+  const step = minorUnitStep(currency);
+  return Math.round(converted / step) * step;
+}
+
+/** Convert a charged amount back into the base currency for the ledger. */
+export function toBase(cents: number, currency: Currency): number {
+  if (currency === BASE_CURRENCY) return cents;
+  return Math.round(cents / usdToKesRate());
+}
+
+export function isCurrency(value: unknown): value is Currency {
+  return typeof value === "string" && (CURRENCIES as readonly string[]).includes(value);
+}
 
 /** bigint columns arrive as strings from node-postgres — normalize on read. */
 export function toCents(value: unknown): number {
@@ -19,7 +65,10 @@ export function toCents(value: unknown): number {
 
 export function formatMoney(cents: number, currency = DEFAULT_CURRENCY): string {
   const whole = cents % 100 === 0;
-  return new Intl.NumberFormat("en-US", {
+  // Kenyan shillings read as "Ksh" to a Kenyan donor and as "KES" to everyone
+  // else; the local form is the right one on a site raising money in Kenya.
+  const locale = currency === "KES" ? "en-KE" : "en-US";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: whole ? 0 : 2,

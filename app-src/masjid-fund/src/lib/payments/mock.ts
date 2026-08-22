@@ -1,3 +1,4 @@
+import { parseStkCallback } from "./mpesa";
 import type {
   CheckoutRequest,
   CheckoutSession,
@@ -6,23 +7,34 @@ import type {
 } from "./provider";
 
 /**
- * Built-in simulator used whenever no real provider is configured. It sends
- * the donor to an in-app page that mimics a hosted checkout, so the whole
- * donation flow — including receipts and project totals — is exercisable
- * without keys. No money moves.
+ * Built-in simulator, used for any rail that has no credentials configured. It
+ * sends the donor to an in-app page that mimics that rail's checkout, so the
+ * whole donation flow — including receipts, totals and the failure path — is
+ * exercisable without keys. No money moves.
  */
 export class MockProvider implements PaymentProvider {
-  readonly name = "mock";
   readonly liveMode = false;
+  readonly name: string;
+
+  constructor(private readonly method: "card" | "mpesa" = "card") {
+    // Recorded on the donation so the ledger shows which rail was simulated.
+    this.name = method === "mpesa" ? "mock_mpesa" : "mock";
+  }
 
   async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
+    const reference = encodeURIComponent(request.reference);
     return {
-      checkoutUrl: `/checkout/${encodeURIComponent(request.reference)}`,
+      checkoutUrl:
+        this.method === "mpesa" ? `/donate/mpesa/${reference}` : `/checkout/${reference}`,
       providerRef: `mock_${request.reference}`,
     };
   }
 
   async parseWebhook(rawBody: string): Promise<SettlementEvent | null> {
+    // Standing in for M-Pesa means answering M-Pesa's callback shape, so the
+    // real payload can be rehearsed against the real endpoint.
+    if (this.method === "mpesa") return parseStkCallback(rawBody);
+
     const payload = JSON.parse(rawBody) as {
       reference?: string;
       status?: string;

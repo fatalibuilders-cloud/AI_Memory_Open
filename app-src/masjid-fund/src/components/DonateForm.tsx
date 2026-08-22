@@ -13,6 +13,7 @@ import {
   MAX_DONATION_CENTS,
   MIN_DONATION_CENTS,
   formatMoney,
+  fromBase,
   parseAmountToCents,
 } from "@/lib/money";
 
@@ -31,6 +32,7 @@ export function DonateForm({
   defaultFrequency = "one_time",
   defaultAmountCents = DEFAULT_AMOUNT_CENTS,
   liveMode,
+  methods = [{ value: "card", label: "Card", hint: "Visa, Mastercard, Apple Pay" }],
 }: {
   projects: DonateFormProject[];
   defaultProjectSlug?: string;
@@ -39,6 +41,8 @@ export function DonateForm({
   defaultAmountCents?: number;
   /** False when payments run through the built-in simulator. */
   liveMode: boolean;
+  /** Rails this deployment can take money on, in the order they are offered. */
+  methods?: { value: "card" | "mpesa"; label: string; hint: string }[];
 }) {
   const [amountCents, setAmountCents] = useState<number | null>(defaultAmountCents);
   // An amount that is not one of the presets starts life in the custom field.
@@ -55,10 +59,13 @@ export function DonateForm({
   const [anonymous, setAnonymous] = useState(false);
   const [dedication, setDedication] = useState("");
   const [message, setMessage] = useState("");
+  const [method, setMethod] = useState<"card" | "mpesa">(methods[0]?.value ?? "card");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const zakat = intent === "zakat";
+  const mpesa = method === "mpesa";
   const selectedProject = useMemo(
     () => projects.find((p) => p.slug === projectSlug) ?? null,
     [projects, projectSlug],
@@ -94,6 +101,8 @@ export function DonateForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          method,
+          phone,
           amountCents,
           projectSlug: zakat || !projectSlug ? null : projectSlug,
           frequency,
@@ -135,7 +144,10 @@ export function DonateForm({
             <button
               key={value}
               type="button"
-              onClick={() => setFrequency(value)}
+              onClick={() => {
+                setFrequency(value);
+                if (value === "monthly" && mpesa) setMethod("card");
+              }}
               aria-pressed={frequency === value}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
                 frequency === value
@@ -228,8 +240,56 @@ export function DonateForm({
         </div>
       </fieldset>
 
+
       <fieldset>
-        <legend className="font-display text-lg font-semibold">3. Your details</legend>
+        <legend className="font-display text-lg font-semibold">3. How you will pay</legend>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {methods.map((option) => {
+            const unavailable = option.value === "mpesa" && frequency === "monthly";
+            return (
+              <button
+                key={option.value}
+                type="button"
+                disabled={unavailable}
+                onClick={() => setMethod(option.value)}
+                aria-pressed={method === option.value}
+                className={`rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  method === option.value
+                    ? "border-masjid-700 bg-masjid-50 ring-1 ring-masjid-700"
+                    : "border-sand-200 bg-white hover:border-masjid-200"
+                }`}
+              >
+                <span className="block font-semibold">{option.label}</span>
+                <span className="mt-0.5 block text-xs text-sand-700">
+                  {unavailable ? "Not available for monthly giving" : option.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {mpesa && (
+          <label className="mt-4 block">
+            <span className="text-sm font-medium">M-Pesa number</span>
+            <input
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="0722 000 000"
+              className="mt-1 w-full rounded-xl border border-sand-200 bg-white px-3 py-3 outline-none focus:ring-2 focus:ring-masjid-500"
+            />
+            <span className="mt-1 block text-xs text-sand-700">
+              We send a prompt to this number and you enter your M-Pesa PIN. Charged in shillings:
+              {" "}
+              {amountCents ? formatMoney(fromBase(amountCents, "KES"), "KES") : "—"}.
+            </span>
+          </label>
+        )}
+      </fieldset>
+
+      <fieldset>
+        <legend className="font-display text-lg font-semibold">4. Your details</legend>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="block">
@@ -294,7 +354,11 @@ export function DonateForm({
       <div className="rounded-2xl border border-sand-200 bg-white p-5">
         <p className="text-sm text-sand-700">Summary</p>
         <p className="mt-1 font-display text-lg">
-          {amountCents ? formatMoney(amountCents) : "—"}
+          {amountCents
+            ? mpesa
+              ? `${formatMoney(fromBase(amountCents, "KES"), "KES")} (${formatMoney(amountCents)})`
+              : formatMoney(amountCents)
+            : "—"}
           {frequency === "monthly" ? " each month" : ""} as {INTENT_LABELS[intent].toLowerCase()}
           {zakat
             ? ", held separately for eligible recipients"

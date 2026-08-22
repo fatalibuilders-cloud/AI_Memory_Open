@@ -71,6 +71,18 @@ ALTER TABLE donations ADD COLUMN IF NOT EXISTS cancelled_at timestamptz;
 ALTER TABLE donations ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;
 -- Salted hash of the submitting address, for throttling only.
 ALTER TABLE donations ADD COLUMN IF NOT EXISTS ip_hash text;
+-- Multi-currency: amount_cents/currency is what the donor was charged;
+-- base_amount_cents is the USD equivalent every published total is summed from,
+-- fixed at the rate that applied when the donation was created.
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS base_amount_cents bigint;
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS fx_rate numeric(12, 4);
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS method text NOT NULL DEFAULT 'card';
+-- MSISDN for M-Pesa: needed to push the prompt and to reconcile the statement.
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS phone text;
+-- The donor's own receipt from the rail, e.g. an M-Pesa transaction code.
+ALTER TABLE donations ADD COLUMN IF NOT EXISTS external_ref text;
+-- Rows written before multi-currency were all USD.
+UPDATE donations SET base_amount_cents = amount_cents WHERE base_amount_cents IS NULL;
 
 CREATE TABLE IF NOT EXISTS admin_sessions (
   token text PRIMARY KEY,
