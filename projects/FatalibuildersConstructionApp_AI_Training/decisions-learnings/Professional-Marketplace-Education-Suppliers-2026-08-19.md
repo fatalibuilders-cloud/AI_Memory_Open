@@ -143,6 +143,23 @@ owner, but require an up-to-date board membership before earning; expand Learnin
   sessions on reset; no email enumeration). `/api/auth/forgot` + `/reset`;
   `/forgot` + `/reset/[token]` pages; login "Forgot password?" link; reset email.
 
+## EBK live register provider (commit f0fcfb8)
+Owner shared `https://engineers.ebk.go.ke/search/search-card/UFJPRjAxMjE4OQ==`
+(base64 → "PROF012189"): EBK publishes a per-member HTML "search card", no JSON API.
+- `ebkCheck(reg)` base64-encodes the number, GETs `/search/search-card/<b64>`, and
+  `parseEbkCard()` reads member name, active/lapsed status, and any validity date.
+  Wired into `checkBoard` as the built-in provider for board === "EBK" (tried
+  before the generic env endpoint). Auto-admit still needs the register NAME to
+  match the account holder; earning still needs the licence active/current.
+- Enabled by default in prod; OFF under test unless `EBK_VERIFY_TEST` (so CI makes
+  no live calls); `EBK_VERIFY_DISABLED` to turn off; `EBK_VERIFY_BASE_URL` to
+  override host. Fails closed → manual review on any fetch/parse doubt.
+- CAVEAT: the build sandbox blocks egress to ebk.go.ke (gateway 403), so I could
+  NOT fetch a live card here. `parseEbkCard` is heuristic (validated on synthetic
+  fixtures) — CONFIRM the field extraction against ONE real card in production;
+  it's the single place to tune. Only covers EBK engineers; BORAQS/NCA/etc. still
+  use the generic env endpoint or manual.
+
 ## Board verification env (optional — enables auto-admit; else manual)
 - `BOARD_VERIFY_URL_KENYA_STRUCTURAL_ENGINEER` (most specific) or
   `BOARD_VERIFY_URL_EBK` (per board) or `BOARD_VERIFY_URL` (global), plus a
