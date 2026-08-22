@@ -42,6 +42,9 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Engineer a target win rate")
     p.add_argument("win_rate", type=float, help="target win rate, e.g. 90")
     p.add_argument("--tp", type=float, default=0.50, help="cash target (default 0.50)")
+    p.add_argument("--max-loss-pct", type=float,
+                   help="cap each loss at this %% of the balance; the target is "
+                        "then solved for instead of taken from --tp")
     p.add_argument("--spread-cost", type=float, default=0.12,
                    help="spread paid per trade (default 0.12, EURUSD at 0.01 lot)")
     p.add_argument("--balance", type=float, default=50.0,
@@ -53,15 +56,35 @@ def main() -> int:
         print("Win rate must be between 1 and 99.", file=sys.stderr)
         return 2
 
-    tp = args.tp
-    sl = stop_for(tp, args.win_rate)
     p_win = args.win_rate / 100.0
+    if args.max_loss_pct:
+        # The loss cap fixes the stop, so the target is what has to give:
+        # win rate = SL / (TP + SL)  =>  TP = SL * (1 - p) / p
+        sl = args.balance * args.max_loss_pct / 100.0
+        tp = sl * (1 - p_win) / p_win
+        print("=" * 68)
+        print(f"TARGET WIN RATE {args.win_rate:.0f}%, LOSS CAPPED AT "
+              f"{args.max_loss_pct:.0f}% OF ${args.balance:,.0f}")
+        print("=" * 68)
+        print(f"  stop loss   : ${sl:.2f}   (the cap you set)")
+        print(f"  take profit : ${tp:.4f}  (forced by the win rate)")
+    else:
+        tp = args.tp
+        sl = stop_for(tp, args.win_rate)
+        print("=" * 68)
+        print(f"TARGET WIN RATE: {args.win_rate:.0f}%")
+        print("=" * 68)
+        print(f"  take profit : ${tp:.2f}")
+        print(f"  stop loss   : ${sl:.2f}   (= {sl/tp:.1f}x the target)")
 
-    print("=" * 68)
-    print(f"TARGET WIN RATE: {args.win_rate:.0f}%")
-    print("=" * 68)
-    print(f"  take profit : ${tp:.2f}")
-    print(f"  stop loss   : ${sl:.2f}   (= {sl/tp:.1f}x the target)")
+    # A target smaller than the spread cannot be reached profitably: the
+    # position starts further behind than the target is away.
+    if tp <= args.spread_cost:
+        print(f"\n  ** THE TARGET (${tp:.4f}) IS SMALLER THAN THE SPREAD "
+              f"(${args.spread_cost:.2f}). **")
+        print(f"  Every 'win' still loses ${args.spread_cost - tp:.4f}. This "
+              f"configuration")
+        print(f"  cannot make money on any trade, won or lost.")
 
     gross = p_win * tp - (1 - p_win) * sl
     net = gross - args.spread_cost
