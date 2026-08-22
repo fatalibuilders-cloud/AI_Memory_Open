@@ -156,5 +156,19 @@ def simulate(bars: list[Bar], strategy: VecStrategy, settings,
             sl, tp = entry + sl_d, entry - tp_d
         open_trades.append(SimTrade(nxt.time, signal.side, entry, sl, tp, lots))
 
+    # Positions still open at the end must be marked to market, not dropped.
+    # Ignoring them flatters wide-stop configurations enormously: their
+    # losers never resolve inside the window, so they silently disappear
+    # while every quick winner is counted.
+    if open_trades:
+        last = bars[-1]
+        for t in open_trades:
+            move = (last.close - t.entry) if t.side == "buy" else (t.entry - last.close)
+            t.pnl = move * t.lots * point_value
+            t.exit, t.closed, t.reason = last.close, last.time, "OPEN"
+            equity += t.pnl
+            res.trades.append(t)
+        res.equity_curve.append(equity)
+
     res.end_balance = equity
     return res
