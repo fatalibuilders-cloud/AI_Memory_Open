@@ -64,6 +64,14 @@ class Broker(ABC):
     def market_order(self, symbol: str, side: str, volume: float,
                      sl: float, tp: float, comment: str = "") -> OrderReceipt: ...
 
+    def spread(self, symbol: str) -> float:
+        """Current ask - bid, in price units. 0.0 if the broker cannot say."""
+        return 0.0
+
+    def min_stop_distance(self, symbol: str) -> float:
+        """Closest a stop or target may sit to price. 0.0 if unrestricted."""
+        return 0.0
+
     @abstractmethod
     def current_price(self, symbol: str, side: str) -> float:
         """The price a market order would fill at right now.

@@ -193,6 +193,12 @@ class Settings:
     bb_std: float = 2.0
     donchian_period: int = 20
 
+    # Refuse a trade when the spread eats more than this share of the stop
+    # distance. Paying 50% of your risk in spread makes a trade close to
+    # unwinnable regardless of how good the signal is — silver on M1 is the
+    # usual offender. 0 disables the check.
+    max_spread_ratio: float = 0.25
+
     # --- Risk ------------------------------------------------------------------
     # Fixed lot size per trade. When > 0 this OVERRIDES risk_pct sizing and
     # every trade uses exactly this many lots (0.01 = broker minimum on most
@@ -300,6 +306,7 @@ class Settings:
             donchian_period=_i("DONCHIAN_PERIOD", 20),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
+            max_spread_ratio=_f("MAX_SPREAD_RATIO", 0.25),
             fixed_lot=_f("FIXED_LOT", 0.0),
             risk_pct=_f("RISK_PCT", 0.5),
             max_open_positions=_i("MAX_OPEN_POSITIONS", 3),

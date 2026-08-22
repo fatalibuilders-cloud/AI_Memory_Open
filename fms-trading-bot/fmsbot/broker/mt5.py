@@ -280,6 +280,23 @@ class MT5Broker(Broker):
             sl=request["sl"], tp=request["tp"],
         )
 
+    def spread(self, symbol: str) -> float:
+        mt5 = self._require()
+        tick = mt5.symbol_info_tick(self._resolve(symbol))
+        if tick is None or not tick.ask or not tick.bid:
+            return 0.0
+        return float(tick.ask - tick.bid)
+
+    def min_stop_distance(self, symbol: str) -> float:
+        """Brokers refuse stops closer than trade_stops_level points (10011)."""
+        mt5 = self._require()
+        info = mt5.symbol_info(self._resolve(symbol))
+        if info is None:
+            return 0.0
+        level = getattr(info, "trade_stops_level", 0) or 0
+        point = getattr(info, "point", 0.0) or 0.0
+        return float(level) * point
+
     def current_price(self, symbol: str, side: str) -> float:
         mt5 = self._require()
         symbol = self._resolve(symbol)

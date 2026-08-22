@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from dataclasses import replace
 from typing import Optional
 
 from .broker.base import BrokerError
@@ -222,6 +223,40 @@ class TradingBot:
             reference = broker.current_price(symbol, signal.side)
         except BrokerError:
             reference = price
+
+        # A stop only a little wider than the spread is close to unwinnable:
+        # the trade starts that far behind and must recover it before the
+        # signal can pay anything. Silver and gold on M1 are the usual cases.
+        sl_distance, tp_distance = signal.sl_distance, signal.tp_distance
+        if self.s.max_spread_ratio > 0:
+            try:
+                spread = broker.spread(symbol)
+            except BrokerError:
+                spread = 0.0
+            if spread > 0 and sl_distance > 0:
+                ratio = spread / sl_distance
+                if ratio > self.s.max_spread_ratio:
+                    reason = (f"spread {spread:.5f} is {ratio*100:.0f}% of the "
+                              f"{sl_distance:.5f} stop (limit "
+                              f"{self.s.max_spread_ratio*100:.0f}%)")
+                    log.info("[%s] %s %s skipped: %s",
+                             session.name, symbol, signal.side, reason)
+                    session.last_block = f"{symbol} skipped — {reason}"
+                    return
+
+        # Brokers reject stops closer than their minimum distance (10011 "bad
+        # stops"). Widen both legs together so the reward:risk is preserved.
+        try:
+            floor = broker.min_stop_distance(symbol)
+        except BrokerError:
+            floor = 0.0
+        if floor > 0 and sl_distance < floor:
+            scale = floor / sl_distance
+            log.info("[%s] %s stop %.5f below broker minimum %.5f — widening "
+                     "both legs x%.2f", session.name, symbol, sl_distance, floor, scale)
+            sl_distance, tp_distance = floor, tp_distance * scale
+
+        signal = replace(signal, sl_distance=sl_distance, tp_distance=tp_distance)
 
         if signal.side == "buy":
             sl, tp = reference - signal.sl_distance, reference + signal.tp_distance
