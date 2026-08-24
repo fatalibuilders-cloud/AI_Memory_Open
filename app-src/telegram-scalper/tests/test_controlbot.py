@@ -227,3 +227,94 @@ class TestPause:
         engine.paused = True
         self._post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360")
         assert engine.journal.summary(days=1)["signals_skipped"] >= 1
+
+
+class TestUnlimitedSelection:
+    def test_no_cap_by_default(self):
+        selection = GroupSelection()
+        for index in range(40):
+            enabled, _ = selection.toggle(-100 - index, f"G{index}", limit=0)
+            assert enabled
+        assert len(selection.enabled) == 40
+
+    def test_a_cap_still_works_when_asked_for(self):
+        selection = GroupSelection()
+        for index in range(3):
+            selection.toggle(-100 - index, f"G{index}", limit=3)
+        added, message = selection.toggle(-999, "Extra", limit=3)
+        assert not added and "maximum" in message
+
+    def test_many_groups_round_trip(self, tmp_path):
+        path = tmp_path / "groups.json"
+        selection = GroupSelection()
+        for index in range(30):
+            selection.toggle(-100 - index, f"Group {index}", limit=0)
+        selection.save(path)
+        assert len(GroupSelection.load(path).enabled) == 30
+
+    def test_config_accepts_a_long_selection(self, config, tmp_path):
+        selection = GroupSelection()
+        for index in range(25):
+            selection.toggle(-500 - index, f"Room {index}", limit=0)
+        selection.save(selection_path(config))
+        assert apply_selection(config) is not None
+        assert len(config.telegram.enabled_groups) == 25
+
+
+class TestSelectGroupPaging:
+    """Telegram rejects an oversized keyboard, so a long list must page."""
+
+    # Button rendering is the one part that needs Telethon; the rest of the
+    # suite deliberately runs without it.
+    pytestmark = pytest.mark.skipif(
+        __import__("importlib").util.find_spec("telethon") is None,
+        reason="telethon not installed",
+    )
+
+    def _bot_with(self, bot, count: int):
+        bot._dialog_cache = {i: (-100 - i, f"Group {i}") for i in range(count)}
+        return bot
+
+    def test_a_short_list_has_no_nav_row(self, bot):
+        self._bot_with(bot, 5)
+        rows = bot._group_buttons()
+        # 5 chats + Done, and no prev/next.
+        assert len(rows) == 6
+        assert all(len(row) == 1 for row in rows)
+
+    def test_a_long_list_is_paged(self, bot):
+        self._bot_with(bot, 30)
+        rows = bot._group_buttons(page=0)
+        # One page of chats, a 3-button nav row, then Done.
+        assert len(rows) == 10
+        assert len(rows[8]) == 3
+
+    def test_every_chat_is_reachable_across_pages(self, bot):
+        self._bot_with(bot, 30)
+        seen = set()
+        for page in range(4):
+            for row in bot._group_buttons(page=page):
+                for button in row:
+                    data = button.data.decode()
+                    if data.startswith("g:"):
+                        seen.add(int(data.split(":")[1]))
+        assert seen == set(range(30))
+
+    def test_the_page_is_clamped_to_the_range(self, bot):
+        self._bot_with(bot, 30)
+        # Paging past either end must not raise or produce an empty keyboard.
+        assert bot._group_buttons(page=99)
+        assert bot._group_buttons(page=-5)
+
+    def test_callback_data_carries_the_page(self, bot):
+        self._bot_with(bot, 30)
+        rows = bot._group_buttons(page=2)
+        first = rows[0][0].data.decode()
+        # "g:<index>:<page>" — so toggling redraws the page you were on.
+        assert first.split(":")[2] == "2"
+
+    def test_callback_data_stays_within_telegram_limit(self, bot):
+        self._bot_with(bot, 500)
+        for row in bot._group_buttons(page=10):
+            for button in row:
+                assert len(button.data) <= 64

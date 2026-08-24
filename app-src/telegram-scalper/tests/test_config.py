@@ -23,18 +23,19 @@ def groups_yaml(count: int, enabled: bool = True, start: int = 1) -> str:
 
 
 class TestGroupLimit:
-    def test_default_limit_is_five(self, tmp_path):
-        config = config_module.load(write(tmp_path, groups_yaml(5)), env={})
-        assert config.telegram.max_groups == 5
-        assert len(config.telegram.enabled_groups) == 5
+    def test_unlimited_by_default(self, tmp_path):
+        config = config_module.load(write(tmp_path, groups_yaml(25)), env={})
+        assert config.telegram.max_groups == 0  # 0 means no cap
+        assert len(config.telegram.enabled_groups) == 25
 
-    def test_five_enabled_is_accepted(self, tmp_path):
-        config = config_module.load(write(tmp_path, groups_yaml(5)), env={})
-        assert len(config.telegram.enabled_groups) == 5
+    def test_many_groups_are_accepted(self, tmp_path):
+        config = config_module.load(write(tmp_path, groups_yaml(60)), env={})
+        assert len(config.telegram.enabled_groups) == 60
 
-    def test_six_enabled_is_rejected(self, tmp_path):
+    def test_a_cap_is_enforced_when_one_is_set(self, tmp_path):
+        body = "telegram:\n  max_groups: 5\n" + groups_yaml(6).replace("telegram:\n", "")
         with pytest.raises(ValueError) as excinfo:
-            config_module.load(write(tmp_path, groups_yaml(6)), env={})
+            config_module.load(write(tmp_path, body), env={})
         message = str(excinfo.value)
         assert "6 groups are enabled but the limit is 5" in message
         # The error must name the groups so it is obvious which to bench.
@@ -59,10 +60,14 @@ class TestGroupLimit:
         with pytest.raises(ValueError, match="limit is 2"):
             config_module.load(write(tmp_path, body), env={})
 
-    def test_limit_above_ten_is_rejected(self, tmp_path):
-        body = "telegram:\n  max_groups: 50\n"
-        with pytest.raises(ValueError, match="between 1 and 10"):
-            config_module.load(write(tmp_path, body), env={})
+    def test_a_large_cap_is_allowed(self, tmp_path):
+        # Any positive cap is the user's business; only nonsense is refused.
+        config = config_module.load(write(tmp_path, "telegram:\n  max_groups: 50\n"), env={})
+        assert config.telegram.max_groups == 50
+
+    def test_a_negative_cap_is_rejected(self, tmp_path):
+        with pytest.raises(ValueError, match="cannot be negative"):
+            config_module.load(write(tmp_path, "telegram:\n  max_groups: -1\n"), env={})
 
     def test_duplicate_group_is_rejected(self, tmp_path):
         body = (

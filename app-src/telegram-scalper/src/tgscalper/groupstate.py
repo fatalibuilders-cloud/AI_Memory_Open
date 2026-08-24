@@ -61,12 +61,15 @@ class GroupSelection:
             encoding="utf-8",
         )
 
-    def toggle(self, chat_id: int, title: str = "", limit: int = 5) -> tuple[bool, str]:
-        """Add or remove a chat. Returns (now_enabled, message)."""
+    def toggle(self, chat_id: int, title: str = "", limit: int = 0) -> tuple[bool, str]:
+        """Add or remove a chat. Returns (now_enabled, message).
+
+        `limit` of 0 means no cap.
+        """
         if chat_id in self.enabled:
             self.enabled.remove(chat_id)
             return False, f"Stopped watching {title or chat_id}"
-        if len(self.enabled) >= limit:
+        if limit > 0 and len(self.enabled) >= limit:
             return False, (
                 f"Already watching {limit} groups, which is the maximum. "
                 "Turn one off first."

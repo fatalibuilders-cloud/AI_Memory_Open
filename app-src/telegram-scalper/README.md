@@ -5,7 +5,7 @@ them on **your own** broker account automatically, so you are not sitting there
 waiting to copy a post by hand.
 
 You stay a normal member of the groups. The bot logs in as your Telegram
-account, watches up to **5 groups you choose**, parses each admin post, sizes the
+account, watches **the groups you choose**, parses each admin post, sizes the
 trade against your risk rules, and sends the order. It keeps working as long as
 the machine it runs on has power, internet and a logged-in session.
 
@@ -104,7 +104,7 @@ bot with @BotFather, put its token in `.env` as `TG_BOT_TOKEN`, and you get:
 | Command | Does |
 |---|---|
 | `/status` | mode, balance, open positions and their P&L, today's counts, uptime |
-| `/selectgroup` | lists your groups as tappable buttons — tap to start/stop copying, capped at 5 |
+| `/selectgroup` | lists your groups as tappable buttons — tap to start/stop copying, paged 8 at a time |
 | `/groups` | which groups are being copied right now |
 | `/pause` `/resume` | stop opening new trades; trades already open are still managed |
 | `/trades` | recent decisions, including what was ignored and why |
@@ -168,7 +168,7 @@ Then, in order:
 
 ```powershell
 .\windows\run.ps1 chats            # 1. list your groups and their ids
-notepad config.yaml                # 2. put up to 5 ids under telegram.groups
+notepad config.yaml                # 2. put the ids under telegram.groups
 .\windows\run.ps1 symbols          # 3. check your broker's symbol names
 .\windows\run.ps1 run              # 4. watch it on PAPER for a few days
 .\windows\run.ps1 report --days 3  #    then read what it would have done
@@ -316,11 +316,11 @@ python -m tgscalper chats --search gold
 -1009876543210  channel    FX Scalps
 ```
 
-**4. Choose up to 5 groups** in `config.yaml`:
+**4. Choose your groups** in `config.yaml`:
 
 ```yaml
 telegram:
-  max_groups: 5
+  max_groups: 0        # 0 = unlimited
   groups:
     - id: -1001234567890
       title: "Gold Signals VIP"
@@ -338,11 +338,19 @@ telegram:
       enabled: false           # benched — configured, not watched
 ```
 
-List as many candidates as you like; **at most 5 may be `enabled: true`** at
-once. Swapping which five are live is a one-word edit, so you never have to
-retype ids. Raise or lower the cap with `max_groups` (1–10) if you change your
-mind — 5 is the default because more than that produces contradictory signals on
-the same instrument.
+There is **no limit** on how many you watch — `max_groups: 0` means no cap. Set a
+number to enforce one. Benching a group is a one-word edit (`enabled: false`), so
+you never have to retype ids.
+
+Watching many rooms multiplies the *signals*, not the risk. Three things bound
+what that can cost you, and they matter more the more rooms you add:
+
+- `max_open_per_symbol: 1` — five rooms calling the same gold move open **one**
+  position, not five.
+- `dedupe_window_minutes` — the same setup cross-posted within the window counts
+  once, however many rooms carry it.
+- `max_open_trades` and `max_daily_loss_pct` — the ceiling on total exposure and
+  on a bad day, regardless of how loud the rooms are.
 
 To trade only specific admins rather than all of them:
 

@@ -11,7 +11,11 @@ telegram:
   admin_only: true
   notify_to: me
   notify_skips: false
-  max_groups: 5
+  # 0 = no limit on how many groups may be watched at once. Set a number to
+  # cap it. More rooms means more signals, but risk stays bounded by
+  # max_open_trades, max_open_per_symbol and the duplicate window below —
+  # those are what stop several rooms calling one move from stacking up.
+  max_groups: 0
 
   # Deliberately empty: /selectgroup is in charge. Anything listed here is
   # ignored while data\groups.json exists.

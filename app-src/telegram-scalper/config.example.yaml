@@ -15,13 +15,16 @@ telegram:
   notify_to: me
   notify_skips: false        # set true while tuning, to see what got ignored
 
-  # At most this many groups may be enabled at once.
-  max_groups: 5
+  # 0 = no limit on how many groups may be watched at once. Set a number to
+  # cap it. More rooms means more signals, but risk stays bounded by
+  # max_open_trades, max_open_per_symbol and the duplicate window below —
+  # those are what stop several rooms calling one move from stacking up.
+  max_groups: 0
 
   # List as many candidate groups as you like — only the ones with
-  # `enabled: true` are watched, and no more than max_groups of them.
-  # To swap a group out, set `enabled: false` and enable another; nothing is
-  # lost, so you can rotate which five you trade without retyping ids.
+  # `enabled: true` are watched.
+  # To bench a group, set `enabled: false`; nothing is lost, so you can
+  # rotate which rooms you trade without retyping ids.
   #
   # `id` is preferred (works for private groups); `username` works for public ones.
   groups:

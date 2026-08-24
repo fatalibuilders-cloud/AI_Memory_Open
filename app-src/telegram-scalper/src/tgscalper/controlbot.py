@@ -31,12 +31,16 @@ from .journal import Journal
 
 log = logging.getLogger(__name__)
 
+# Chats per page of /selectgroup. Telegram caps keyboard size, so a long list
+# has to be paged.
+PAGE_SIZE = 8
+
 MENU = """<b>TeleScalper</b> — signal copier
 
 <b>Watching</b>
 /status — mode, balance, open trades
 /groups — which groups are being copied
-/selectgroup — choose groups (up to {limit})
+/selectgroup — choose which groups to copy
 
 <b>Control</b>
 /pause — stop opening new trades
@@ -176,7 +180,7 @@ class ControlBot:
 
     async def _cmd_start(self, event: Any) -> None:
         await event.respond(
-            MENU.format(limit=self.config.telegram.max_groups), parse_mode="html"
+            MENU, parse_mode="html"
         )
 
     async def _cmd_id(self, event: Any) -> None:
@@ -274,11 +278,13 @@ class ControlBot:
         if not dialogs:
             await event.respond("No groups or channels found on this account.")
             return
+        limit = self.config.telegram.max_groups
+        cap = f"Up to {limit} at once" if limit else "No limit on how many"
         await event.respond(
-            f"<b>Tap to start or stop copying.</b>\nUp to "
-            f"{self.config.telegram.max_groups} at once; ✅ means it is being copied.",
+            f"<b>Tap to start or stop copying.</b>\n"
+            f"{len(dialogs)} chats found. {cap}; ✅ means it is being copied.",
             parse_mode="html",
-            buttons=self._group_buttons(dialogs),
+            buttons=self._group_buttons(),
         )
 
     async def _list_dialogs(self) -> list[tuple[int, str]]:
@@ -291,16 +297,37 @@ class ControlBot:
         self._dialog_cache = {index: item for index, item in enumerate(found)}
         return found
 
-    def _group_buttons(self, dialogs: list[tuple[int, str]]) -> list[list[Any]]:
+    def _group_buttons(self, page: int = 0) -> list[list[Any]]:
+        """One page of the chat list.
+
+        Telegram rejects an oversized keyboard, and an account in dozens of
+        chats would produce exactly that, so the list is paged rather than
+        rendered whole.
+        """
         from telethon import Button  # type: ignore[import-not-found]
 
+        items = list(self._dialog_cache.items())
+        pages = max(1, (len(items) + PAGE_SIZE - 1) // PAGE_SIZE)
+        page = max(0, min(page, pages - 1))
+
         rows: list[list[Any]] = []
-        for index, (chat_id, title) in self._dialog_cache.items():
+        for index, (chat_id, title) in items[page * PAGE_SIZE : (page + 1) * PAGE_SIZE]:
             mark = "✅" if chat_id in self._selection.enabled else "▫️"
             label = title if len(title) <= 30 else title[:29] + "…"
-            # Callback data is limited to 64 bytes, hence the index indirection.
-            rows.append([Button.inline(f"{mark} {label}", data=f"g:{index}".encode())])
-        rows.append([Button.inline("Done", data=b"done")])
+            # Callback data is capped at 64 bytes, hence the index indirection.
+            rows.append([Button.inline(f"{mark} {label}", data=f"g:{index}:{page}".encode())])
+
+        if pages > 1:
+            rows.append([
+                Button.inline("◀ Prev", data=f"p:{page - 1}".encode()),
+                Button.inline(f"{page + 1}/{pages}", data=b"noop"),
+                Button.inline("Next ▶", data=f"p:{page + 1}".encode()),
+            ])
+        rows.append([
+            Button.inline(
+                f"Done — {len(self._selection.enabled)} selected", data=b"done"
+            )
+        ])
         return rows
 
     async def _cmd_pause(self, event: Any) -> None:
@@ -449,6 +476,15 @@ class ControlBot:
             return
 
         data = (event.data or b"").decode()
+        if data == "noop":
+            await event.answer()
+            return
+        if data.startswith("p:"):
+            try:
+                await event.edit(buttons=self._group_buttons(int(data[2:])))
+            except Exception:
+                pass  # unchanged markup is rejected by Telegram; harmless
+            return
         if data == "done":
             await event.edit(
                 f"Selection saved — copying {len(self._selection.enabled)} group(s).\n"
@@ -459,7 +495,8 @@ class ControlBot:
         if not data.startswith("g:"):
             return
         try:
-            index = int(data[2:])
+            _, raw_index, raw_page = data.split(":")
+            index, page = int(raw_index), int(raw_page)
         except ValueError:
             return
         entry = self._dialog_cache.get(index)
@@ -474,7 +511,7 @@ class ControlBot:
         self._selection.save(selection_path(self.config))
         await event.answer(message)
         try:
-            await event.edit(buttons=self._group_buttons(list(self._dialog_cache.values())))
+            await event.edit(buttons=self._group_buttons(page))
         except Exception:
             pass  # unchanged markup makes Telegram reject the edit; harmless
 

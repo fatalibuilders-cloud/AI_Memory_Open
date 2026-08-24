@@ -39,15 +39,16 @@ class GroupConfig:
         return str(self.id) if self.id is not None else (self.username or self.title)
 
 
-DEFAULT_MAX_GROUPS = 5
+# 0 means no limit. A number caps how many may be enabled at once.
+DEFAULT_MAX_GROUPS = 0
 
 
 @dataclass
 class TelegramConfig:
     session_name: str = "tgscalper"
     session_dir: str = "data"
-    # You can list as many candidate groups as you like; at most `max_groups`
-    # of them may be enabled at once. Switching which five are live is then a
+    # You can list as many candidate groups as you like. `max_groups` caps how
+    # many may be enabled at once; 0 means no cap. Benching a group is then a
     # one-word edit (`enabled: false`) instead of deleting configuration.
     groups: list[GroupConfig] = field(default_factory=list)
     max_groups: int = DEFAULT_MAX_GROUPS
@@ -413,9 +414,9 @@ def _validate(config: Config) -> None:
     if not 0 < config.risk.partial_close_default <= 1:
         errors.append("risk.partial_close_default must be between 0 and 1")
     limit = config.telegram.max_groups
-    if not 1 <= limit <= 10:
-        errors.append(f"telegram.max_groups must be between 1 and 10, got {limit}")
-    else:
+    if limit < 0:
+        errors.append(f"telegram.max_groups cannot be negative, got {limit}")
+    elif limit > 0:
         enabled = config.telegram.enabled_groups
         if len(enabled) > limit:
             listed = ", ".join(group.title or group.key for group in enabled)
