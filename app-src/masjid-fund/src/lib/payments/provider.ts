@@ -59,6 +59,11 @@ export interface PaymentProvider {
    */
   parseWebhook(rawBody: string, headers: Headers): Promise<SettlementEvent | null>;
   /**
+   * Take money for an approved payment, on rails that separate approval from
+   * capture. Absent where the rail settles in one step.
+   */
+  capture?(providerRef: string): Promise<SettlementEvent | null>;
+  /**
    * Stop a recurring agreement. Providers without recurring support, and the
    * simulator, simply resolve — the donation is still marked cancelled here.
    */

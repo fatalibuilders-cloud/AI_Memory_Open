@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { DonateForm } from "@/components/DonateForm";
 import { MAX_DONATION_CENTS, MIN_DONATION_CENTS } from "@/lib/money";
-import { METHOD_LABELS, PAYMENT_METHODS, getPaymentProvider } from "@/lib/payments";
+import {
+  METHODS_WITHOUT_RECURRING,
+  METHOD_HINTS,
+  METHOD_LABELS,
+  anyLiveMethod,
+  availableMethods,
+} from "@/lib/payments";
 import { listProjects } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
@@ -19,15 +25,15 @@ export default async function DonatePage({
 }) {
   const params = await searchParams;
   const projects = (await listProjects()).filter((p) => p.status !== "completed");
-  // Card is offered everywhere; M-Pesa only where it makes sense to a donor —
-  // which for now is always, since the simulator stands in until Daraja keys
-  // arrive. "liveMode" is true only when at least one real rail is configured.
-  const methods = PAYMENT_METHODS.map((value) => ({
+  // Rails a donor can actually pick here: bank transfer only appears once the
+  // account details are configured, since half a set of bank details is worse
+  // than none. "liveMode" is true when at least one rail moves real money.
+  const methods = availableMethods().map((value) => ({
     value,
     label: METHOD_LABELS[value],
-    hint: value === "mpesa" ? "Pay from your phone in shillings" : "Visa, Mastercard, Apple Pay",
+    hint: METHOD_HINTS[value],
   }));
-  const liveMode = PAYMENT_METHODS.some((method) => getPaymentProvider(method).liveMode);
+  const liveMode = anyLiveMethod();
 
   const requested = Number(params.amount);
   const defaultAmountCents =
@@ -65,6 +71,7 @@ export default async function DonatePage({
           defaultAmountCents={defaultAmountCents}
           liveMode={liveMode}
           methods={methods}
+          recurringUnsupported={METHODS_WITHOUT_RECURRING}
         />
       </div>
     </div>

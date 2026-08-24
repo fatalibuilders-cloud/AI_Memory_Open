@@ -199,6 +199,38 @@ async function listDonationsForStatus(status: string): Promise<number> {
   return Number(row?.count ?? 0);
 }
 
+describe("bank transfers", () => {
+  const transfer = { ...base, method: "bank" as const, projectSlug: GARISSA };
+
+  it("sends the donor to instructions and counts nothing yet", async () => {
+    const before = await getProjectBySlug(GARISSA);
+    const started = await createDonation(transfer);
+
+    expect(started.checkoutUrl).toBe(`/donate/transfer/${started.reference}`);
+    const donation = await getDonationByReference(started.reference);
+    expect(donation?.status).toBe("pending");
+    expect(donation?.currency).toBe("USD");
+
+    const after = await getProjectBySlug(GARISSA);
+    expect(after!.raisedCents).toBe(before!.raisedCents);
+  });
+
+  it("counts once staff match it against the account", async () => {
+    const before = await getProjectBySlug(GARISSA);
+    const started = await createDonation({ ...transfer, amountCents: 30000 });
+    await settleDonation({ reference: started.reference }, "completed");
+
+    const after = await getProjectBySlug(GARISSA);
+    expect(after!.raisedCents).toBe(before!.raisedCents + 30000);
+  });
+
+  it("cannot be matched twice", async () => {
+    const started = await createDonation(transfer);
+    await settleDonation({ reference: started.reference }, "completed");
+    expect(await settleDonation({ reference: started.reference }, "completed")).toBeNull();
+  });
+});
+
 describe("abuse limits", () => {
   it("stops a burst of attempts from one network before they reach the provider", async () => {
     const ip = "203.0.113.9";

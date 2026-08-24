@@ -193,6 +193,7 @@ describe("donationsToCsv", () => {
     anonymous: false,
     dedication: null,
     projectName: "Masjid al-Noor",
+    method: "card",
     cancelledAt: null,
     receiptSentAt: null,
     manageToken: null,

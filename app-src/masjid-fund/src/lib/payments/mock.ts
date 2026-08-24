@@ -16,9 +16,9 @@ export class MockProvider implements PaymentProvider {
   readonly liveMode = false;
   readonly name: string;
 
-  constructor(private readonly method: "card" | "mpesa" = "card") {
+  constructor(private readonly method: "card" | "mpesa" | "paypal" = "card") {
     // Recorded on the donation so the ledger shows which rail was simulated.
-    this.name = method === "mpesa" ? "mock_mpesa" : "mock";
+    this.name = method === "card" ? "mock" : `mock_${method}`;
   }
 
   async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {

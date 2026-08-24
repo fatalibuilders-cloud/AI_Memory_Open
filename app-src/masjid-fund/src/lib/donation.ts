@@ -33,7 +33,7 @@ export type DonationStatus = (typeof STATUSES)[number];
 /** Preset amounts (in cents) offered on the donate form. */
 export const PRESET_AMOUNTS_CENTS = [2500, 5000, 10000, 25000, 50000, 100000];
 
-export const PAYMENT_METHODS = ["card", "mpesa"] as const;
+export const PAYMENT_METHODS = ["card", "mpesa", "paypal", "bank"] as const;
 export type PaymentMethodName = (typeof PAYMENT_METHODS)[number];
 
 export const donationInputSchema = z.object({

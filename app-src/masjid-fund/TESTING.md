@@ -94,6 +94,26 @@ want to reach `/admin` there.
 6. The receipt email in your terminal shows both currencies, the rate, and the
    M-Pesa code.
 
+### Giving by PayPal
+
+Choose **PayPal**. Without credentials the simulator stands in, so you land on
+the same simulated checkout as a card and can play out both endings. What is
+worth checking is that PayPal greys out for monthly giving, and that the receipt
+records it as a PayPal gift.
+
+### Giving by bank transfer
+
+This rail only appears once `BANK_ACCOUNT_NAME`, `BANK_NAME` and
+`BANK_ACCOUNT_NUMBER` are set — try it with them set and unset.
+
+1. Choose **Bank transfer** and continue. You get the account details and a
+   reference to quote. Nothing is charged, and the donation sits *pending*.
+2. Check `/projects`: the total has **not** moved. Money nobody has seen arrive
+   does not count.
+3. In `/admin/donations`, find the pending transfer and press **mark received**.
+   Now the total moves.
+4. Press it again — it cannot be matched twice.
+
 ### Reading the receipt email
 
 Nothing is actually sent in test mode, so the receipt is printed in the terminal

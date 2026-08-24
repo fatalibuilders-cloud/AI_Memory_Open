@@ -155,6 +155,7 @@ export interface AdminDonationRow {
   anonymous: boolean;
   dedication: string | null;
   projectName: string | null;
+  method: string;
   cancelledAt: string | null;
   receiptSentAt: string | null;
   /**
@@ -203,13 +204,14 @@ export async function listDonationsForAdmin(
     anonymous: boolean;
     dedication: string | null;
     project_name: string | null;
+    method: string | null;
     cancelled_at: string | Date | null;
     receipt_sent_at: string | Date | null;
     manage_token: string | null;
   }>(
     `SELECT d.reference, d.created_at, d.completed_at, d.amount_cents, d.currency, d.status,
             d.frequency, d.intent, d.provider, d.donor_name, d.donor_email, d.anonymous,
-            d.dedication, d.cancelled_at, d.receipt_sent_at, d.manage_token, p.name AS project_name
+            d.dedication, d.method, d.cancelled_at, d.receipt_sent_at, d.manage_token, p.name AS project_name
      FROM donations d LEFT JOIN projects p ON p.id = d.project_id
      ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
      ORDER BY d.created_at DESC
@@ -232,6 +234,7 @@ export async function listDonationsForAdmin(
     anonymous: r.anonymous,
     dedication: r.dedication,
     projectName: r.project_name,
+    method: r.method ?? "card",
     cancelledAt: r.cancelled_at ? new Date(r.cancelled_at).toISOString() : null,
     receiptSentAt: r.receipt_sent_at ? new Date(r.receipt_sent_at).toISOString() : null,
     manageToken: r.manage_token,

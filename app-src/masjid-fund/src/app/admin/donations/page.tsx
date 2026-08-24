@@ -5,7 +5,7 @@ import { listDonationsForAdmin } from "@/lib/admin-data";
 import { INTENTS, INTENT_LABELS } from "@/lib/donation";
 import { formatMoney } from "@/lib/money";
 import { listProjects } from "@/lib/projects";
-import { recordOfflineAction } from "../actions";
+import { markTransferReceivedAction, recordOfflineAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +14,11 @@ const STATUS_FILTERS = ["all", "completed", "pending", "failed"] as const;
 export default async function AdminDonationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; error?: string; recorded?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; recorded?: string; matched?: string }>;
 }) {
   if (!(await getAdminSession())) redirect("/admin/login");
 
-  const { status, error, recorded } = await searchParams;
+  const { status, error, recorded, matched } = await searchParams;
   const filter = status && status !== "all" ? status : undefined;
   const [donations, projects] = await Promise.all([
     listDonationsForAdmin({ status: filter, limit: 200 }),
@@ -37,6 +37,11 @@ export default async function AdminDonationsPage({
         </a>
       </div>
 
+      {matched && (
+        <p className="mt-6 rounded-xl bg-masjid-50 px-4 py-3 text-sm text-masjid-800">
+          Transfer matched — it now counts towards the project.
+        </p>
+      )}
       {recorded && (
         <p className="mt-6 rounded-xl bg-masjid-50 px-4 py-3 text-sm text-masjid-800">
           Offline gift recorded.
@@ -102,6 +107,17 @@ export default async function AdminDonationsPage({
                 </td>
                 <td className="p-3">
                   {donation.status}
+                  {donation.status === "pending" && donation.method === "bank" && (
+                    <form action={markTransferReceivedAction} className="mt-1">
+                      <input type="hidden" name="reference" value={donation.reference} />
+                      <button
+                        type="submit"
+                        className="text-xs font-semibold text-masjid-700 hover:underline"
+                      >
+                        mark received
+                      </button>
+                    </form>
+                  )}
                   {donation.cancelledAt ? (
                     <span className="block text-xs text-sand-700">cancelled</span>
                   ) : (

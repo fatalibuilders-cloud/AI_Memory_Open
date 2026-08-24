@@ -22,7 +22,7 @@ import {
   type ApplicationStatus,
 } from "@/lib/applications";
 import { INTENTS, type Intent } from "@/lib/donation";
-import { recordOfflineDonation } from "@/lib/donations";
+import { getDonationByReference, recordOfflineDonation, settleDonation } from "@/lib/donations";
 import { parseAmountToCents } from "@/lib/money";
 import { getProjectBySlug } from "@/lib/projects";
 
@@ -227,6 +227,35 @@ export async function publishApplicationAction(id: string, formData: FormData) {
       return `/admin/projects/${input.slug}?saved=1`;
     },
     (message) => `/admin/applications/${id}?error=${encodeURIComponent(message)}`,
+  );
+  redirect(destination);
+}
+
+/**
+ * Match a bank transfer that has arrived. This is the manual step the rail
+ * depends on: staff confirm the money is in the account, and only then does it
+ * count towards the masjid. The reference the donor quoted is what links them.
+ */
+export async function markTransferReceivedAction(formData: FormData) {
+  const destination = await run(
+    async () => {
+      const { email } = await requireAdmin();
+      const reference = String(formData.get("reference") ?? "");
+      const donation = await getDonationByReference(reference);
+      if (!donation) throw new AdminError("No donation with that reference.", 404);
+      if (donation.method !== "bank") {
+        throw new AdminError("Only bank transfers are matched by hand.", 400);
+      }
+      if (donation.status === "completed") {
+        return "/admin/donations?matched=1"; // Someone got there first.
+      }
+
+      await settleDonation({ reference }, "completed");
+      console.info(`transfer ${reference} matched by ${email}`);
+      revalidatePath("/projects");
+      return "/admin/donations?matched=1";
+    },
+    (message) => `/admin/donations?error=${encodeURIComponent(message)}`,
   );
   redirect(destination);
 }

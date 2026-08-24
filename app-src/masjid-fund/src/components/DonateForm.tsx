@@ -8,6 +8,7 @@ import {
   PRESET_AMOUNTS_CENTS,
   type Frequency,
   type Intent,
+  type PaymentMethodName,
 } from "@/lib/donation";
 import {
   MAX_DONATION_CENTS,
@@ -33,6 +34,7 @@ export function DonateForm({
   defaultAmountCents = DEFAULT_AMOUNT_CENTS,
   liveMode,
   methods = [{ value: "card", label: "Card", hint: "Visa, Mastercard, Apple Pay" }],
+  recurringUnsupported = [],
 }: {
   projects: DonateFormProject[];
   defaultProjectSlug?: string;
@@ -42,7 +44,9 @@ export function DonateForm({
   /** False when payments run through the built-in simulator. */
   liveMode: boolean;
   /** Rails this deployment can take money on, in the order they are offered. */
-  methods?: { value: "card" | "mpesa"; label: string; hint: string }[];
+  methods?: { value: PaymentMethodName; label: string; hint: string }[];
+  /** Rails that cannot take a recurring gift. */
+  recurringUnsupported?: PaymentMethodName[];
 }) {
   const [amountCents, setAmountCents] = useState<number | null>(defaultAmountCents);
   // An amount that is not one of the presets starts life in the custom field.
@@ -59,13 +63,14 @@ export function DonateForm({
   const [anonymous, setAnonymous] = useState(false);
   const [dedication, setDedication] = useState("");
   const [message, setMessage] = useState("");
-  const [method, setMethod] = useState<"card" | "mpesa">(methods[0]?.value ?? "card");
+  const [method, setMethod] = useState<PaymentMethodName>(methods[0]?.value ?? "card");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const zakat = intent === "zakat";
   const mpesa = method === "mpesa";
+  const bank = method === "bank";
   const selectedProject = useMemo(
     () => projects.find((p) => p.slug === projectSlug) ?? null,
     [projects, projectSlug],
@@ -146,7 +151,9 @@ export function DonateForm({
               type="button"
               onClick={() => {
                 setFrequency(value);
-                if (value === "monthly" && mpesa) setMethod("card");
+                if (value === "monthly" && recurringUnsupported.includes(method)) {
+                  setMethod("card");
+                }
               }}
               aria-pressed={frequency === value}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
@@ -246,7 +253,8 @@ export function DonateForm({
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {methods.map((option) => {
-            const unavailable = option.value === "mpesa" && frequency === "monthly";
+            const unavailable =
+              frequency === "monthly" && recurringUnsupported.includes(option.value);
             return (
               <button
                 key={option.value}
@@ -268,6 +276,14 @@ export function DonateForm({
             );
           })}
         </div>
+
+        {bank && (
+          <p className="mt-4 rounded-xl bg-sand-100 px-4 py-3 text-sm leading-relaxed text-sand-800">
+            You send the transfer yourself, quoting a reference we give you on the next page.
+            Nothing is taken from you here, and the gift counts towards the masjid once we have
+            matched it against the account — usually within a working day.
+          </p>
+        )}
 
         {mpesa && (
           <label className="mt-4 block">
