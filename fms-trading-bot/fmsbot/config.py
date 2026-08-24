@@ -206,6 +206,11 @@ class Settings:
     # Move the stop to break-even once a position is this far in profit
     # (account currency). 0 disables.
     breakeven_at_money: float = 0.0
+    # How much profit the moved stop should LOCK IN. 0 means pure break-even
+    # (the trade can no longer lose). A positive value guarantees that much
+    # instead, and must stay below breakeven_at_money — a stop placed at the
+    # current price is rejected by the broker as too close.
+    breakeven_lock_money: float = 0.0
     # Refuse a fill that slipped further than this from the expected price,
     # as a fraction of the stop distance.
     max_slippage_ratio: float = 0.5
@@ -341,6 +346,7 @@ class Settings:
             loss_pause_minutes=_i("LOSS_PAUSE_MINUTES", 60),
             rolling_trade_window_hours=_i("ROLLING_TRADE_WINDOW_HOURS", 24),
             breakeven_at_money=_f("BREAKEVEN_AT_MONEY", 0.0),
+            breakeven_lock_money=_f("BREAKEVEN_LOCK_MONEY", 0.0),
             max_slippage_ratio=_f("MAX_SLIPPAGE_RATIO", 0.5),
             spread_spike_factor=_f("SPREAD_SPIKE_FACTOR", 3.0),
             min_reward_cost_ratio=_f("MIN_REWARD_COST_RATIO", 2.0),
@@ -405,6 +411,12 @@ class Settings:
             problems.append("SYMBOLS is empty.")
         if self.fixed_lot < 0:
             problems.append("FIXED_LOT cannot be negative (use 0 to size by RISK_PCT).")
+        if (self.breakeven_lock_money and self.breakeven_at_money
+                and self.breakeven_lock_money >= self.breakeven_at_money):
+            problems.append(
+                f"BREAKEVEN_LOCK_MONEY ({self.breakeven_lock_money}) must be below "
+                f"BREAKEVEN_AT_MONEY ({self.breakeven_at_money}) — a stop at or past "
+                f"the current price is rejected by the broker.")
         if self.fixed_lot == 0 and (self.risk_pct <= 0 or self.risk_pct > 5):
             problems.append("RISK_PCT must be between 0 and 5 (risking >5%/trade is reckless).")
         if self.entry_mode not in ("signal", "interval"):

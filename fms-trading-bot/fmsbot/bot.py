@@ -442,32 +442,56 @@ class TradingBot:
         return None
 
     def _protect_profits(self, session: BrokerSession, positions) -> None:
-        """Move the stop to break-even once a position is far enough ahead.
+        """Once a position is far enough ahead, pull its stop up to protect it.
 
-        Only ever tightens: a stop is never moved further from price.
+        Only ever tightens: a stop is never moved further from price. With
+        BREAKEVEN_LOCK_MONEY set the stop guarantees that much profit instead
+        of merely removing the loss.
         """
         threshold = self.s.breakeven_at_money
         if threshold <= 0:
             return
+        lock = self.s.breakeven_lock_money
         for p in positions:
             if p.ticket in session.breakeven_done or p.profit < threshold:
                 continue
-            better = (p.sl < p.entry_price) if p.side == "buy" else (p.sl > p.entry_price)
-            if p.sl and not better:
+
+            target_sl = p.entry_price
+            if lock > 0:
+                try:
+                    per_price = session.broker.value_per_price(p.symbol, p.volume)
+                except BrokerError:
+                    per_price = 0.0
+                if per_price > 0:
+                    offset = lock / per_price
+                    target_sl = (p.entry_price + offset if p.side == "buy"
+                                 else p.entry_price - offset)
+
+            already = ((p.sl >= target_sl) if p.side == "buy"
+                       else (0 < p.sl <= target_sl))
+            if p.sl and already:
                 session.breakeven_done.add(p.ticket)
-                continue                      # already at or beyond break-even
+                continue
             try:
-                session.broker.modify_position(p.ticket, p.entry_price, p.tp)
+                session.broker.modify_position(p.ticket, target_sl, p.tp)
             except BrokerError as exc:
-                log.debug("[%s] break-even move failed on %s: %s",
+                log.debug("[%s] protective stop move failed on %s: %s",
                           session.name, p.symbol, exc)
                 continue
             session.breakeven_done.add(p.ticket)
-            log.info("[%s] %s #%s at +%.2f — stop moved to break-even %.5f",
-                     session.name, p.symbol, p.ticket, p.profit, p.entry_price)
-            self.remote.broadcast(
-                f"🔒 [{session.name}] {p.symbol} #{p.ticket} at {p.profit:+.2f} — "
-                f"stop moved to break-even. This trade can no longer lose.")
+            if lock > 0:
+                log.info("[%s] %s #%s at +%.2f — stop raised to lock +%.2f (%.5f)",
+                         session.name, p.symbol, p.ticket, p.profit, lock, target_sl)
+                self.remote.broadcast(
+                    f"🔒 [{session.name}] {p.symbol} #{p.ticket} at {p.profit:+.2f} — "
+                    f"stop raised to lock in +{lock:.2f}. This trade is now "
+                    f"guaranteed a profit.")
+            else:
+                log.info("[%s] %s #%s at +%.2f — stop moved to break-even %.5f",
+                         session.name, p.symbol, p.ticket, p.profit, target_sl)
+                self.remote.broadcast(
+                    f"🔒 [{session.name}] {p.symbol} #{p.ticket} at {p.profit:+.2f} — "
+                    f"stop moved to break-even. This trade can no longer lose.")
 
     # ------------------------------------------------------------------
     # phone commands
