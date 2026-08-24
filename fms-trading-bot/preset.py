@@ -114,7 +114,8 @@ NOTES = {
     ),
     "riskfirst": (
         "Capital preservation first: 0.25% risk, 1% daily stop, 5 positions,\n"
-        "  pause after 3 losses in a row, break-even stop at +$0.25, and every\n"
+        "  pause after 3 losses in a row, a two-stage protective stop\n"
+        "  (break-even at +$0.10, then locking +$0.10 at +$0.25), and every\n"
         "  entry gated on spread, spread stability, slippage and reward vs cost.\n"
         "  1,000 trades/day is a CEILING, not a target — expect far fewer, and\n"
         "  days with none at all when conditions do not qualify."
