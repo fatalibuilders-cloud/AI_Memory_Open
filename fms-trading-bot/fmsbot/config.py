@@ -41,6 +41,24 @@ def _i(name: str, default: int) -> int:
     return int(raw) if raw else default
 
 
+def _stages(name: str) -> list[tuple[float, float]]:
+    """Parse 'trigger:lock,trigger:lock' into sorted (trigger, lock) pairs."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return []
+    out = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        trigger, _, lock = part.partition(":")
+        try:
+            out.append((float(trigger), float(lock or 0)))
+        except ValueError:
+            continue
+    return sorted(out)
+
+
 def _b(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None:
@@ -211,6 +229,20 @@ class Settings:
     # instead, and must stay below breakeven_at_money — a stop placed at the
     # current price is rejected by the broker as too close.
     breakeven_lock_money: float = 0.0
+    #: Staged profit protection, tightening the stop as a trade advances.
+    #: Each stage is (profit trigger, profit locked in), lowest first, e.g.
+    #: PROFIT_STAGES=0.10:0,0.25:0.10 means "at +$0.10 move to break-even,
+    #: at +$0.25 move up to guarantee +$0.10". Overrides the single
+    #: BREAKEVEN_AT_MONEY / BREAKEVEN_LOCK_MONEY pair when set.
+    profit_stages: list[tuple[float, float]] = field(default_factory=list)
+
+    def stages(self) -> list[tuple[float, float]]:
+        """Protection ladder, lowest trigger first."""
+        if self.profit_stages:
+            return sorted(self.profit_stages)
+        if self.breakeven_at_money > 0:
+            return [(self.breakeven_at_money, self.breakeven_lock_money)]
+        return []
     # Refuse a fill that slipped further than this from the expected price,
     # as a fraction of the stop distance.
     max_slippage_ratio: float = 0.5
@@ -347,6 +379,7 @@ class Settings:
             rolling_trade_window_hours=_i("ROLLING_TRADE_WINDOW_HOURS", 24),
             breakeven_at_money=_f("BREAKEVEN_AT_MONEY", 0.0),
             breakeven_lock_money=_f("BREAKEVEN_LOCK_MONEY", 0.0),
+            profit_stages=_stages("PROFIT_STAGES"),
             max_slippage_ratio=_f("MAX_SLIPPAGE_RATIO", 0.5),
             spread_spike_factor=_f("SPREAD_SPIKE_FACTOR", 3.0),
             min_reward_cost_ratio=_f("MIN_REWARD_COST_RATIO", 2.0),
@@ -417,6 +450,18 @@ class Settings:
                 f"BREAKEVEN_LOCK_MONEY ({self.breakeven_lock_money}) must be below "
                 f"BREAKEVEN_AT_MONEY ({self.breakeven_at_money}) — a stop at or past "
                 f"the current price is rejected by the broker.")
+        previous_lock = None
+        for trigger, lock in self.stages():
+            if lock >= trigger:
+                problems.append(
+                    f"PROFIT_STAGES: stage {trigger}:{lock} locks {lock} at a "
+                    f"{trigger} trigger — the lock must be below the trigger, or "
+                    f"the stop sits at the current price and is rejected.")
+            if previous_lock is not None and lock < previous_lock:
+                problems.append(
+                    f"PROFIT_STAGES: stage {trigger}:{lock} locks less than the "
+                    f"stage before it ({previous_lock}) — stops must only tighten.")
+            previous_lock = lock
         if self.fixed_lot == 0 and (self.risk_pct <= 0 or self.risk_pct > 5):
             problems.append("RISK_PCT must be between 0 and 5 (risking >5%/trade is reckless).")
         if self.entry_mode not in ("signal", "interval"):

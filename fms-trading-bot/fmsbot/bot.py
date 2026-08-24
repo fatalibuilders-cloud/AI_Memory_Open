@@ -448,13 +448,20 @@ class TradingBot:
         BREAKEVEN_LOCK_MONEY set the stop guarantees that much profit instead
         of merely removing the loss.
         """
-        threshold = self.s.breakeven_at_money
-        if threshold <= 0:
+        ladder = self.s.stages()
+        if not ladder:
             return
-        lock = self.s.breakeven_lock_money
         for p in positions:
-            if p.ticket in session.breakeven_done or p.profit < threshold:
+            # Highest stage this position has earned, if any beyond the last
+            # one already applied.
+            reached = [i for i, (trigger, _) in enumerate(ladder)
+                       if p.profit >= trigger]
+            if not reached:
                 continue
+            stage_index = reached[-1]
+            if session.stage_done.get(p.ticket, -1) >= stage_index:
+                continue
+            lock = ladder[stage_index][1]
 
             target_sl = p.entry_price
             if lock > 0:
@@ -470,7 +477,7 @@ class TradingBot:
             already = ((p.sl >= target_sl) if p.side == "buy"
                        else (0 < p.sl <= target_sl))
             if p.sl and already:
-                session.breakeven_done.add(p.ticket)
+                session.stage_done[p.ticket] = stage_index
                 continue
             try:
                 session.broker.modify_position(p.ticket, target_sl, p.tp)
@@ -478,20 +485,20 @@ class TradingBot:
                 log.debug("[%s] protective stop move failed on %s: %s",
                           session.name, p.symbol, exc)
                 continue
-            session.breakeven_done.add(p.ticket)
+            session.stage_done[p.ticket] = stage_index
+            step = f"stage {stage_index + 1}/{len(ladder)}"
             if lock > 0:
-                log.info("[%s] %s #%s at +%.2f — stop raised to lock +%.2f (%.5f)",
-                         session.name, p.symbol, p.ticket, p.profit, lock, target_sl)
+                log.info("[%s] %s #%s at +%.2f — %s: stop raised to lock +%.2f (%.5f)",
+                         session.name, p.symbol, p.ticket, p.profit, step, lock, target_sl)
                 self.remote.broadcast(
                     f"🔒 [{session.name}] {p.symbol} #{p.ticket} at {p.profit:+.2f} — "
-                    f"stop raised to lock in +{lock:.2f}. This trade is now "
-                    f"guaranteed a profit.")
+                    f"{step}: stop raised to lock in +{lock:.2f}. Guaranteed profit.")
             else:
-                log.info("[%s] %s #%s at +%.2f — stop moved to break-even %.5f",
-                         session.name, p.symbol, p.ticket, p.profit, target_sl)
+                log.info("[%s] %s #%s at +%.2f — %s: stop to break-even %.5f",
+                         session.name, p.symbol, p.ticket, p.profit, step, target_sl)
                 self.remote.broadcast(
                     f"🔒 [{session.name}] {p.symbol} #{p.ticket} at {p.profit:+.2f} — "
-                    f"stop moved to break-even. This trade can no longer lose.")
+                    f"{step}: stop moved to break-even. This trade can no longer lose.")
 
     # ------------------------------------------------------------------
     # phone commands

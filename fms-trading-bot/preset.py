@@ -89,7 +89,7 @@ PRESETS["riskfirst"] = {
     "FIXED_LOT": "0.01",
     "RISK_PCT": "0.25",
     "TP_MONEY": "0.50",
-    "BREAKEVEN_AT_MONEY": "0.25",
+    "PROFIT_STAGES": "0.10:0,0.25:0.10",
     "MAX_OPEN_POSITIONS": "5", "MAX_POSITIONS_PER_SYMBOL": "1",
     "MAX_TRADES_PER_DAY": "1000",
     "ROLLING_TRADE_WINDOW_HOURS": "24",

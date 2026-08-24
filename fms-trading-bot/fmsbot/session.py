@@ -39,8 +39,8 @@ class BrokerSession:
     #: symbols the broker permanently refuses (trade disabled, unknown), so the
     #: bot stops retrying them every signal. name -> reason
     disabled_symbols: dict[str, str] = field(default_factory=dict)
-    #: positions whose stop has already been pulled to break-even
-    breakeven_done: set[int] = field(default_factory=set)
+    #: highest protection stage already applied per position (ticket -> index)
+    stage_done: dict[int, int] = field(default_factory=dict)
     #: rolling record of recent spreads per symbol, to spot abnormal widening
     spread_history: dict[str, list[float]] = field(default_factory=dict)
 
