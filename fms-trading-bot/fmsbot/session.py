@@ -23,6 +23,15 @@ RECONNECT_DELAYS = [10, 20, 40, 60]
 
 
 @dataclass
+class _Pending:
+    """A signal waiting for the market to confirm it before entry."""
+    side: str
+    signal: object
+    price_at_signal: float
+    expires: float
+
+
+@dataclass
 class BrokerSession:
     name: str
     cfg: BrokerConfig
@@ -43,6 +52,8 @@ class BrokerSession:
     stage_done: dict[int, int] = field(default_factory=dict)
     #: rolling record of recent spreads per symbol, to spot abnormal widening
     spread_history: dict[str, list[float]] = field(default_factory=dict)
+    #: signals awaiting confirmation, keyed by symbol
+    pending: dict[str, _Pending] = field(default_factory=dict)
 
     def active_symbols(self) -> list[str]:
         return [s for s in self.symbols if s not in self.disabled_symbols]

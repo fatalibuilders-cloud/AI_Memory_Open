@@ -16,7 +16,7 @@ from typing import Optional
 
 from .broker.base import BrokerError
 from .config import Settings
-from .session import RECONNECT_DELAYS, BrokerSession, build_sessions
+from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
 from .strategy import EmaCrossStrategy
 from .telegram import TelegramRemote
 
@@ -146,6 +146,7 @@ class TradingBot:
         self._notify_closed_positions(session)
         if self.paused:
             return
+        self._check_pending(session)
         active = session.active_symbols()
         if not active:
             return
@@ -185,8 +186,51 @@ class TradingBot:
                       session.name, symbol, closed[-1].close)
             return
 
+        # Optionally require the market to prove the signal first: a setup
+        # that reverses immediately is exactly the one that goes straight to
+        # the stop without ever being far enough ahead to protect.
+        if self.s.entry_confirm_money > 0:
+            session.pending[symbol] = _Pending(
+                side=signal.side, signal=signal,
+                price_at_signal=closed[-1].close,
+                expires=time.time() + self.s.entry_confirm_seconds)
+            log.debug("[%s] %s %s pending confirmation",
+                      session.name, symbol, signal.side)
+            return
+
         with self._trade_lock:
             self._maybe_trade(session, symbol, signal, closed[-1].close)
+
+    def _check_pending(self, session: BrokerSession) -> None:
+        """Take pending signals that the market has since confirmed."""
+        if not session.pending:
+            return
+        now = time.time()
+        for symbol, pending in list(session.pending.items()):
+            if now > pending.expires:
+                del session.pending[symbol]
+                log.debug("[%s] %s confirmation expired", session.name, symbol)
+                continue
+            try:
+                price = session.broker.current_price(symbol, pending.side)
+                per_price = session.broker.value_per_price(
+                    symbol, self.s.fixed_lot or 0.01)
+            except BrokerError:
+                continue
+            if per_price <= 0:
+                continue
+            moved = ((price - pending.price_at_signal) if pending.side == "buy"
+                     else (pending.price_at_signal - price)) * per_price
+            # Tolerance: price subtraction loses precision, so an exact
+            # one-pip move can compute a hair under the threshold.
+            if moved < self.s.entry_confirm_money - 1e-6:
+                continue
+            del session.pending[symbol]
+            log.info("[%s] %s confirmed: moved %+.2f in %ss — entering",
+                     session.name, symbol, moved,
+                     int(self.s.entry_confirm_seconds - (pending.expires - now)))
+            with self._trade_lock:
+                self._maybe_trade(session, symbol, pending.signal, price)
 
     def _maybe_trade(self, session: BrokerSession, symbol: str,
                      signal, price: float) -> None:

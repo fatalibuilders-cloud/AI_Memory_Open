@@ -252,6 +252,15 @@ class Settings:
     # Require the target to beat the round-trip cost by this multiple.
     min_reward_cost_ratio: float = 2.0
 
+    # Wait for the market to move this far in the signal's direction before
+    # entering (account currency at the traded size). A signal that reverses
+    # immediately is never taken, which is the only way to reduce trades that
+    # go from entry straight to the stop without ever being ahead. The cost
+    # is a worse entry price on the trades that do qualify. 0 disables.
+    entry_confirm_money: float = 0.0
+    # How long to wait for that confirmation before dropping the signal.
+    entry_confirm_seconds: int = 120
+
     # --- Money-based exits (override the ATR multiples when > 0) ----------
     # Close at a fixed cash profit rather than a multiple of ATR. When
     # tp_runner_money is also set, reaching tp_money moves the stop to
@@ -383,6 +392,8 @@ class Settings:
             max_slippage_ratio=_f("MAX_SLIPPAGE_RATIO", 0.5),
             spread_spike_factor=_f("SPREAD_SPIKE_FACTOR", 3.0),
             min_reward_cost_ratio=_f("MIN_REWARD_COST_RATIO", 2.0),
+            entry_confirm_money=_f("ENTRY_CONFIRM_MONEY", 0.0),
+            entry_confirm_seconds=_i("ENTRY_CONFIRM_SECONDS", 120),
             tp_money=_f("TP_MONEY", 0.0),
             tp_runner_money=_f("TP_RUNNER_MONEY", 0.0),
             sl_money=_f("SL_MONEY", 0.0),
