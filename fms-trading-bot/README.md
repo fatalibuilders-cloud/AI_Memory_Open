@@ -403,6 +403,16 @@ own filters **by construction**:
 Stop the bot first — two processes sharing one MT5 terminal interfere. The
 `--apply` run keeps a backup in `.env.bak`.
 
+`retune.ps1` does that whole sequence for you — stops the bot, edits `.env`,
+measures, validates and restarts — and refuses to write anything that would
+leave an account with no symbols:
+
+```powershell
+.\retune.ps1                                    # preview, changes nothing
+.\retune.ps1 -Apply                             # commit the tuned values
+.\retune.ps1 -Apply -Drop USDCHFm,NZDUSDm -Stages "0.10:0,0.25:0.10"
+```
+
 It writes `SYM_<SYMBOL>_<SETTING>` lines, which override the shared value
 for that instrument only:
 

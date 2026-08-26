@@ -25,7 +25,10 @@ def _load_dotenv(path: str | Path = ".env") -> None:
     p = Path(path)
     if not p.is_file():
         return
-    for line in p.read_text(encoding="utf-8").splitlines():
+    # utf-8-sig, not utf-8: Notepad's "UTF-8" and Windows PowerShell's
+    # Set-Content -Encoding UTF8 both prepend a byte-order mark, which would
+    # otherwise become part of the first variable's name and silently blank it.
+    for line in p.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

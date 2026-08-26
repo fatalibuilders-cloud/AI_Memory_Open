@@ -343,7 +343,7 @@ def main() -> int:
             print("\nNo .env in this directory — run this from the bot folder.",
                   file=sys.stderr)
             return 1
-        existing = env_path.read_text(encoding="utf-8").splitlines()
+        existing = env_path.read_text(encoding="utf-8-sig").splitlines()
         kept = [l for l in existing
                 if not re.match(r"^\s*SYM_[A-Z0-9]+_", l.strip().upper())
                 and l.strip() != "# --- per-symbol tuning (tune_symbols.py) ---"]
