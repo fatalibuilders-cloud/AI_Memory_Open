@@ -16,6 +16,7 @@ so your manual trades do not flatter or spoil the numbers.
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -129,14 +130,52 @@ def main() -> int:
                    "(ENTRY_CONFIRM_MONEY)")
             print( "     or a signal that picks direction better.")
 
+        # Does the ENTRY predict anything? With SL and TP at fixed ATR
+        # multiples, a coin flip wins SL/(SL+TP) of the time — the nearer
+        # barrier is touched more often. Comparing against that separates a
+        # bad signal from an unlucky one.
+        sl_m, tp_m = settings.atr_sl_mult, settings.atr_tp_mult
+        if sl_m > 0 and tp_m > 0 and len(results) >= 30:
+            chance = sl_m / (sl_m + tp_m)
+            expected = len(results) * chance
+            sd = math.sqrt(len(results) * chance * (1 - chance))
+            z = (len(wins) - expected) / sd if sd else 0.0
+            print("\n  is the entry signal predictive?")
+            print(f"     wins observed        : {len(wins)} "
+                  f"({100*len(wins)/len(results):.1f}%)")
+            print(f"     a coin flip would win: {expected:.1f} ({100*chance:.1f}%)")
+            print(f"        (SL {sl_m}xATR vs TP {tp_m}xATR — the nearer one is "
+                  f"hit more often)")
+            print(f"     z-score              : {z:+.2f}")
+            if z <= -3:
+                print("     -> WORSE THAN RANDOM, well beyond chance. The signal is")
+                print("        systematically choosing the wrong side. Changing exits")
+                print("        cannot fix this; the entry rule itself is the problem.")
+            elif z >= 3:
+                print("     -> BETTER THAN RANDOM. A real edge worth building on.")
+            else:
+                print("     -> indistinguishable from random: no edge, no anti-edge.")
+
         by_symbol = defaultdict(list)
         for _, symbol, pnl, _ in results:
             by_symbol[symbol].append(pnl)
         print("\n  by symbol:")
+        worst_symbols = []
         for symbol, pnls in sorted(by_symbol.items(), key=lambda x: -sum(x[1])):
             w = len([p for p in pnls if p > 0])
+            per = sum(pnls) / len(pnls)
             print(f"     {symbol:16} {len(pnls):4} trades  "
-                  f"{100*w/len(pnls):5.1f}% win  net {sum(pnls):+10,.2f}")
+                  f"{100*w/len(pnls):5.1f}% win  net {sum(pnls):+10,.2f}  "
+                  f"({per:+.2f}/trade)")
+            if sum(pnls) < 0 and abs(sum(pnls)) > abs(net) * 0.25 and net < 0:
+                worst_symbols.append((symbol, sum(pnls), len(pnls), per))
+        if worst_symbols:
+            print("\n     Concentrated losses — these few symbols carry most of it:")
+            for symbol, loss, count, per in worst_symbols:
+                print(f"       {symbol}: {loss:+.2f} over {count} trades "
+                      f"({100*loss/net:.0f}% of the total) at {per:+.2f}/trade")
+            print("       Dropping them from SYMBOLS would remove that loss "
+                  "outright.")
 
         by_day = defaultdict(list)
         for ts, _, pnl, _ in results:
