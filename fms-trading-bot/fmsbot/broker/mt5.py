@@ -105,7 +105,25 @@ class MT5Broker(Broker):
             kwargs = {"login": self.login, "password": self.password,
                       "server": self.server}
             if not mt5.initialize(*args, **kwargs):
-                raise BrokerError(f"MT5 initialize failed: {mt5.last_error()}")
+                err = mt5.last_error()
+                hint = ""
+                if "Authorization failed" in str(err) or "-6" in str(err):
+                    hint = (
+                        "\n  -> The terminal could not log in with the credentials in "
+                        ".env.\n"
+                        "     Note the bot normally ATTACHES to an MT5 terminal you "
+                        "already have\n"
+                        "     open and logged in, so it can run fine even when these "
+                        "are wrong.\n"
+                        "     Easiest fix: open MetaTrader 5, log into the account "
+                        "manually,\n"
+                        "     leave it running, and re-run this — it will attach.\n"
+                        "     Otherwise check MT5_PASSWORD (the TRADING password, not "
+                        "the investor\n"
+                        "     one) and MT5_SERVER, and note that broker demo accounts "
+                        "expire\n"
+                        "     after a period of inactivity.")
+                raise BrokerError(f"MT5 initialize failed: {err}{hint}")
             info = mt5.account_info()
             if info is None:
                 raise BrokerError(f"MT5 login failed: {mt5.last_error()}")
