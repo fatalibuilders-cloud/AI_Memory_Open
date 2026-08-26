@@ -32,6 +32,39 @@ import sys
 from pathlib import Path
 
 
+def _p_reach(p_up: float, steps_up: int, steps_down: int) -> float:
+    """Gambler's ruin: chance of touching +steps_up before -steps_down."""
+    from decimal import Decimal, getcontext
+    getcontext().prec = 60
+    if abs(p_up - 0.5) < 1e-12:
+        return steps_down / (steps_up + steps_down)
+    r = Decimal(1 - p_up) / Decimal(p_up)
+    return float((1 - r**steps_down) / (1 - r**(steps_up + steps_down)))
+
+
+def achievable(measured_pct: float, sl_mult: float, tp_mult: float,
+               tp: float, sl: float, step: float = 0.05) -> float | None:
+    """What a configured target really yields on a signal of measured quality.
+
+    A configured win rate assumes a coin flip. Calibrating a biased walk to
+    the win rate actually observed at the live stop/target multiples gives
+    the drift of the real signal, which is then applied to the new levels.
+    """
+    if not 0 < measured_pct < 100 or sl_mult <= 0 or tp_mult <= 0:
+        return None
+    target = measured_pct / 100.0
+    lo, hi = 0.30, 0.70
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        got = _p_reach(mid, round(tp_mult / 0.05), round(sl_mult / 0.05))
+        if got < target:
+            lo = mid
+        else:
+            hi = mid
+    p_up = (lo + hi) / 2
+    return _p_reach(p_up, max(round(tp / step), 1), max(round(sl / step), 1))
+
+
 def stop_for(target: float, win_rate: float) -> float:
     """Stop distance that yields `win_rate` for a given target."""
     p = win_rate / 100.0
@@ -50,6 +83,11 @@ def main() -> int:
     p.add_argument("--balance", type=float, default=50.0,
                    help="account balance for the ruin check (default 50)")
     p.add_argument("--apply", action="store_true", help="write it into .env")
+    p.add_argument("--measured-win-rate", type=float,
+                   help="your real win rate %% from report.py, to show what the "
+                        "target actually becomes on YOUR signal")
+    p.add_argument("--measured-sl-mult", type=float, default=1.5)
+    p.add_argument("--measured-tp-mult", type=float, default=2.0)
     args = p.parse_args()
 
     if not 1 <= args.win_rate <= 99:
@@ -109,6 +147,21 @@ def main() -> int:
         print("    -> a single loss would take half the account or more")
     if 2 * sl >= args.balance:
         print("    -> TWO losses would end the account")
+
+    if args.measured_win_rate:
+        actual = achievable(args.measured_win_rate, args.measured_sl_mult,
+                            args.measured_tp_mult, tp, sl)
+        if actual is not None:
+            ev = actual * tp - (1 - actual) * sl - args.spread_cost
+            print("\n  ON YOUR OWN SIGNAL (calibrated from report.py):")
+            print(f"    you configured        : {args.win_rate:.0f}% wins")
+            print(f"    you would ACTUALLY get: {100*actual:.1f}%")
+            print(f"    per trade             : ${ev:+.4f}")
+            print(f"    per 1,000 trades      : ${1000*ev:+,.2f}")
+            if actual < p_win - 0.02:
+                print("    The configured rate assumes a coin flip. Your entries")
+                print("    lean the wrong way, so you get fewer wins AND the same")
+                print("    oversized losses.")
 
     print("\n" + "=" * 68)
     if net < 0:
