@@ -42,6 +42,16 @@ def _is_permanent_symbol_error(exc: Exception) -> bool:
     return any(marker in text for marker in _PERMANENT_SYMBOL_ERRORS[:4])
 
 
+#: The link to the broker is down — never keep firing orders into that.
+_CONNECTION_ERRORS = ("10031", "absence of network connection",
+                      "no connection", "not connected", "connection lost")
+
+
+def _is_connection_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(marker in text for marker in _CONNECTION_ERRORS)
+
+
 def sizing_label(settings) -> str:
     if settings.fixed_lot > 0:
         return f"{settings.fixed_lot} lot (fixed)"
@@ -361,6 +371,18 @@ class TradingBot:
         except BrokerError as exc:
             log.error("[%s] order failed %s %s: %s",
                       session.name, symbol, signal.side, exc)
+            if _is_connection_error(exc):
+                # The terminal lost the broker. Entering blind is exactly what
+                # the emergency controls exist to prevent, so stand down and
+                # let the reconnect logic re-establish first.
+                session.connection_failures += 1
+                if session.connection_failures in (1, 10):
+                    self.remote.broadcast(
+                        f"📡 {session.name}: no connection to the trade server — "
+                        f"new entries paused until it returns. Open positions keep "
+                        f"their broker-side stops.")
+                raise BrokerError(f"trade server unreachable: {exc}")
+            session.connection_failures = 0
             if _is_permanent_symbol_error(exc):
                 # Retrying this every signal only spams the phone — the broker
                 # will keep refusing until the account or symbol list changes.

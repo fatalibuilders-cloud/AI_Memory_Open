@@ -31,6 +31,10 @@ _RETCODE_HELP = {
             "orders on it — remove it from SYMBOLS, or ask the broker to enable "
             "it. (Exness 24/7 variants like XAUUSD247m are often view-only on "
             "trial accounts.)"),
+    10031: ("No connection to the trade server. The terminal lost its link to "
+            "the broker — usually the internet dropped or the PC slept. New "
+            "entries pause until it returns; open positions keep their stops, "
+            "which sit on the broker's side and still work."),
     10018: "The market for this symbol is closed right now.",
     10019: "Not enough money in the account for this volume.",
     10014: "Invalid volume — below the symbol's minimum or off its step size.",

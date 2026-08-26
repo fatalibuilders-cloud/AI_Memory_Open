@@ -106,6 +106,29 @@ def main() -> int:
         print(f"  best / worst    : {max(r[2] for r in results):+,.2f} / "
               f"{min(r[2] for r in results):+,.2f}")
 
+        # Did the protective stop ever get a chance? A trade closing at or
+        # near zero was rescued by it; one closing at a full loss never got
+        # far enough ahead for a stop to be moved at all.
+        band = 0.03
+        rescued = [r for r in results if -band <= r[2] <= band]
+        full_losses = [r for r in results if r[2] < -band]
+        print("\n  did the break-even stop help?")
+        print(f"     rescued to ~0     : {len(rescued):4} "
+              f"({100*len(rescued)/len(results):5.1f}%)  the mechanism working")
+        print(f"     closed in profit  : {len(wins):4} "
+              f"({100*len(wins)/len(results):5.1f}%)")
+        print(f"     full loss         : {len(full_losses):4} "
+              f"({100*len(full_losses)/len(results):5.1f}%)  never got ahead "
+              f"enough to protect")
+        if full_losses:
+            avg_full = sum(r[2] for r in full_losses) / len(full_losses)
+            print(f"     average full loss : {avg_full:+.2f}")
+            print(f"\n     Those {len(full_losses)} trades went from entry straight "
+                  f"toward the stop.")
+            print( "     No exit rule can help them — only entering later "
+                   "(ENTRY_CONFIRM_MONEY)")
+            print( "     or a signal that picks direction better.")
+
         by_symbol = defaultdict(list)
         for _, symbol, pnl, _ in results:
             by_symbol[symbol].append(pnl)

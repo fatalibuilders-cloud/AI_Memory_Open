@@ -44,6 +44,8 @@ class BrokerSession:
     last_entry_attempt: dict[str, float] = field(default_factory=dict)
     known_tickets: set[int] = field(default_factory=set)
     reconnect_attempt: int = 0
+    #: consecutive order failures caused by a lost trade-server link
+    connection_failures: int = 0
     last_block: str = ""          # why the most recent signal was refused
     #: symbols the broker permanently refuses (trade disabled, unknown), so the
     #: bot stops retrying them every signal. name -> reason
