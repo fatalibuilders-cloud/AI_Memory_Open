@@ -168,6 +168,118 @@ class TrendAlways(VecStrategy):
         return VecSignal(side, sl, tp, f"trend {side}")
 
 
+class InvertedEmaCross(EmaCross):
+    """The EMA crossover, traded the other way.
+
+    Live results showed the plain crossover winning far less than chance on
+    this market, which is information: a signal that reliably picks the
+    wrong side has predictive content once flipped. Whether the edge
+    survives the spread is exactly what the search has to decide.
+    """
+    name = "ema_cross_inverted"
+
+    def at(self, i, a):
+        signal = super().at(i, a)
+        if signal is None:
+            return None
+        other = "sell" if signal.side == "buy" else "buy"
+        return VecSignal(other, signal.sl_distance, signal.tp_distance,
+                         "inverted " + signal.reason)
+
+
+class RsiReversion(VecStrategy):
+    """Buy oversold, sell overbought — no trend filter, RSI alone."""
+    name = "rsi_reversion"
+
+    def warmup(self) -> int:
+        return max(self.s.rsi_period + 2, self.s.atr_period + 2)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        return {
+            "rsi": rsi_full(closes, self.s.rsi_period),
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        r, prev, v = a["rsi"][i], a["rsi"][i - 1], a["atr"][i]
+        if None in (r, prev, v) or v <= 0:
+            return None
+        sl, tp = self._exits(v)
+        # act on the turn out of the extreme, not while still in it
+        if prev <= self.s.rsi_oversold < r:
+            return VecSignal("buy", sl, tp, f"RSI turning up from {prev:.0f}")
+        if prev >= self.s.rsi_overbought > r:
+            return VecSignal("sell", sl, tp, f"RSI turning down from {prev:.0f}")
+        return None
+
+
+class Momentum(VecStrategy):
+    """Rate of change: trade when price has moved decisively, not on a cross."""
+    name = "momentum"
+
+    def warmup(self) -> int:
+        return max(self.s.ema_slow + 2, self.s.atr_period + 2)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        return {
+            "close": closes,
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        look = self.s.ema_slow
+        if i < look:
+            return None
+        v = a["atr"][i]
+        if v is None or v <= 0:
+            return None
+        change = a["close"][i] - a["close"][i - look]
+        # require the move to be large relative to normal volatility
+        threshold = v * self.s.atr_sl_mult
+        sl, tp = self._exits(v)
+        if change > threshold:
+            return VecSignal("buy", sl, tp, f"momentum +{change/v:.1f} ATR")
+        if change < -threshold:
+            return VecSignal("sell", sl, tp, f"momentum {change/v:.1f} ATR")
+        return None
+
+
+class BollingerBreakout(VecStrategy):
+    """Trade the break OUT of the bands, the opposite of mean reversion."""
+    name = "bollinger_breakout"
+
+    def warmup(self) -> int:
+        return max(self.s.bb_period + 2, self.s.atr_period + 2)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        lower, mid, upper = bollinger_full(closes, self.s.bb_period, self.s.bb_std)
+        return {
+            "lower": lower, "upper": upper, "close": closes,
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        up, lo, v = a["upper"][i], a["lower"][i], a["atr"][i]
+        up_prev, lo_prev = a["upper"][i - 1], a["lower"][i - 1]
+        if None in (up, lo, up_prev, lo_prev, v) or v <= 0:
+            return None
+        price, prev = a["close"][i], a["close"][i - 1]
+        sl, tp = self._exits(v)
+        if prev <= up_prev and price > up:
+            return VecSignal("buy", sl, tp, "broke above the upper band")
+        if prev >= lo_prev and price < lo:
+            return VecSignal("sell", sl, tp, "broke below the lower band")
+        return None
+
+
 VEC_STRATEGIES: dict[str, type[VecStrategy]] = {
-    cls.name: cls for cls in (EmaCross, MeanReversion, Breakout, TrendAlways)
+    cls.name: cls for cls in (EmaCross, MeanReversion, Breakout, TrendAlways,
+                              InvertedEmaCross, RsiReversion, Momentum,
+                              BollingerBreakout)
 }

@@ -55,6 +55,34 @@ GRIDS = {
         "atr_sl_mult": [1.0, 2.0],
         "atr_tp_mult": [1.5, 3.0],
     },
+    # Live results showed the plain crossover losing far more than chance,
+    # which makes its inverse a genuine hypothesis rather than a joke.
+    "ema_cross_inverted": {
+        "ema_fast": [9, 12, 20],
+        "ema_slow": [21, 50, 100],
+        "atr_sl_mult": [1.0, 1.5, 2.0],
+        "atr_tp_mult": [1.5, 2.5, 3.5],
+        "rsi_floor": [40.0, 45.0],
+        "rsi_ceiling": [55.0, 60.0],
+    },
+    "rsi_reversion": {
+        "rsi_period": [7, 14, 21],
+        "rsi_oversold": [20.0, 25.0, 30.0],
+        "rsi_overbought": [70.0, 75.0, 80.0],
+        "atr_sl_mult": [1.0, 1.5, 2.0],
+        "atr_tp_mult": [1.5, 2.0, 3.0],
+    },
+    "momentum": {
+        "ema_slow": [10, 20, 40],
+        "atr_sl_mult": [1.0, 1.5, 2.0],
+        "atr_tp_mult": [1.5, 2.5, 3.5],
+    },
+    "bollinger_breakout": {
+        "bb_period": [14, 20, 30],
+        "bb_std": [1.5, 2.0, 2.5],
+        "atr_sl_mult": [1.0, 1.5, 2.0],
+        "atr_tp_mult": [1.5, 2.5, 3.5],
+    },
 }
 
 MIN_TRADES = 20   # fewer than this and the result is noise, not evidence
