@@ -422,6 +422,14 @@ Two things worth understanding before you use the numbers:
   figure protects one instrument and never fires on another. Each rung
   keeps the *fraction* of the target it had, so the protection behaves
   identically everywhere.
+* **It also checks whether you can afford the instrument.** Tuning a
+  symbol to its own spread says nothing about whether the account can
+  carry it. Lot sizes have a floor, so on gold the *smallest position the
+  broker accepts* can still risk more in one trade than your daily loss
+  cap allows. The tool prints each stop as a share of your balance and the
+  balance the instrument would need to obey your own risk rule. When a
+  symbol is over that line, no setting fixes it — fund the account or drop
+  the symbol.
 * **The tuned targets will be larger than what you asked for.** That is the
   measurement talking, not a preference. A target that does not clear the
   round trip by a real multiple is a losing trade with extra steps, and

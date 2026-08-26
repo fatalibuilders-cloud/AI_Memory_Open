@@ -174,6 +174,72 @@ def ladder_scale(settings: Settings, row: Row) -> float:
     return 1.0
 
 
+def report_risk(settings: Settings, broker, rows: list[Row], lot: float) -> None:
+    """Check the derived stops against the account that has to absorb them.
+
+    Tuning an instrument to its own spread says nothing about whether you
+    can afford to trade it. Lot sizes have a floor — 0.01 is usually the
+    smallest — so on gold, where one bar routinely moves several dollars
+    per 0.01 lot, the smallest possible position can still risk more in a
+    single trade than the account is allowed to lose in a day. That is a
+    property of the instrument and the balance, and no setting fixes it.
+    """
+    try:
+        balance = broker.balance()
+    except Exception:
+        return
+    if balance <= 0:
+        return
+
+    limit = settings.risk_pct if settings.risk_pct > 0 else 0.5
+    daily = settings.daily_loss_limit_pct if settings.daily_loss_limit_pct > 0 else 3.0
+    daily_budget = balance * daily / 100.0
+
+    print("\n" + "=" * 78)
+    print(f"RISK AT YOUR BALANCE — ${balance:,.2f}, {lot} lot, "
+          f"{limit}% per trade, {daily}% daily cap")
+    print("=" * 78)
+    print(f"\n{'symbol':16} {'stop $':>9} {'% of bal':>9} {'stops/day':>10} "
+          f"{'balance needed':>15}")
+    print("-" * 78)
+
+    unaffordable = []
+    for row in rows:
+        share = row.stop_money / balance * 100.0
+        stops = daily_budget / row.stop_money if row.stop_money > 0 else 0.0
+        needed = row.stop_money / (limit / 100.0)
+        mark = ""
+        if share > limit:
+            mark = "  << over your limit"
+            unaffordable.append((row, needed))
+        print(f"{row.symbol:16} {row.stop_money:9.2f} {share:8.2f}% "
+              f"{stops:10.1f} {needed:14,.0f}{mark}")
+
+    if not unaffordable:
+        print(f"\n  Every instrument fits inside {limit}% per trade at {lot} lot.")
+        return
+
+    print(f"\n  {len(unaffordable)} instrument(s) cannot obey your own "
+          f"{limit}%-per-trade rule at")
+    print(f"  {lot} lot, because that is the smallest position the broker "
+          f"will accept.")
+    for row, needed in unaffordable:
+        stops = daily_budget / row.stop_money if row.stop_money > 0 else 0.0
+        if stops < 1:
+            print(f"    {row.symbol}: one stop is ${row.stop_money:.2f}, more than "
+                  f"the ${daily_budget:.2f} you allow")
+            print("      yourself to lose in a whole day. A single losing trade "
+                  "ends the day.")
+        else:
+            print(f"    {row.symbol}: ${row.stop_money:.2f} per stop is "
+                  f"{row.stop_money / balance * 100:.1f}% of the account; the rule "
+                  f"needs ${needed:,.0f}.")
+    print("\n  This is not a settings problem and tuning cannot solve it: the")
+    print("  position is already as small as the broker allows. Either fund the")
+    print("  account to the size the instrument requires, or remove it from")
+    print("  SYMBOLS and trade what the balance can carry.")
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Derive per-symbol settings")
     p.add_argument("--account", help="which account, when several are configured")
@@ -248,6 +314,8 @@ def main() -> int:
             for var, value in derived.items():
                 print(f"    {var}={value}")
                 env_lines.append(f"{var}={value}")
+
+        report_risk(settings, broker, rows, lot)
 
         worst = max(rows, key=lambda r: r.spread_atr)
         print(f"\n  Widest spread relative to movement: {worst.symbol} at "
