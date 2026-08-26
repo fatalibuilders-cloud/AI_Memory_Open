@@ -357,8 +357,9 @@ amount of leverage or frequency fixes a losing edge — it only loses faster.
 
 ### Searching for an edge
 
-`optimize.py` grid-searches four strategies (EMA crossover, Bollinger mean
-reversion, Donchian breakout, always-with-trend) over parameter ranges,
+`optimize.py` grid-searches eight strategies (EMA crossover and its inverse,
+Bollinger mean reversion, Bollinger breakout, Donchian breakout, RSI
+reversion, momentum, always-with-trend) over parameter ranges,
 fits on the first two-thirds of the data and reports each candidate's
 performance on the **final third it never saw**:
 
@@ -380,12 +381,72 @@ Two rules for reading it honestly:
 The genuinely useful outcome is often "nothing survived" — that saves you
 the money you would have lost finding out live.
 
+## One size does not fit gold, Bitcoin and EURUSD
+
+The live account's own record made this unavoidable: metals were 8% of the
+trades and 77% of the losses. Not because gold is unpredictable, but because
+a single set of settings was applied to instruments whose spreads differ by
+two orders of magnitude. A $0.50 target is four times the spread on EURUSD,
+about *equal* to the spread on gold, and rounding error on Bitcoin. On gold
+that trade could not pay even when the direction was right.
+
+`tune_symbols.py` measures each instrument in your own terminal — real
+spread, real ATR, the broker's minimum stop distance, the cash value of a
+price move at your lot size — and solves for settings that pass the bot's
+own filters **by construction**:
+
+```powershell
+.\.venv\Scripts\python.exe tune_symbols.py           # measure and show
+.\.venv\Scripts\python.exe tune_symbols.py --apply   # write them to .env
+```
+
+Stop the bot first — two processes sharing one MT5 terminal interfere. The
+`--apply` run keeps a backup in `.env.bak`.
+
+It writes `SYM_<SYMBOL>_<SETTING>` lines, which override the shared value
+for that instrument only:
+
+```env
+SYM_EURUSDM_SL_MONEY=0.80
+SYM_EURUSDM_TP_MONEY=1.07
+SYM_EURUSDM_PROFIT_STAGES=0.213:0,0.533:0.213
+SYM_XAUUSDM_SL_MONEY=2.25
+SYM_XAUUSDM_TP_MONEY=3.00
+SYM_XAUUSDM_PROFIT_STAGES=0.6:0,1.5:0.6
+```
+
+Two things worth understanding before you use the numbers:
+
+* **The break-even ladder is scaled too, and it has to be.** A rung at
+  $0.25 is half a EURUSD target and rounding error on gold — the same
+  figure protects one instrument and never fires on another. Each rung
+  keeps the *fraction* of the target it had, so the protection behaves
+  identically everywhere.
+* **The tuned targets will be larger than what you asked for.** That is the
+  measurement talking, not a preference. A target that does not clear the
+  round trip by a real multiple is a losing trade with extra steps, and
+  raising it is the only honest way to fix that. If the required target
+  looks too big to hit, the instrument is telling you it is not worth
+  trading at this timeframe — which is why the tool marks symbols whose
+  spread exceeds half their ATR as too wide, and says to drop them.
+
+Setting names are matched on letters and digits only, so broker suffixes and
+spaces do not matter: `EURUSDm` → `SYM_EURUSDM_`, `Volatility 75 Index` →
+`SYM_VOLATILITY75INDEX_`. `check_config.py` prints which overrides loaded and
+flags any that name a symbol you are not trading.
+
 ## Project layout
 
 ```
 fms-trading-bot/
 ├── main.py                # entry point
 ├── .env.example           # copy to .env and fill in
+├── doctor.py              # why is it not trading?
+├── report.py              # what your real trades actually did
+├── backtest.py            # replay the strategy over history
+├── optimize.py            # search strategies, judge out-of-sample
+├── tune_symbols.py        # per-instrument settings from real spreads
+├── check_config.py        # validate .env before restarting
 └── fmsbot/
     ├── config.py          # settings
     ├── indicators.py      # EMA / RSI / ATR (pure python)

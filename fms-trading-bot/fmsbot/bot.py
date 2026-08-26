@@ -171,6 +171,7 @@ class TradingBot:
             raise BrokerError(f"all {failures} symbol(s) failing on {session.name}")
 
     def _check_symbol(self, session: BrokerSession, symbol: str) -> None:
+        cfg = self.s.for_symbol(symbol)
         bars = session.broker.bars(
             symbol, self.s.timeframe,
             max(self.s.history_bars, self.strategy.min_bars() + 2))
@@ -199,11 +200,11 @@ class TradingBot:
         # Optionally require the market to prove the signal first: a setup
         # that reverses immediately is exactly the one that goes straight to
         # the stop without ever being far enough ahead to protect.
-        if self.s.entry_confirm_money > 0:
+        if cfg.entry_confirm_money > 0:
             session.pending[symbol] = _Pending(
                 side=signal.side, signal=signal,
                 price_at_signal=closed[-1].close,
-                expires=time.time() + self.s.entry_confirm_seconds)
+                expires=time.time() + cfg.entry_confirm_seconds)
             log.debug("[%s] %s %s pending confirmation",
                       session.name, symbol, signal.side)
             return
@@ -221,10 +222,11 @@ class TradingBot:
                 del session.pending[symbol]
                 log.debug("[%s] %s confirmation expired", session.name, symbol)
                 continue
+            cfg = self.s.for_symbol(symbol)
             try:
                 price = session.broker.current_price(symbol, pending.side)
                 per_price = session.broker.value_per_price(
-                    symbol, self.s.fixed_lot or 0.01)
+                    symbol, cfg.fixed_lot or 0.01)
             except BrokerError:
                 continue
             if per_price <= 0:
@@ -233,18 +235,21 @@ class TradingBot:
                      else (pending.price_at_signal - price)) * per_price
             # Tolerance: price subtraction loses precision, so an exact
             # one-pip move can compute a hair under the threshold.
-            if moved < self.s.entry_confirm_money - 1e-6:
+            if moved < cfg.entry_confirm_money - 1e-6:
                 continue
             del session.pending[symbol]
             log.info("[%s] %s confirmed: moved %+.2f in %ss — entering",
                      session.name, symbol, moved,
-                     int(self.s.entry_confirm_seconds - (pending.expires - now)))
+                     int(cfg.entry_confirm_seconds - (pending.expires - now)))
             with self._trade_lock:
                 self._maybe_trade(session, symbol, pending.signal, price)
 
     def _maybe_trade(self, session: BrokerSession, symbol: str,
                      signal, price: float) -> None:
         broker, risk = session.broker, session.risk
+        # Gold, Bitcoin and forex differ by orders of magnitude in spread and
+        # volatility, so a symbol may override the shared tuning.
+        cfg = self.s.for_symbol(symbol)
         balance = broker.balance()
         equity = broker.equity()
         all_pos = broker.positions()
@@ -259,9 +264,9 @@ class TradingBot:
 
         risk_amount = risk.risk_amount(balance)
         try:
-            if self.s.fixed_lot > 0:
-                volume = broker.volume_from_lots(symbol, self.s.fixed_lot)
-                sizing = f"fixed {self.s.fixed_lot} lot"
+            if cfg.fixed_lot > 0:
+                volume = broker.volume_from_lots(symbol, cfg.fixed_lot)
+                sizing = f"fixed {cfg.fixed_lot} lot"
             else:
                 volume = broker.volume_for_risk(symbol, signal.sl_distance, risk_amount)
                 sizing = f"risking ~{risk_amount:.2f}"
@@ -285,20 +290,20 @@ class TradingBot:
 
         # Fixed cash exits, when configured, replace the ATR multiples.
         # money = distance * lots * value-per-price-unit.
-        if self.s.tp_money or self.s.sl_money:
+        if cfg.tp_money or cfg.sl_money:
             try:
                 per_price = broker.value_per_price(symbol, volume)
             except BrokerError:
                 per_price = 0.0
             if per_price > 0:
-                if self.s.sl_money:
-                    sl_distance = self.s.sl_money / per_price
-                if self.s.tp_money:
-                    tp_distance = self.s.tp_money / per_price
+                if cfg.sl_money:
+                    sl_distance = cfg.sl_money / per_price
+                if cfg.tp_money:
+                    tp_distance = cfg.tp_money / per_price
             else:
                 log.warning("[%s] %s: cannot convert money targets, "
                             "falling back to ATR distances", session.name, symbol)
-        if self.s.max_spread_ratio > 0:
+        if cfg.max_spread_ratio > 0:
             try:
                 spread = broker.spread(symbol)
             except BrokerError:
@@ -309,7 +314,7 @@ class TradingBot:
                 history = session.spread_history.setdefault(symbol, [])
                 if len(history) >= 20:
                     typical = sorted(history)[len(history) // 2]
-                    if typical > 0 and spread > typical * self.s.spread_spike_factor:
+                    if typical > 0 and spread > typical * cfg.spread_spike_factor:
                         reason = (f"spread {spread:.5f} is {spread/typical:.1f}x its "
                                   f"typical {typical:.5f} — abnormal conditions")
                         log.info("[%s] %s skipped: %s", session.name, symbol, reason)
@@ -320,10 +325,10 @@ class TradingBot:
 
             if spread > 0 and sl_distance > 0:
                 ratio = spread / sl_distance
-                if ratio > self.s.max_spread_ratio:
+                if ratio > cfg.max_spread_ratio:
                     reason = (f"spread {spread:.5f} is {ratio*100:.0f}% of the "
                               f"{sl_distance:.5f} stop (limit "
-                              f"{self.s.max_spread_ratio*100:.0f}%)")
+                              f"{cfg.max_spread_ratio*100:.0f}%)")
                     log.info("[%s] %s %s skipped: %s",
                              session.name, symbol, signal.side, reason)
                     session.last_block = f"{symbol} skipped — {reason}"
@@ -343,7 +348,7 @@ class TradingBot:
 
         # The target has to beat the round trip, or the trade cannot pay even
         # when it is right. Costs are the spread plus any commission.
-        if self.s.min_reward_cost_ratio > 0:
+        if cfg.min_reward_cost_ratio > 0:
             try:
                 per_price = broker.value_per_price(symbol, volume)
                 cost = broker.spread(symbol) * per_price
@@ -351,8 +356,8 @@ class TradingBot:
                 per_price = cost = 0.0
             if cost > 0 and per_price > 0:
                 reward = tp_distance * per_price
-                if reward < cost * self.s.min_reward_cost_ratio:
-                    reason = (f"target ${reward:.3f} is below {self.s.min_reward_cost_ratio}x "
+                if reward < cost * cfg.min_reward_cost_ratio:
+                    reason = (f"target ${reward:.3f} is below {cfg.min_reward_cost_ratio}x "
                               f"the ${cost:.3f} cost of the trade")
                     log.info("[%s] %s skipped: %s", session.name, symbol, reason)
                     session.last_block = f"{symbol} skipped — {reason}"
@@ -404,8 +409,8 @@ class TradingBot:
         # A fill far from the quote means the market moved through us. Close
         # it immediately rather than run a trade whose terms we did not agree.
         slip = abs(receipt.price - reference)
-        if (self.s.max_slippage_ratio > 0 and signal.sl_distance > 0
-                and slip > signal.sl_distance * self.s.max_slippage_ratio):
+        if (cfg.max_slippage_ratio > 0 and signal.sl_distance > 0
+                and slip > signal.sl_distance * cfg.max_slippage_ratio):
             log.warning("[%s] %s slipped %.5f (%.0f%% of the stop) — closing it",
                         session.name, symbol, slip, 100*slip/signal.sl_distance)
             try:
@@ -513,11 +518,15 @@ class TradingBot:
         Only ever tightens: a stop is never moved further from price. With
         BREAKEVEN_LOCK_MONEY set the stop guarantees that much profit instead
         of merely removing the loss.
+
+        The ladder is read per symbol: $0.25 of profit is half a EURUSD
+        target and rounding error on gold, so a single set of rungs would
+        protect one instrument and never trigger on another.
         """
-        ladder = self.s.stages()
-        if not ladder:
-            return
         for p in positions:
+            ladder = self.s.for_symbol(p.symbol).stages()
+            if not ladder:
+                continue
             # Highest stage this position has earned, if any beyond the last
             # one already applied.
             reached = [i for i, (trigger, _) in enumerate(ladder)

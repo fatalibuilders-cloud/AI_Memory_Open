@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,9 +43,62 @@ def _i(name: str, default: int) -> int:
     return int(raw) if raw else default
 
 
+#: Settings that may be overridden per symbol via SYM_<SYMBOL>_<KEY>.
+OVERRIDABLE = (
+    "atr_sl_mult", "atr_tp_mult", "tp_money", "sl_money", "tp_runner_money",
+    "max_spread_ratio", "min_reward_cost_ratio", "fixed_lot", "risk_pct",
+    "breakeven_at_money", "breakeven_lock_money", "entry_confirm_money",
+    "cooldown_seconds", "max_positions_per_symbol", "spread_spike_factor",
+    "max_slippage_ratio",
+)
+
+
+def symbol_key(symbol: str) -> str:
+    """The environment-variable spelling of a symbol name.
+
+    Broker symbols carry suffixes, spaces and punctuation ("EURUSDm",
+    "Volatility 75 Index", "BTC/USD") that cannot appear in a variable
+    name, so both sides reduce to letters and digits.
+    """
+    return re.sub(r"[^A-Z0-9]", "", symbol.upper())
+
+
+def _symbol_overrides() -> dict[str, dict[str, object]]:
+    """Collect SYM_<SYMBOL>_<KEY> variables into per-symbol settings."""
+    out: dict[str, dict[str, object]] = {}
+    keys = {k.upper(): k for k in OVERRIDABLE}
+    for name, raw in os.environ.items():
+        m = re.match(r"^SYM_([A-Z0-9]+)_(.+)$", name.upper())
+        if not m or not raw.strip():
+            continue
+        symbol, key = m.group(1), m.group(2)
+        if key not in keys:
+            continue
+        try:
+            out.setdefault(symbol, {})[keys[key]] = float(_clean_value(raw))
+        except ValueError:
+            continue
+    # The protection ladder is a list, not a number, but it is the setting
+    # that most needs scaling per instrument: $0.25 is a quarter of a
+    # EURUSD target and rounding error on Bitcoin.
+    for name, raw in os.environ.items():
+        m = re.match(r"^SYM_([A-Z0-9]+)_PROFIT_STAGES$", name.upper())
+        if not m or not raw.strip():
+            continue
+        ladder = parse_stages(raw)
+        if ladder:
+            out.setdefault(m.group(1), {})["profit_stages"] = ladder
+    return out
+
+
 def _stages(name: str) -> list[tuple[float, float]]:
     """Parse 'trigger:lock,trigger:lock' into sorted (trigger, lock) pairs."""
-    raw = os.environ.get(name, "").strip()
+    return parse_stages(os.environ.get(name, ""))
+
+
+def parse_stages(raw: str) -> list[tuple[float, float]]:
+    """Parse 'trigger:lock,trigger:lock' into sorted (trigger, lock) pairs."""
+    raw = _clean_value(raw).strip()
     if not raw:
         return []
     out = []
@@ -236,6 +291,26 @@ class Settings:
     #: BREAKEVEN_AT_MONEY / BREAKEVEN_LOCK_MONEY pair when set.
     profit_stages: list[tuple[float, float]] = field(default_factory=list)
 
+    #: Per-symbol overrides, e.g. SYM_XAUUSDM_TP_MONEY=2.00 in .env.
+    #: One setting cannot fit instruments whose spreads differ by two orders
+    #: of magnitude: a $0.50 target is 4x the spread on EURUSD, below it on
+    #: gold, and a rounding error on Bitcoin.
+    symbol_overrides: dict[str, dict[str, object]] = field(default_factory=dict)
+
+    def for_symbol(self, symbol: str) -> "Settings":
+        """This configuration with any overrides for `symbol` applied."""
+        over = self.symbol_overrides.get(symbol_key(symbol))
+        if not over:
+            return self
+        clone = copy.copy(self)
+        for key, value in over.items():
+            if hasattr(clone, key):
+                current = getattr(clone, key)
+                setattr(clone, key, type(current)(value)
+                        if isinstance(current, (int, float))
+                        and not isinstance(current, bool) else value)
+        return clone
+
     def stages(self) -> list[tuple[float, float]]:
         """Protection ladder, lowest trigger first."""
         if self.profit_stages:
@@ -389,6 +464,7 @@ class Settings:
             breakeven_at_money=_f("BREAKEVEN_AT_MONEY", 0.0),
             breakeven_lock_money=_f("BREAKEVEN_LOCK_MONEY", 0.0),
             profit_stages=_stages("PROFIT_STAGES"),
+            symbol_overrides=_symbol_overrides(),
             max_slippage_ratio=_f("MAX_SLIPPAGE_RATIO", 0.5),
             spread_spike_factor=_f("SPREAD_SPIKE_FACTOR", 3.0),
             min_reward_cost_ratio=_f("MIN_REWARD_COST_RATIO", 2.0),

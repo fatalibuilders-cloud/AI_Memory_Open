@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sys
 
-from fmsbot.config import Settings
+from fmsbot.config import Settings, symbol_key
 
 
 def main() -> int:
@@ -31,6 +31,16 @@ def main() -> int:
           f"| {sizing} | entry: {settings.entry_mode}")
     for cfg in accounts:
         print(f"      {cfg.name}: {', '.join(cfg.symbols)}")
+
+    # Per-symbol tuning is easy to get wrong silently: a variable naming a
+    # symbol the account does not trade simply never applies. Say which
+    # overrides loaded, and which name nothing.
+    if settings.symbol_overrides:
+        traded = {symbol_key(s) for cfg in accounts for s in cfg.symbols}
+        for key in sorted(settings.symbol_overrides):
+            over = settings.symbol_overrides[key]
+            mark = "" if key in traded else "   << not in SYMBOLS, ignored"
+            print(f"      tuned {key}: {', '.join(sorted(over))}{mark}")
     return 0
 
 

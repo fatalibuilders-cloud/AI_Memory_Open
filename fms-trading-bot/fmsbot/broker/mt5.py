@@ -386,7 +386,7 @@ class MT5Broker(Broker):
             "magic": 984512,
             "comment": "fmsbot close",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": self._filling_for(symbol),
+            "type_filling": self._filling_for(p.symbol),
         }
         result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
