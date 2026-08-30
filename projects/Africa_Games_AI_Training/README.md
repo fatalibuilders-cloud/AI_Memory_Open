@@ -6,25 +6,36 @@
 
 | App | What it is | Status |
 |---|---|---|
-| **Market Day** ⭐ *flagship* | Match-3 puzzle in the Candy Crush mould, themed as an African market stall. 15 levels, specials, boosters, lives, coins, and a free unlimited Relax Mode. | ✅ Playable v0.1, 22/22 tests |
+| **Nairobi Wild** ⭐ *flagship* | Match-3 puzzle in the Candy Crush mould, set in Nairobi with Kenyan wildlife, a synthesised Benga soundtrack, offline solo play and **live online duels**. | ✅ Playable v0.2, 43/43 tests |
 | **Oware Legends** | The pan-African mancala strategy game (Ayo/Awalé/Warri/Adji) vs an AI or pass-and-play. | ✅ Playable v0.1, 13/13 tests |
 
-**Why both:** Market Day is the mass-market growth engine — the genre with the largest proven audience and the clearest monetization. Oware Legends is the credibility and retention play: a deep, culturally-owned strategy game that keeps players who tire of match-3. Together they give a studio a funnel (Market Day acquires) and a moat (Oware retains).
+**Why both:** Nairobi Wild is the mass-market growth engine — the genre with the largest proven audience and the clearest monetization. Oware Legends is the credibility and retention play: a deep, culturally-owned strategy game that keeps players who tire of match-3. Together they give a studio a funnel (Nairobi Wild acquires) and a moat (Oware retains).
 
-## Why Market Day works across generations
+## Why Nairobi Wild works across generations
 
 This was the owner's core requirement, and it drives the design:
 
 - **The mechanic is universal to the young.** Swap-and-match needs no instructions; anyone who has held a phone already knows it.
-- **The goods are universal to the old.** The tiles are cowries, maize, mangoes, greens, fish and kola — a market stall anyone's grandmother can read at a glance. Nothing on the board is an abstract jewel or an imported candy.
+- **The animals are universal to everyone.** Lion, elephant, zebra, giraffe, rhino, leopard — named in Swahili in the UI — read instantly to any age, and the level journey runs through places Kenyans know by name, starting at Nairobi National Park.
 - **Relax Mode removes the barrier.** No timer, no lives, no failure. Older or casual players can simply play; the level campaign with its lives and stars is there for those who want the chase.
-- **It runs on the phones people actually have.** ~58 KB, fully offline, no assets to download.
+- **Playing together needs no network.** Pass-and-play and challenge links work offline, so a duel never depends on both people having data.
+- **It runs on the phones people actually have.** ~97 KB, fully offline, no image or audio assets at all.
+
+## Ways to play
+
+| Mode | Needs a network? |
+|---|---|
+| Safari — 15-level solo journey | No |
+| Relax — unlimited, no lives | No |
+| Duel: same phone, pass and play | No |
+| Duel: challenge link (same board, share your score) | No — only to send the link |
+| Duel: live online, opponent's score updating in real time | Yes |
 
 ## Playing it
 
 Both games are single-page HTML — open `index.html` in any browser, no server needed.
 
-- Market Day: `Product_Development/MarketDay_App/index.html` · tests: `node match3.test.mjs`
+- Nairobi Wild: `Product_Development/NairobiWild_App/index.html` · tests: `node match3.test.mjs` and `node extras.test.mjs`
 - Oware Legends: `Product_Development/OwareLegends_App/index.html` · tests: `node engine.test.mjs`
 
 ## Key files

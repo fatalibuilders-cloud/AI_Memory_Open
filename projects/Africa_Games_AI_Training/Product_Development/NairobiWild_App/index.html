@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0e1519">
+<title>Nairobi Wild</title>
+<style>
+/* ==================================================================
+   Nairobi Wild — dusk over the savanna, with the city behind it.
+   Visual language: Nairobi National Park at sunset (the only park on
+   earth with a skyline on its horizon) + Maasai beadwork colour.
+   Mobile-first, offline-first, no external requests, no assets.
+   ================================================================== */
+:root {
+  --night-1:#16242c; --night-2:#0b1216; --card:#1b2b33; --card-2:#132028;
+  --well:#0d161b; --mat:#263a44;
+  --ink:#f8f3e7; --ink-dim:#9db3ad;            /* grass-biased neutral */
+  --amber:#f5a623; --amber-deep:#c97c07;       /* low sun */
+  --maasai:#d62828;                            /* shuka red */
+  --kenya:#2a9d5c;                             /* flag green */
+  --sky-1:#e0592a; --sky-2:#f5a623;            /* horizon glow */
+  --bad:#ff6b6b;
+  --shadow:0 10px 30px rgba(0,0,0,.55);
+  --face:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+  /* the six animals */
+  --a0:#f7b32b; --a1:#4a9fd4; --a2:#efe7d6; --a3:#e8623a; --a4:#a279c9; --a5:#57b96b;
+}
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; }
+body {
+  font-family:var(--face); color:var(--ink); font-variant-numeric:tabular-nums;
+  background:radial-gradient(150% 95% at 50% 108%, #2a3f36 0%, var(--night-1) 45%, var(--night-2) 100%);
+  overflow:hidden; user-select:none; touch-action:manipulation;
+}
+button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
+:focus-visible { outline:3px solid var(--amber); outline-offset:2px; }
+.screen { position:absolute; inset:0; display:none; flex-direction:column; align-items:center;
+  padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)); }
+.screen.active { display:flex; }
+
+/* Maasai beadwork band — a real motif, used as the app's one ornament. */
+.beads { height:5px; width:100%; max-width:480px; border-radius:99px; flex:none;
+  background:repeating-linear-gradient(90deg,
+    var(--maasai) 0 9px, #f2ede1 9px 15px, #1f6fb2 15px 24px,
+    var(--kenya) 24px 33px, #12181c 33px 39px, var(--amber) 39px 48px); }
+
+.btn { border-radius:14px; padding:14px 18px; font-size:16px; font-weight:bold; color:#2a1602;
+  background:linear-gradient(180deg,var(--amber),var(--amber-deep));
+  box-shadow:0 4px 0 rgba(0,0,0,.45); transition:transform .06s,box-shadow .06s; }
+.btn:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.45); }
+.btn.ghost { background:rgba(255,255,255,.08); color:var(--ink); border:1px solid rgba(255,255,255,.15); box-shadow:none; }
+.btn.red { background:linear-gradient(180deg,var(--maasai),#961c1c); color:#fff; }
+.btn.green { background:linear-gradient(180deg,var(--kenya),#1c6d3f); color:#fff; }
+.btn.sm { padding:10px 14px; font-size:14px; border-radius:11px; }
+.btn:disabled { opacity:.42; }
+.chip { background:rgba(0,0,0,.34); border:1px solid rgba(255,255,255,.12); border-radius:999px;
+  padding:7px 13px; font-size:14px; font-weight:bold; display:flex; gap:6px; align-items:center; }
+.chip b { color:var(--amber); }
+
+/* ---------- home ---------- */
+#home { justify-content:space-between; text-align:center; }
+.hometop { display:flex; flex-direction:column; align-items:center; gap:13px; width:100%; }
+/* The horizon takes whatever room is left between the crest and the menu,
+   so the screen reads as a landscape rather than an empty gap. */
+#home > .scene { flex:1; min-height:0; width:100%; display:flex; align-items:flex-end;
+  margin:6px -12px 0; pointer-events:none; }
+.wordmark h1 { font-size:clamp(36px,10.5vw,58px); line-height:.94; letter-spacing:-1px;
+  text-shadow:0 4px 0 rgba(0,0,0,.45); }
+.wordmark h1 span { color:var(--amber); }
+.wordmark p { color:var(--ink-dim); margin-top:8px; font-size:14.5px; }
+.scene svg { width:100%; height:100%; display:block; }
+.parade { display:flex; gap:8px; justify-content:center; font-size:29px; }
+.parade i { font-style:normal; animation:hop 2.6s ease-in-out infinite; }
+.parade i:nth-child(2){animation-delay:.16s} .parade i:nth-child(3){animation-delay:.32s}
+.parade i:nth-child(4){animation-delay:.48s} .parade i:nth-child(5){animation-delay:.64s}
+.parade i:nth-child(6){animation-delay:.8s}
+@keyframes hop { 50% { transform:translateY(-9px) rotate(-5deg); } }
+.homebar { display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
+.menu { width:min(360px,100%); display:flex; flex-direction:column; gap:10px; }
+.togs { display:flex; gap:8px; }
+.togs .btn { flex:1; }
+
+/* ---------- level map ---------- */
+.head { width:100%; max-width:480px; display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.head h2 { flex:1; font-size:19px; }
+.stalls { width:min(480px,100%); flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px 2px 16px; }
+.stall { display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:15px; width:100%;
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.12); text-align:left; color:var(--ink); }
+.stall[disabled] { opacity:.4; }
+.stall .num { width:40px; height:40px; flex:none; border-radius:12px; display:grid; place-items:center;
+  font-size:17px; font-weight:bold; background:rgba(0,0,0,.38); color:var(--amber); }
+.stall.done .num { background:linear-gradient(180deg,var(--amber),var(--amber-deep)); color:#2a1602; }
+.stall .txt { flex:1; } .stall .txt b { display:block; font-size:15px; }
+.stall .txt small { color:var(--ink-dim); }
+.stars { font-size:13.5px; color:var(--amber); letter-spacing:1px; }
+.stars .off { opacity:.22; }
+
+/* ---------- lobby ---------- */
+.lobbywrap { width:min(480px,100%); flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-bottom:14px; }
+.field { display:flex; gap:8px; align-items:center; background:rgba(0,0,0,.3);
+  border:1px solid rgba(255,255,255,.14); border-radius:13px; padding:8px 12px; }
+.field label { font-size:13px; color:var(--ink-dim); flex:none; }
+.field input { flex:1; background:transparent; border:0; color:var(--ink); font:inherit; font-size:15px; min-width:0; }
+.field input:focus { outline:none; }
+.status { font-size:13px; color:var(--ink-dim); text-align:center; min-height:19px; }
+.status .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--bad); margin-right:5px; }
+.status.live .dot { background:var(--kenya); box-shadow:0 0 8px var(--kenya); }
+.hostrow { display:flex; align-items:center; gap:10px; padding:11px 13px; border-radius:14px;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); }
+.hostrow .who { flex:1; text-align:left; }
+.hostrow .who b { display:block; font-size:15px; }
+.hostrow .who small { color:var(--ink-dim); font-size:12px; }
+.empty { text-align:center; color:var(--ink-dim); font-size:14px; padding:18px 10px; line-height:1.6; }
+
+/* ---------- game ---------- */
+#game { justify-content:center; gap:9px; }
+.hud { width:min(480px,100%); display:flex; align-items:center; gap:8px; }
+.iconbtn { width:40px; height:40px; flex:none; border-radius:12px; font-size:17px;
+  background:rgba(0,0,0,.34); border:1px solid rgba(255,255,255,.14); }
+.moves { flex:none; width:64px; text-align:center; background:rgba(0,0,0,.36);
+  border:2px solid rgba(255,255,255,.14); border-radius:14px; padding:5px 0; }
+.moves .n { font-size:23px; font-weight:bold; line-height:1.05; }
+.moves .l { font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-dim); }
+.moves.low { border-color:var(--bad); animation:pulse 1s ease-in-out infinite; }
+.moves.low .n { color:var(--bad); }
+@keyframes pulse { 50% { box-shadow:0 0 0 6px rgba(255,107,107,.18); } }
+.prog { flex:1; min-width:0; }
+.prog .track { height:10px; border-radius:999px; background:rgba(0,0,0,.45); overflow:hidden; border:1px solid rgba(255,255,255,.1); }
+.prog .fill { height:100%; width:0; border-radius:999px; transition:width .45s cubic-bezier(.3,1.4,.5,1);
+  background:linear-gradient(90deg,var(--amber),var(--maasai)); }
+.prog .sc { display:flex; justify-content:space-between; font-size:11.5px; margin-top:3px; color:var(--ink-dim); }
+.prog .sc b { color:var(--ink); font-size:13.5px; }
+.vs { width:min(480px,100%); display:flex; gap:8px; align-items:stretch; }
+.vs .side { flex:1; background:rgba(0,0,0,.32); border:2px solid rgba(255,255,255,.12);
+  border-radius:13px; padding:6px 10px; text-align:center; min-width:0; }
+.vs .side.me { border-color:var(--amber); }
+.vs .side .nm { font-size:11.5px; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vs .side .pt { font-size:19px; font-weight:bold; }
+.vs .side.lead .pt { color:var(--kenya); }
+.vs .mid { flex:none; align-self:center; font-size:12px; color:var(--ink-dim); font-weight:bold; }
+.goals { width:min(480px,100%); display:flex; gap:6px; justify-content:center; flex-wrap:wrap; min-height:32px; }
+.goal { display:flex; align-items:center; gap:5px; background:rgba(0,0,0,.32);
+  border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:5px 10px; font-size:13.5px; font-weight:bold; }
+.goal .g { font-size:17px; }
+.goal.met { border-color:var(--kenya); color:var(--kenya); }
+.goal.tick { animation:tick .4s; }
+@keyframes tick { 40% { transform:scale(1.2); } }
+
+.well { width:min(94vw,455px); padding:9px; border-radius:22px; position:relative;
+  background:linear-gradient(180deg,var(--mat),#16242b);
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.1), inset 0 -8px 18px rgba(0,0,0,.5), var(--shadow); }
+#board { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; aspect-ratio:1;
+  background:var(--well); border-radius:14px; padding:4px; }
+.tile { position:relative; border-radius:11px; display:grid; place-items:center;
+  font-size:clamp(16px,4.7vw,30px); line-height:1;
+  box-shadow:inset 0 -2px 5px rgba(0,0,0,.32), 0 2px 4px rgba(0,0,0,.35); transition:transform .12s; }
+.tile[data-c="0"]{background:linear-gradient(165deg,#ffd884,var(--a0))}
+.tile[data-c="1"]{background:linear-gradient(165deg,#a5d6f5,var(--a1))}
+.tile[data-c="2"]{background:linear-gradient(165deg,#fffaf0,var(--a2))}
+.tile[data-c="3"]{background:linear-gradient(165deg,#ffa583,var(--a3))}
+.tile[data-c="4"]{background:linear-gradient(165deg,#d9c2f2,var(--a4))}
+.tile[data-c="5"]{background:linear-gradient(165deg,#9fe3af,var(--a5))}
+.tile.sel { transform:scale(1.13); box-shadow:0 0 0 3px var(--ink),0 4px 10px rgba(0,0,0,.5); z-index:3; }
+.tile.pop { animation:pop .26s ease-in forwards; z-index:2; }
+@keyframes pop { 45%{transform:scale(1.24);filter:brightness(1.7)} 100%{transform:scale(.1);opacity:0} }
+.tile.fall { animation:fall .3s cubic-bezier(.3,1.5,.6,1); }
+@keyframes fall { from { transform:translateY(-58%); } }
+.tile.bad { animation:nope .3s; }
+@keyframes nope { 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+.tile.s-row::before,.tile.s-col::before { content:""; position:absolute; inset:2px; border-radius:9px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.88) 0 3px,transparent 3px 7px); opacity:.75; }
+.tile.s-col::before { background:repeating-linear-gradient(0deg,rgba(255,255,255,.88) 0 3px,transparent 3px 7px); }
+.tile.s-bomb { box-shadow:inset 0 0 0 3px rgba(255,255,255,.9),0 0 12px var(--amber); }
+.tile.s-rainbow { background:conic-gradient(var(--maasai),var(--amber),var(--kenya),var(--a1),var(--a4),var(--maasai)) !important;
+  animation:spin 3.5s linear infinite; }
+@keyframes spin { to { filter:hue-rotate(360deg); } }
+.tile.hint { animation:hintp 1.1s ease-in-out infinite; }
+@keyframes hintp { 50% { transform:scale(1.1); box-shadow:0 0 0 3px var(--amber); } }
+.float { position:absolute; pointer-events:none; font-weight:bold; font-size:18px; color:var(--amber);
+  text-shadow:0 2px 5px rgba(0,0,0,.75); animation:rise 1s ease-out forwards; z-index:6; }
+@keyframes rise { to { transform:translateY(-52px); opacity:0; } }
+#combo { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.5);
+  font-size:29px; font-weight:bold; text-shadow:0 3px 10px rgba(0,0,0,.85); opacity:0;
+  pointer-events:none; z-index:7; white-space:nowrap; }
+#combo.go { animation:combo .95s ease-out; }
+@keyframes combo { 22%{opacity:1;transform:translate(-50%,-50%) scale(1.15)} 70%{opacity:1} 100%{opacity:0} }
+.tray { width:min(480px,100%); display:flex; gap:8px; justify-content:center; }
+.boost { flex:1; max-width:128px; border-radius:15px; padding:9px 6px;
+  background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.15); display:flex; flex-direction:column; align-items:center; gap:2px; }
+.boost .ic { font-size:20px; } .boost .nm { font-size:11px; font-weight:bold; }
+.boost .ct { font-size:10.5px; color:var(--amber); }
+.boost.armed { border-color:var(--amber); box-shadow:0 0 0 2px var(--amber),0 0 16px rgba(245,166,35,.4); }
+#hintline { font-size:12.5px; color:var(--ink-dim); min-height:17px; text-align:center; padding:0 10px; }
+
+/* ---------- overlays ---------- */
+.ov { position:absolute; inset:0; background:rgba(6,10,12,.76); backdrop-filter:blur(3px);
+  display:none; align-items:center; justify-content:center; padding:16px; z-index:20; }
+.ov.active { display:flex; }
+.cardbox { width:min(370px,100%); border-radius:22px; padding:21px; text-align:center;
+  background:linear-gradient(180deg,var(--card),var(--card-2));
+  border:1px solid rgba(255,255,255,.16); box-shadow:var(--shadow); max-height:88vh; overflow-y:auto; }
+.cardbox h2 { font-size:24px; margin-bottom:6px; }
+.cardbox .sub { color:var(--ink-dim); font-size:14px; margin-bottom:14px; }
+.cardbox .col { display:flex; flex-direction:column; gap:10px; }
+.bigstars { font-size:36px; letter-spacing:4px; color:var(--amber); margin:6px 0 10px; }
+.bigstars .off { opacity:.2; }
+.shopitem { display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.28);
+  border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:10px 12px; }
+.shopitem .ic { font-size:24px; }
+.shopitem .info { flex:1; text-align:left; }
+.shopitem .info b { display:block; font-size:14.5px; }
+.shopitem .info small { color:var(--ink-dim); font-size:12px; }
+#toast { position:absolute; left:50%; bottom:20px; transform:translate(-50%,90px); background:var(--kenya);
+  color:#fff; font-weight:bold; padding:10px 18px; border-radius:999px; box-shadow:var(--shadow);
+  transition:transform .3s; z-index:40; max-width:88vw; text-align:center; }
+#toast.show { transform:translate(-50%,0); }
+#ad { position:absolute; inset:0; background:#000; color:#fff; display:none; z-index:50;
+  flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; }
+#ad.active { display:flex; }
+#ad .bar { width:min(260px,66vw); height:7px; background:#2a2a2a; border-radius:99px; overflow:hidden; }
+#ad .bar i { display:block; height:100%; width:0; background:var(--amber); transition:width 2.6s linear; }
+@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms !important;transition-duration:.01ms !important} }
+</style>
+</head>
+<body>
+
+<!-- ===================== HOME ===================== -->
+<section id="home" class="screen active">
+  <div class="hometop">
+    <div class="wordmark">
+      <h1>Nairobi <span>Wild</span></h1>
+      <p>Match the wild — Nairobi National Park to the Mara.</p>
+    </div>
+    <div class="parade"><i>🦁</i><i>🐘</i><i>🦓</i><i>🦒</i><i>🦏</i><i>🐆</i></div>
+    <div class="beads"></div>
+    <div class="homebar">
+      <div class="chip">❤️ <b id="hLives">5</b></div>
+      <div class="chip">🪙 <b id="hCoins">0</b></div>
+      <div class="chip">🔥 <b id="hStreak">0</b></div>
+      <div class="chip">⭐ <b id="hStars">0</b>/45</div>
+    </div>
+  </div>
+
+  <!-- The park's signature view: wildlife in front, city on the horizon. -->
+  <div class="scene" aria-hidden="true">
+      <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMax meet">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#e0592a" stop-opacity="0"/>
+            <stop offset="62%"  stop-color="#e0592a" stop-opacity=".26"/>
+            <stop offset="86%"  stop-color="#f5a623" stop-opacity=".38"/>
+            <stop offset="100%" stop-color="#f5a623" stop-opacity=".10"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="400" height="240" fill="url(#sky)"/>
+        <circle cx="196" cy="202" r="27" fill="#f5a623" opacity=".55"/>
+        <g fill="#0a1013" opacity=".94">
+          <!-- Nairobi skyline, with the KICC tower at its centre -->
+          <rect x="120" y="192" width="13" height="30"/><rect x="136" y="184" width="10" height="38"/>
+          <rect x="149" y="196" width="15" height="26"/><rect x="167" y="178" width="11" height="44"/>
+          <rect x="181" y="190" width="9"  height="32"/>
+          <rect x="193" y="166" width="15" height="56"/><circle cx="200.5" cy="164" r="9"/>
+          <rect x="212" y="186" width="12" height="36"/><rect x="227" y="194" width="10" height="28"/>
+          <rect x="240" y="181" width="13" height="41"/><rect x="256" y="198" width="11" height="24"/>
+          <!-- acacia -->
+          <rect x="323" y="192" width="5" height="30"/>
+          <path d="M300 192 Q325 176 351 192 Q338 186 325 187 Q312 186 300 192Z"/>
+          <ellipse cx="325" cy="189" rx="30" ry="7"/>
+          <path d="M325 194 l-11 -7 M325 196 l12 -8" stroke="#0a1013" stroke-width="2.5" fill="none"/>
+          <!-- scrub -->
+          <ellipse cx="52" cy="220" rx="26" ry="6"/><ellipse cx="96" cy="222" rx="17" ry="4"/>
+          <rect x="0" y="220" width="400" height="20"/>
+        </g>
+      </svg>
+  </div>
+
+  <div class="menu">
+    <button class="btn" id="btnPlay">▶ &nbsp;Safari — solo journey</button>
+    <button class="btn red" id="btnDuel">⚔️ &nbsp;Duel a friend</button>
+    <button class="btn ghost" id="btnRelax">🌤 &nbsp;Relax — no timer, no lives</button>
+    <button class="btn ghost sm" id="btnShop">🛍 Shop</button>
+    <div class="togs">
+      <button class="btn ghost sm" id="btnHow">❓ How to play</button>
+      <button class="btn ghost sm" id="btnMusic">🥁 Music</button>
+      <button class="btn ghost sm" id="btnSound">🔊 SFX</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LEVEL MAP ===================== -->
+<section id="map" class="screen">
+  <div class="head">
+    <button class="iconbtn" id="btnMapBack">←</button>
+    <h2>The Safari</h2>
+    <div class="chip">❤️ <b id="mLives">5</b></div>
+    <div class="chip">🪙 <b id="mCoins">0</b></div>
+  </div>
+  <div class="beads"></div>
+  <div class="stalls" id="stalls"></div>
+</section>
+
+<!-- ===================== DUEL LOBBY ===================== -->
+<section id="lobby" class="screen">
+  <div class="head">
+    <button class="iconbtn" id="btnLobbyBack">←</button>
+    <h2>Duel a friend</h2>
+  </div>
+  <div class="beads"></div>
+  <div class="lobbywrap">
+    <div class="field">
+      <label for="nickIn">Your name</label>
+      <input id="nickIn" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Mwindaji">
+    </div>
+
+    <div class="cardbox" style="padding:14px;text-align:left">
+      <b style="font-size:15px">📶 Play online, live</b>
+      <p class="sub" style="margin:5px 0 10px;font-size:13px">Same board, both of you at once — you'll see their score move as they play.</p>
+      <div class="status" id="netStatus"><span class="dot"></span>Connecting…</div>
+      <div class="col" style="margin-top:8px">
+        <button class="btn green sm" id="btnHost">Open a table</button>
+        <div id="hostList"></div>
+      </div>
+    </div>
+
+    <div class="cardbox" style="padding:14px;text-align:left">
+      <b style="font-size:15px">📵 Play offline</b>
+      <p class="sub" style="margin:5px 0 10px;font-size:13px">No network needed — these work anywhere.</p>
+      <div class="col">
+        <button class="btn sm" id="btnLocal">📱 Same phone — pass &amp; play</button>
+        <button class="btn ghost sm" id="btnLink">🔗 Send a challenge link</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== GAME ===================== -->
+<section id="game" class="screen">
+  <div class="hud">
+    <button class="iconbtn" id="btnGameBack">←</button>
+    <div class="moves" id="movesBox"><div class="n" id="movesN">25</div><div class="l" id="movesL">moves</div></div>
+    <div class="prog">
+      <div class="track"><div class="fill" id="progFill"></div></div>
+      <div class="sc"><span><b id="scoreN">0</b> pts</span><span id="targetN">/ 1500</span></div>
+    </div>
+  </div>
+  <div class="vs" id="vsBar" style="display:none">
+    <div class="side me" id="vsMe"><div class="nm">You</div><div class="pt" id="vsMePt">0</div></div>
+    <div class="mid">vs</div>
+    <div class="side" id="vsThem"><div class="nm" id="vsThemNm">Rafiki</div><div class="pt" id="vsThemPt">0</div></div>
+  </div>
+  <div class="goals" id="goals"></div>
+  <div class="well"><div id="board"></div><div id="combo"></div></div>
+  <div class="tray">
+    <button class="boost" id="bHammer"><span class="ic">🔨</span><span class="nm">Hammer</span><span class="ct" id="ctHammer">50 🪙</span></button>
+    <button class="boost" id="bShuffle"><span class="ic">🔀</span><span class="nm">Shuffle</span><span class="ct" id="ctShuffle">30 🪙</span></button>
+    <button class="boost" id="bMoves"><span class="ic">🎬</span><span class="nm">+5 moves</span><span class="ct">free</span></button>
+  </div>
+  <div id="hintline"></div>
+</section>
+
+<!-- ===================== OVERLAYS ===================== -->
+<div class="ov" id="ovStart"><div class="cardbox">
+  <div style="font-size:38px" id="stGlyph">🦁</div>
+  <h2 id="stTitle">Level 1</h2>
+  <p class="sub" id="stBlurb">Nairobi National Park</p>
+  <div class="col" id="stGoals" style="margin-bottom:13px"></div>
+  <div class="col"><button class="btn" id="stGo">Start the drive</button>
+  <button class="btn ghost sm" id="stBack">Back</button></div>
+</div></div>
+
+<div class="ov" id="ovEnd"><div class="cardbox">
+  <h2 id="endTitle">Well tracked! 🎉</h2>
+  <div class="bigstars" id="endStars">★★★</div>
+  <p class="sub" id="endSub">12,400 points</p>
+  <div class="col">
+    <button class="btn" id="endDouble">🎬 Double the coins</button>
+    <button class="btn" id="endNext">Next level</button>
+    <button class="btn ghost sm" id="endRetry">Play again</button>
+    <button class="btn ghost sm" id="endHome">Back</button>
+  </div>
+</div></div>
+
+<div class="ov" id="ovDuelEnd"><div class="cardbox">
+  <div style="font-size:40px" id="deGlyph">🏆</div>
+  <h2 id="deTitle">You win!</h2>
+  <p class="sub" id="deSub">8,400 — 6,100</p>
+  <div class="col" id="deActions"></div>
+</div></div>
+
+<div class="ov" id="ovHandover"><div class="cardbox">
+  <div style="font-size:40px">🤝</div>
+  <h2 id="hoTitle">Pass the phone</h2>
+  <p class="sub" id="hoSub">Player 1 scored 5,200. Player 2's turn on the same board.</p>
+  <div class="col"><button class="btn" id="hoGo">I'm ready</button></div>
+</div></div>
+
+<div class="ov" id="ovChallenge"><div class="cardbox">
+  <div style="font-size:40px">⚔️</div>
+  <h2 id="chTitle">A challenge!</h2>
+  <p class="sub" id="chSub">Kamau scored 7,200 on this board. Beat it.</p>
+  <div class="col"><button class="btn red" id="chGo">Accept</button>
+  <button class="btn ghost sm" id="chNo">Not now</button></div>
+</div></div>
+
+<div class="ov" id="ovShare"><div class="cardbox">
+  <div style="font-size:38px">🔗</div>
+  <h2>Challenge sent</h2>
+  <p class="sub" id="shSub">Send this link to a friend. They play the exact same board.</p>
+  <div class="field" style="margin-bottom:12px"><input id="shLink" readonly></div>
+  <div class="col">
+    <button class="btn" id="shCopy">Copy link</button>
+    <button class="btn green" id="shShare">Share…</button>
+    <button class="btn ghost sm" id="shClose2">Done</button>
+  </div>
+</div></div>
+
+<div class="ov" id="ovLives"><div class="cardbox">
+  <div style="font-size:38px">💔</div>
+  <h2>Out of lives</h2>
+  <p class="sub" id="livesSub">A new life arrives every 10 minutes.</p>
+  <div class="col">
+    <button class="btn" id="lvAd">🎬 Watch an ad — refill all</button>
+    <button class="btn red" id="lvBuy">🪙 100 — refill all</button>
+    <button class="btn ghost sm" id="lvRelax">Play Relax instead (always free)</button>
+    <button class="btn ghost sm" id="lvClose">Close</button>
+  </div>
+</div></div>
+
+<div class="ov" id="ovShop"><div class="cardbox">
+  <h2>Shop</h2>
+  <p class="sub">Balance: <b id="shopCoins">0</b> 🪙 · win levels to earn more</p>
+  <div class="col">
+    <div class="shopitem"><span class="ic">🎬</span><div class="info"><b>Watch an ad</b><small>+50 coins, any time</small></div><button class="btn sm" id="shAd">Free</button></div>
+    <div class="shopitem"><span class="ic">🪙</span><div class="info"><b>Handful of coins</b><small>500 coins</small></div><button class="btn sm" data-buy="coins_500" data-coins="500">$0.99</button></div>
+    <div class="shopitem"><span class="ic">💰</span><div class="info"><b>Ranger's purse</b><small>1,500 coins + 5 hammers</small></div><button class="btn sm" data-buy="coins_1500" data-coins="1500" data-hammer="5">$2.49</button></div>
+    <div class="shopitem"><span class="ic">👑</span><div class="info"><b>Big Five bundle</b><small>4,000 coins + 15 boosters</small></div><button class="btn sm" data-buy="bundle_big5" data-coins="4000" data-hammer="15" data-shuffle="15">$5.99</button></div>
+    <div class="shopitem"><span class="ic">❤️</span><div class="info"><b>Refill lives</b><small>Back to 5 hearts</small></div><button class="btn sm" id="shLives">🪙 100</button></div>
+  </div>
+  <div class="col" style="margin-top:12px">
+    <p class="sub" style="margin:0 0 8px">Pay by card or mobile money — M-Pesa, Airtel Money, MoMo.</p>
+    <button class="btn ghost sm" id="shClose">Close</button>
+  </div>
+</div></div>
+
+<div class="ov" id="ovHow"><div class="cardbox" style="text-align:left">
+  <h2 style="text-align:center">How to play</h2>
+  <p class="sub" style="text-align:center">Spot three of the same animal and you're away.</p>
+  <ol style="line-height:1.7;padding-left:19px;font-size:15px">
+    <li>Swap two animals that sit side by side.</li>
+    <li>Line up <b>three or more</b> and the herd moves on — you score.</li>
+    <li>Match <b>4</b> for a striped animal that clears a whole line. Match <b>5</b> for the 🌈 — swap it onto any animal to clear every one of them.</li>
+    <li>Make an <b>L or T</b> shape for a stampede that clears everything around it.</li>
+    <li>Reach the target before the moves run out.</li>
+  </ol>
+  <div class="col" style="margin-top:14px"><button class="btn ghost" id="howClose">Got it</button></div>
+</div></div>
+
+<div id="ad"><h2>Ad playing…</h2><p style="color:#777">(simulated — real ad network goes here)</p><div class="bar"><i id="adBar"></i></div></div>
+<div id="toast">+50 🪙</div>
+
+<script src="match3.js"></script>
+<script src="music.js"></script>
+<script src="multiplayer.js"></script>
+<script>
+'use strict';
+const M = window.Match3, MU = window.NairobiMusic, MP = window.NairobiMP;
+const $ = (id) => document.getElementById(id);
+
+/* ==================================================================
+ * Monetization — the ONLY place real money/ad SDKs get wired in.
+ * TODO(production): showRewardedAd → AdMob rewarded video;
+ *   purchase → Play Billing + Flutterwave/Paystack for mobile money
+ *   (M-Pesa, Airtel Money, MTN MoMo) and airtime billing.
+ * Everything sold is coins/boosters/convenience. Skill is never for
+ * sale, and Relax Mode stays free and unlimited forever.
+ * ================================================================== */
+const Monetization = {
+  showRewardedAd(onReward) {
+    const el = $('ad'), bar = $('adBar');
+    el.classList.add('active'); bar.style.width = '0';
+    requestAnimationFrame(() => { bar.style.width = '100%'; });
+    setTimeout(() => { el.classList.remove('active'); onReward(); }, 2700);
+  },
+  purchase(id, ok) { console.info('[Monetization] purchase:', id); ok(); },
+};
+
+/* ---------------- animals ---------------- */
+const ANIMALS = [
+  { g:'🦁', sw:'Simba',       en:'Lion' },
+  { g:'🐘', sw:'Tembo',       en:'Elephant' },
+  { g:'🦓', sw:'Punda Milia', en:'Zebra' },
+  { g:'🦒', sw:'Twiga',       en:'Giraffe' },
+  { g:'🦏', sw:'Kifaru',      en:'Rhino' },
+  { g:'🐆', sw:'Chui',        en:'Leopard' },
+];
+
+/* ---------------- persistence ---------------- */
+const KEY = 'nairobiWild.v1', MAX_LIVES = 5, LIFE_MS = 6e5;
+const DEFAULTS = { coins:200, lives:MAX_LIVES, lifeAt:0, stars:{}, unlocked:1,
+  sound:true, music:true, streak:0, lastDay:null, hammers:2, shuffles:2, nick:'' };
+let save = { ...DEFAULTS };
+try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+
+function syncLives() {
+  if (save.lives >= MAX_LIVES) { save.lifeAt = 0; return; }
+  const now = Date.now();
+  if (!save.lifeAt) { save.lifeAt = now + LIFE_MS; return; }
+  while (save.lives < MAX_LIVES && now >= save.lifeAt) {
+    save.lives += 1; save.lifeAt = save.lives >= MAX_LIVES ? 0 : save.lifeAt + LIFE_MS;
+  }
+  persist();
+}
+function livesText() {
+  if (save.lives >= MAX_LIVES) return 'Your hearts are full.';
+  const m = Math.max(0, Math.ceil((save.lifeAt - Date.now()) / 60000));
+  return 'Next heart in about ' + m + ' minute' + (m === 1 ? '' : 's') + '.';
+}
+function bumpStreak() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (save.lastDay === today) return 0;
+  const yest = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  save.streak = save.lastDay === yest ? save.streak + 1 : 1;
+  save.lastDay = today;
+  return Math.min(save.streak, 7) * 10;
+}
+const totalStars = () => Object.values(save.stars).reduce((a, b) => a + b, 0);
+
+/* ---------------- audio ---------------- */
+const music = new MU.Engine();
+let ac = null;
+function blip(f, dur = .07, type = 'sine', gain = .1) {
+  if (!save.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(gain, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + dur);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
+  } catch (e) {}
+}
+const sfx = {
+  match:(c)=>blip(420 + c*90,.09,'triangle',.11),
+  special:()=>{blip(700,.1,'square',.09);setTimeout(()=>blip(1050,.13,'square',.09),80);},
+  bad:()=>blip(190,.11,'sawtooth',.07),
+  win:()=>[523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>blip(f,.2,'triangle',.13),i*120)),
+  lose:()=>[420,350,280].forEach((f,i)=>setTimeout(()=>blip(f,.22,'sine',.11),i*170)),
+  tap:()=>blip(560,.04,'sine',.07),
+  coin:()=>{blip(900,.07,'square',.08);setTimeout(()=>blip(1300,.1,'square',.08),60);},
+};
+const buzz = (p) => { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
+/* Browsers require a gesture before any audio starts. */
+let audioArmed = false;
+function armAudio() {
+  if (audioArmed) return;
+  audioArmed = true;
+  if (save.music) music.start();
+}
+document.addEventListener('pointerdown', armAudio, { once: true });
+
+/* ---------------- ui helpers ---------------- */
+function show(id) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2100);
+}
+function refreshChrome() {
+  syncLives();
+  $('hLives').textContent = save.lives; $('mLives').textContent = save.lives;
+  $('hCoins').textContent = save.coins; $('mCoins').textContent = save.coins;
+  $('hStreak').textContent = save.streak; $('hStars').textContent = totalStars();
+  $('shopCoins').textContent = save.coins;
+  $('btnSound').textContent = save.sound ? '🔊 SFX' : '🔇 SFX';
+  $('btnMusic').textContent = save.music ? '🥁 Music' : '🔇 Music';
+  $('ctHammer').textContent = save.hammers > 0 ? ('×' + save.hammers) : '50 🪙';
+  $('ctShuffle').textContent = save.shuffles > 0 ? ('×' + save.shuffles) : '30 🪙';
+}
+const starStr = (n) => '★★★'.slice(0, n) + '<span class="off">' + '★★★'.slice(n) + '</span>';
+const myNick = () => (save.nick || 'Mwindaji').slice(0, 16);
+
+/* ---------------- level map ---------------- */
+function renderMap() {
+  const wrap = $('stalls'); wrap.innerHTML = '';
+  M.LEVELS.forEach((lv) => {
+    const stars = save.stars[lv.n] || 0, locked = lv.n > save.unlocked;
+    const b = document.createElement('button');
+    b.className = 'stall' + (stars > 0 ? ' done' : '');
+    if (locked) b.disabled = true;
+    const goal = (lv.collect || []).length
+      ? lv.collect.map((g) => ANIMALS[g.c].g + '×' + g.n).join('  ')
+      : lv.target.toLocaleString() + ' pts';
+    b.innerHTML = `<span class="num">${locked ? '🔒' : lv.n}</span>
+      <span class="txt"><b>${lv.blurb}</b><small>${goal} · ${lv.moves} moves</small></span>
+      <span class="stars">${starStr(stars)}</span>`;
+    b.onclick = () => openStart(lv);
+    wrap.appendChild(b);
+  });
+}
+
+/* ---------------- runtime ---------------- */
+let S = null;            // engine state
+let mode = 'campaign';   // campaign | relax | duel
+let duel = null;         // { kind:'local'|'link'|'online', seed, oppName, oppScore, myScore, phase }
+let busy = false, sel = null, armed = null, usedAdMoves = false, hintTimer = null;
+const isDuel = () => mode === 'duel';
+
+function openStart(lv) {
+  syncLives();
+  if (save.lives <= 0) { $('livesSub').textContent = livesText(); $('ovLives').classList.add('active'); return; }
+  $('stGlyph').textContent = (lv.collect && lv.collect.length) ? ANIMALS[lv.collect[0].c].g : '🎯';
+  $('stTitle').textContent = 'Level ' + lv.n;
+  $('stBlurb').textContent = lv.blurb;
+  $('stGoals').innerHTML =
+    `<div class="chip" style="justify-content:center">🎯 ${lv.target.toLocaleString()} points</div>` +
+    (lv.collect || []).map((g) =>
+      `<div class="chip" style="justify-content:center">${ANIMALS[g.c].g} ${g.n} ${ANIMALS[g.c].sw}</div>`).join('') +
+    `<div class="chip" style="justify-content:center">👣 ${lv.moves} moves</div>`;
+  $('ovStart').classList.add('active');
+  $('stGo').onclick = () => { $('ovStart').classList.remove('active'); startLevel(lv); };
+}
+
+function startLevel(lv) {
+  mode = 'campaign';
+  duel = null;
+  S = M.newGame(lv, (Math.random() * 1e9) | 0);
+  S.levelRef = lv;
+  save.lives -= 1;
+  if (!save.lifeAt) save.lifeAt = Date.now() + LIFE_MS;
+  persist();
+  beginBoard('');
+}
+
+function startRelax() {
+  mode = 'relax'; duel = null;
+  S = M.newGame({ ...M.LEVELS[0], n: 0, blurb: 'Relax', target: 999999999, collect: [], moves: 9999 },
+    (Math.random() * 1e9) | 0);
+  S.levelRef = S.level;
+  beginBoard('Relax — play as long as you like.');
+}
+
+function startDuelRound(seed, label) {
+  S = M.newGame(M.DUEL_LEVEL, seed);
+  S.levelRef = M.DUEL_LEVEL;
+  beginBoard(label || '');
+}
+
+function beginBoard(hint) {
+  busy = false; sel = null; armed = null; usedAdMoves = false;
+  $('bHammer').classList.remove('armed');
+  $('ovEnd').classList.remove('active'); $('ovDuelEnd').classList.remove('active');
+  refreshChrome(); buildBoard(); renderBoard(S.board); renderHud();
+  $('hintline').textContent = hint || '';
+  show('game');
+  music.setEnergy(1);
+  scheduleHint();
+}
+
+function buildBoard() {
+  const el = $('board'); el.innerHTML = '';
+  for (let i = 0; i < S.rows * S.cols; i += 1) {
+    const d = document.createElement('div');
+    d.className = 'tile'; d.dataset.i = i;
+    el.appendChild(d);
+  }
+}
+
+function renderBoard(board, opts) {
+  const el = $('board'), fallCols = (opts && opts.fallCols) || null;
+  for (let i = 0; i < board.length; i += 1) {
+    const t = board[i], d = el.children[i];
+    if (!t) { d.textContent = ''; d.removeAttribute('data-c'); d.className = 'tile'; continue; }
+    d.dataset.c = t.c;
+    d.textContent = t.s === M.SPECIAL.RAINBOW ? '' : ANIMALS[t.c].g;
+    let cls = 'tile';
+    if (t.s) cls += ' s-' + t.s;
+    if (fallCols && fallCols.has(i % S.cols)) {
+      cls += ' fall';
+      d.style.animationDelay = ((S.rows - Math.floor(i / S.cols)) * 14) + 'ms';
+    } else d.style.animationDelay = '';
+    d.className = cls;
+  }
+}
+
+function renderHud() {
+  const lv = S.level;
+  $('movesN').textContent = mode === 'relax' ? '∞' : S.movesLeft;
+  $('movesL').textContent = mode === 'relax' ? 'relax' : 'moves';
+  $('movesBox').classList.toggle('low', mode !== 'relax' && S.movesLeft <= 4);
+  $('scoreN').textContent = S.score.toLocaleString();
+
+  // In a duel the VS panel already carries both scores, so the target bar
+  // would just be a second, emptier copy of the same information.
+  document.querySelector('.prog').style.display = isDuel() ? 'none' : '';
+
+  if (mode === 'relax') {
+    $('targetN').textContent = 'no target';
+    $('progFill').style.width = ((S.score % 10000) / 100) + '%';
+  } else if (isDuel()) {
+    /* nothing to draw — the VS panel is the scoreboard */
+  } else {
+    $('targetN').textContent = '/ ' + lv.target.toLocaleString();
+    $('progFill').style.width = Math.min(100, (S.score / lv.target) * 100) + '%';
+  }
+
+  $('vsBar').style.display = isDuel() ? '' : 'none';
+  if (isDuel()) renderVs();
+
+  const goals = $('goals'), want = (lv.collect || []);
+  goals.innerHTML = want.length === 0 ? '' : want.map((g) => {
+    const have = Math.min(S.collected[g.c], g.n);
+    return `<div class="goal ${have >= g.n ? 'met' : ''}"><span class="g">${ANIMALS[g.c].g}</span>${have}/${g.n}</div>`;
+  }).join('');
+}
+
+function renderVs() {
+  const mine = S.score, theirs = duel.oppScore || 0;
+  $('vsMePt').textContent = mine.toLocaleString();
+  $('vsThemPt').textContent = duel.oppKnown ? theirs.toLocaleString() : '—';
+  $('vsThemNm').textContent = duel.oppName || 'Rafiki';
+  $('vsMe').classList.toggle('lead', duel.oppKnown && mine > theirs);
+  $('vsThem').classList.toggle('lead', duel.oppKnown && theirs > mine);
+}
+
+function floatScore(i, text) {
+  const cell = $('board').children[i]; if (!cell) return;
+  const well = cell.closest('.well');
+  const cr = cell.getBoundingClientRect(), wr = well.getBoundingClientRect();
+  const f = document.createElement('div');
+  f.className = 'float'; f.textContent = text;
+  f.style.left = (cr.left - wr.left + cr.width / 2 - 18) + 'px';
+  f.style.top = (cr.top - wr.top) + 'px';
+  well.appendChild(f);
+  setTimeout(() => f.remove(), 1000);
+}
+
+const COMBO_WORDS = ['', 'Poa!', 'Safi!', 'Stampede!', 'Moto sana!', 'Simba mode!'];
+function comboBanner(n) {
+  if (n < 2) return;
+  const el = $('combo');
+  el.textContent = COMBO_WORDS[Math.min(n, COMBO_WORDS.length - 1)];
+  el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  if (n >= 3) music.flourish();
+}
+
+function playPhases(phases, next, done) {
+  let k = 0;
+  const step = () => {
+    if (k >= phases.length) {
+      S = next; busy = false; renderBoard(S.board); renderHud();
+      if (done) done();
+      return;
+    }
+    const p = phases[k]; k += 1;
+    if (p.shuffled) {
+      $('hintline').textContent = 'No moves left — the herd scatters and regroups.';
+      renderBoard(p.board, { fallCols: new Set([...Array(S.cols).keys()]) });
+      setTimeout(step, 380);
+      return;
+    }
+    const el = $('board'), cols = new Set();
+    p.cleared.forEach((i) => { const d = el.children[i]; if (d) d.classList.add('pop'); cols.add(i % S.cols); });
+    if (p.created.length > 0) sfx.special(); else sfx.match(p.combo);
+    buzz(p.combo > 1 ? 28 : 16);
+    comboBanner(p.combo);
+    if (p.cleared.length) floatScore(p.cleared[0], '+' + p.gained.toLocaleString());
+    setTimeout(() => { renderBoard(p.board, { fallCols: cols }); setTimeout(step, 300); }, 250);
+  };
+  step();
+}
+
+function scheduleHint() {
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => {
+    if (busy || !S || S.over) return;
+    for (let i = 0; i < S.board.length; i += 1) {
+      for (const j of [i + 1, i + S.cols]) {
+        if (j >= S.board.length || !M.adjacent(i, j, S.cols)) continue;
+        if (M.resolveMove(S, i, j).valid) {
+          const a = $('board').children[i], b = $('board').children[j];
+          if (a) a.classList.add('hint');
+          if (b) b.classList.add('hint');
+          setTimeout(() => { if (a) a.classList.remove('hint'); if (b) b.classList.remove('hint'); }, 2600);
+          return;
+        }
+      }
+    }
+  }, 6000);
+}
+
+function tryMove(a, b) {
+  if (busy || !S || S.over) return;
+  const res = M.resolveMove(S, a, b);
+  if (!res.valid) {
+    sfx.bad();
+    [a, b].forEach((i) => {
+      const d = $('board').children[i]; if (!d) return;
+      d.classList.add('bad'); setTimeout(() => d.classList.remove('bad'), 320);
+    });
+    return;
+  }
+  busy = true; clearTimeout(hintTimer);
+  const sw = M.cloneBoard(S.board);
+  const t = sw[a]; sw[a] = sw[b]; sw[b] = t;
+  renderBoard(sw);
+  setTimeout(() => playPhases(res.phases, res.state, afterMove), 130);
+}
+
+function afterMove() {
+  $('goals').querySelectorAll('.goal').forEach((g) => {
+    g.classList.add('tick'); setTimeout(() => g.classList.remove('tick'), 400);
+  });
+  if (isDuel()) net.pushScore();
+  if (S.over) { setTimeout(isDuel() ? endDuelRound : endLevel, 520); return; }
+  scheduleHint();
+}
+
+/* ---------------- input ---------------- */
+let dragFrom = null, dragX = 0, dragY = 0;
+$('board').addEventListener('pointerdown', (e) => {
+  const cell = e.target.closest('.tile'); if (!cell || busy) return;
+  const i = Number(cell.dataset.i);
+  if (armed === 'hammer') { useHammer(i); return; }
+  dragFrom = i; dragX = e.clientX; dragY = e.clientY;
+});
+$('board').addEventListener('pointermove', (e) => {
+  if (dragFrom === null || busy) return;
+  const dx = e.clientX - dragX, dy = e.clientY - dragY;
+  if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
+  const r = Math.floor(dragFrom / S.cols), c = dragFrom % S.cols;
+  let nr = r, nc = c;
+  if (Math.abs(dx) > Math.abs(dy)) nc += dx > 0 ? 1 : -1; else nr += dy > 0 ? 1 : -1;
+  const from = dragFrom; dragFrom = null; clearSel();
+  if (nr < 0 || nr >= S.rows || nc < 0 || nc >= S.cols) return;
+  tryMove(from, nr * S.cols + nc);
+});
+$('board').addEventListener('pointerup', () => {
+  if (dragFrom === null || busy) { dragFrom = null; return; }
+  const i = dragFrom; dragFrom = null;
+  if (sel === null) { sel = i; markSel(); sfx.tap(); return; }
+  if (sel === i) { clearSel(); return; }
+  const a = sel; clearSel();
+  if (M.adjacent(a, i, S.cols)) tryMove(a, i); else { sel = i; markSel(); }
+});
+$('board').addEventListener('pointercancel', () => { dragFrom = null; });
+function markSel() { clearSelClass(); const d = $('board').children[sel]; if (d) d.classList.add('sel'); }
+function clearSelClass() { $('board').querySelectorAll('.sel').forEach((d) => d.classList.remove('sel')); }
+function clearSel() { sel = null; clearSelClass(); }
+
+/* ---------------- boosters ---------------- */
+function useHammer(i) {
+  armed = null; $('bHammer').classList.remove('armed'); $('hintline').textContent = '';
+  if (busy) return;
+  const res = M.useBooster(S, 'hammer', i);
+  if (!res.valid) return;
+  if (save.hammers > 0) save.hammers -= 1; else save.coins -= 50;
+  persist(); refreshChrome(); busy = true;
+  playPhases(res.phases, res.state, afterMove);
+}
+$('bHammer').onclick = () => {
+  if (busy || !S) return;
+  if (save.hammers <= 0 && save.coins < 50) { toast('Not enough coins'); return; }
+  armed = armed === 'hammer' ? null : 'hammer';
+  $('bHammer').classList.toggle('armed', armed === 'hammer');
+  $('hintline').textContent = armed ? 'Tap any animal to move it on.' : '';
+  sfx.tap();
+};
+$('bShuffle').onclick = () => {
+  if (busy || !S) return;
+  if (save.shuffles <= 0 && save.coins < 30) { toast('Not enough coins'); return; }
+  if (save.shuffles > 0) save.shuffles -= 1; else save.coins -= 30;
+  persist(); refreshChrome();
+  const res = M.useBooster(S, 'shuffle');
+  if (!res.valid) return;
+  busy = true; playPhases(res.phases, res.state, afterMove);
+};
+$('bMoves').onclick = () => {
+  if (busy || !S) return;
+  if (mode === 'relax') { toast('Relax already has unlimited moves'); return; }
+  if (isDuel()) { toast('Not in a duel — both players get the same moves'); return; }
+  if (usedAdMoves) { toast('Already used this level'); return; }
+  Monetization.showRewardedAd(() => {
+    usedAdMoves = true; S.movesLeft += 5; S.over = false;
+    renderHud(); toast('+5 moves'); sfx.coin();
+  });
+};
+
+/* ---------------- solo end ---------------- */
+function endLevel() {
+  const lv = S.levelRef, won = S.won;
+  let reward = 0, stars = 0;
+  if (mode === 'relax') {
+    // Relax never ends on its own; this only runs if the board truly stalls.
+    show('home'); refreshChrome(); return;
+  }
+  if (won) {
+    stars = M.starsFor(S);
+    reward = [0, 25, 45, 70][stars];
+    if (stars > (save.stars[lv.n] || 0)) save.stars[lv.n] = stars;
+    if (lv.n >= save.unlocked) save.unlocked = Math.min(M.LEVELS.length, lv.n + 1);
+    save.lives = Math.min(MAX_LIVES, save.lives + 1);
+    sfx.win(); buzz([50, 40, 60]);
+  } else { reward = 5; sfx.lose(); }
+  const bonus = bumpStreak();
+  reward += bonus; save.coins += reward; persist(); refreshChrome();
+
+  $('endTitle').textContent = won ? 'Well tracked! 🎉' : 'The herd got away';
+  $('endStars').innerHTML = starStr(won ? stars : 0);
+  $('endSub').innerHTML = S.score.toLocaleString() + ' points'
+    + (bonus ? ` · 🔥 day ${save.streak} bonus +${bonus}` : '')
+    + (reward ? ` · <b>+${reward} 🪙</b>` : '');
+  $('endNext').style.display = (won && lv.n < M.LEVELS.length) ? '' : 'none';
+  $('endDouble').style.display = reward > 0 ? '' : 'none';
+  $('endDouble').disabled = false; $('endDouble').textContent = '🎬 Double the coins';
+  $('endDouble').onclick = () => {
+    $('endDouble').disabled = true;
+    Monetization.showRewardedAd(() => {
+      save.coins += reward; persist(); refreshChrome();
+      $('endDouble').textContent = '✓ Doubled'; toast('+' + reward + ' 🪙'); sfx.coin();
+    });
+  };
+  $('endNext').onclick = () => {
+    $('ovEnd').classList.remove('active');
+    const nx = M.LEVELS.find((l) => l.n === lv.n + 1);
+    if (nx) openStart(nx);
+  };
+  $('endRetry').onclick = () => { $('ovEnd').classList.remove('active'); openStart(lv); };
+  $('endHome').onclick = () => { $('ovEnd').classList.remove('active'); renderMap(); show('map'); refreshChrome(); };
+  $('ovEnd').classList.add('active');
+}
+
+/* ==================================================================
+ * DUEL
+ * ================================================================== */
+function startDuel(kind, seed, oppName, oppScore) {
+  mode = 'duel';
+  duel = {
+    kind, seed: seed || MP.randomSeed(),
+    oppName: oppName || 'Rafiki',
+    oppScore: oppScore || 0,
+    // We only show an opponent's number once we actually have one: a link
+    // challenge carries it, a local or online duel earns it later.
+    oppKnown: kind === 'link' && oppScore !== undefined && oppScore !== null,
+    myScore: 0, phase: 1, p1Score: 0, finished: false, sendAfter: false,
+  };
+  if (kind === 'local') { duel.oppName = 'Player 2'; duel.oppKnown = false; }
+  net.onDuelStart();
+  const hint = kind === 'online' ? 'Live duel — same board, same moves.'
+    : kind === 'local' ? 'Player 1 — ' + M.DUEL_MOVES + ' moves.'
+    : 'Same board as your friend. Beat their score.';
+  startDuelRound(duel.seed, hint);
+  if (kind === 'local') { $('vsThemNm').textContent = 'Player 2'; }
+  renderHud();
+}
+
+function endDuelRound() {
+  duel.finished = true;
+  duel.myScore = S.score;
+
+  if (duel.kind === 'local' && duel.phase === 1) {
+    duel.p1Score = S.score;
+    duel.phase = 2;
+    $('hoTitle').textContent = 'Pass the phone';
+    $('hoSub').textContent = 'Player 1 scored ' + S.score.toLocaleString()
+      + '. Player 2 plays the very same board.';
+    $('hoGo').onclick = () => {
+      $('ovHandover').classList.remove('active');
+      duel.oppScore = duel.p1Score;
+      duel.oppKnown = true;
+      duel.oppName = 'Player 1';
+      duel.finished = false;
+      startDuelRound(duel.seed, 'Player 2 — same board, ' + M.DUEL_MOVES + ' moves.');
+      $('vsThemNm').textContent = 'Player 1';
+      renderHud();
+    };
+    $('ovHandover').classList.add('active');
+    return;
+  }
+
+  if (duel.kind === 'online') {
+    net.pushDone(S.score);
+    if (!net.opponentDone()) {
+      $('deGlyph').textContent = '⏳';
+      $('deTitle').textContent = 'Waiting for ' + duel.oppName;
+      $('deSub').textContent = 'You scored ' + S.score.toLocaleString() + '.';
+      $('deActions').innerHTML = '';
+      $('ovDuelEnd').classList.add('active');
+      return;
+    }
+  }
+
+  showDuelResult();
+}
+
+function showDuelResult() {
+  // A link duel you started yourself ends by handing you the share, not a
+  // scoreboard — there is no opponent score to compare against yet.
+  if (duel.kind === 'link' && duel.sendAfter) {
+    duel.sendAfter = false;
+    openShare(duel.seed, S ? S.score : 0);
+    return;
+  }
+  const mine = S ? S.score : duel.myScore;
+  const theirs = duel.oppScore || 0;
+  const won = mine > theirs, tie = mine === theirs;
+  duel.oppKnown = true;
+
+  $('deGlyph').textContent = tie ? '🤝' : won ? '🏆' : '🦁';
+  $('deTitle').textContent = tie ? "It's a draw!" : won ? 'You win!' : duel.oppName + ' wins';
+  $('deSub').textContent = mine.toLocaleString() + ' — ' + theirs.toLocaleString();
+
+  let reward = won ? 60 : tie ? 30 : 10;
+  save.coins += reward; persist(); refreshChrome();
+  if (won) { sfx.win(); buzz([50, 40, 60]); } else sfx.lose();
+
+  const acts = $('deActions');
+  acts.innerHTML = '';
+  const add = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn;
+    acts.appendChild(b);
+  };
+  acts.insertAdjacentHTML('afterbegin',
+    `<p class="sub" style="margin:0 0 4px">+${reward} 🪙</p>`);
+
+  if (duel.kind === 'link') {
+    add('🔗 Send back a rematch', '', () => {
+      $('ovDuelEnd').classList.remove('active');
+      openShare(MP.randomSeed(), mine);
+    });
+  } else {
+    add('⚔️ Play again', '', () => {
+      $('ovDuelEnd').classList.remove('active');
+      if (duel.kind === 'online') { net.leaveDuel(); openLobby(); }
+      else startDuel(duel.kind, MP.randomSeed());
+    });
+  }
+  add('Back', 'ghost sm', () => {
+    $('ovDuelEnd').classList.remove('active');
+    if (duel.kind === 'online') net.leaveDuel();
+    duel = null; mode = 'campaign';
+    show('home'); refreshChrome();
+  });
+  $('ovDuelEnd').classList.add('active');
+}
+
+/* ---------------- challenge links (offline duel) ---------------- */
+function openShare(seed, myScore) {
+  const url = MP.challengeUrl(location.href, seed, myScore, myNick());
+  $('shSub').textContent = 'You scored ' + myScore.toLocaleString()
+    + '. Send this to a friend — they play the exact same board.';
+  $('shLink').value = url;
+  $('shCopy').onclick = () => {
+    const ok = () => { toast('Link copied'); sfx.coin(); };
+    if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok, () => {
+      $('shLink').select(); ok();
+    });
+    else { $('shLink').select(); ok(); }
+  };
+  $('shShare').onclick = () => {
+    const text = myNick() + ' scored ' + myScore.toLocaleString()
+      + ' in Nairobi Wild. Same board — can you beat it?';
+    if (navigator.share) navigator.share({ title: 'Nairobi Wild', text, url }).catch(() => {});
+    else { $('shCopy').click(); toast('Link copied — paste it to a friend'); }
+  };
+  $('ovShare').classList.add('active');
+}
+
+/* Someone opened a challenge link we were sent. */
+function checkIncomingChallenge() {
+  const ch = MP.decodeChallenge(location.hash);
+  if (!ch) return false;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  $('chTitle').textContent = 'A challenge!';
+  $('chSub').textContent = ch.nick + ' scored ' + ch.score.toLocaleString()
+    + ' on this board. Play the same one and beat it.';
+  $('chGo').onclick = () => {
+    $('ovChallenge').classList.remove('active');
+    armAudio();
+    startDuel('link', ch.seed, ch.nick, ch.score);
+  };
+  $('chNo').onclick = () => $('ovChallenge').classList.remove('active');
+  $('ovChallenge').classList.add('active');
+  return true;
+}
+
+/* ==================================================================
+ * ONLINE — presence-driven lobby and live duel over the `room`
+ * capability. Everything below degrades to "unavailable" when the page
+ * is opened without a room (offline, or a plain file); the rest of the
+ * game never depends on it.
+ * ================================================================== */
+const net = {
+  adapter: null,
+  ready: false,
+  _poll: null,
+
+  async init() {
+    let room = null;
+    try {
+      room = window.claude && claude.use ? await claude.use('room') : null;
+    } catch (e) { room = null; }
+    if (!room) { this.setStatus(false, 'Online duels need this page shared and online.'); return; }
+    this.adapter = new MP.RoomAdapter(room);
+    this.adapter.setNick(myNick());
+    this.ready = true;
+    this.adapter.onChange = () => this.onPeers();
+    this.setStatus(true, 'Connected. Open a table, or join one below.');
+    this.renderHosts();
+  },
+
+  setStatus(live, text) {
+    const el = $('netStatus');
+    el.className = 'status' + (live ? ' live' : '');
+    el.innerHTML = '<span class="dot"></span>' + text;
+    $('btnHost').disabled = !live;
+  },
+
+  onPeers() {
+    if (!this.ready) return;
+    if ($('lobby').classList.contains('active')) this.renderHosts();
+    // syncDuel drives the whole handshake — host lock-on, guest confirm and
+    // live score mirroring — so it must run on every change, not only once a
+    // duel is already under way.
+    this.syncDuel();
+  },
+
+  renderHosts() {
+    if (!this.ready) return;
+    const list = $('hostList');
+    const hosts = this.adapter.openHosts();
+    const mine = this.adapter.state.st === 'host';
+    list.innerHTML = '';
+    if (mine) {
+      list.innerHTML = '<div class="empty">Your table is open — waiting for someone to join…</div>';
+      return;
+    }
+    if (hosts.length === 0) {
+      list.innerHTML = '<div class="empty">No open tables right now.<br>Open one and share this page with a friend — whoever has it open can join.</div>';
+      return;
+    }
+    hosts.forEach((h) => {
+      const row = document.createElement('div');
+      row.className = 'hostrow';
+      row.innerHTML = `<span style="font-size:22px">🦁</span>
+        <span class="who"><b></b><small>waiting for a challenger</small></span>`;
+      row.querySelector('b').textContent = h.nick;   // never innerHTML: peer-supplied
+      const btn = document.createElement('button');
+      btn.className = 'btn sm'; btn.textContent = 'Join';
+      btn.onclick = () => this.join(h);
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+  },
+
+  host() {
+    if (!this.ready) return;
+    const seed = MP.randomSeed();
+    this.adapter.setNick(myNick());
+    this.adapter.set({ st: 'host', seed, vs: null, score: 0, moves: M.DUEL_MOVES, done: false });
+    this.renderHosts();
+    $('btnHost').textContent = 'Close my table';
+    $('btnHost').onclick = () => this.unhost();
+  },
+
+  unhost() {
+    if (!this.ready) return;
+    this.adapter.set({ st: 'lobby', seed: null, vs: null });
+    $('btnHost').textContent = 'Open a table';
+    $('btnHost').onclick = () => this.host();
+    this.renderHosts();
+  },
+
+  join(h) {
+    if (!this.ready) return;
+    this.adapter.setNick(myNick());
+    this.adapter.set({ st: 'join', seed: h.seed, vs: h.peer, score: 0, moves: M.DUEL_MOVES, done: false });
+    toast('Joining ' + h.nick + '…');
+    // The host locks on in syncDuel(); if it never does, we drop back.
+    clearTimeout(this._joinTimer);
+    this._joinTimer = setTimeout(() => {
+      if (mode !== 'duel' && this.adapter.state.st === 'join') {
+        this.adapter.set({ st: 'lobby', vs: null, seed: null });
+        toast('They did not answer — try another table.');
+        this.renderHosts();
+      }
+    }, 12000);
+  },
+
+  /* Called on every peer change: completes the handshake, then mirrors score. */
+  syncDuel() {
+    if (!this.ready) return;
+    const st = this.adapter.state;
+
+    // Host: pick the first guest pointing at me and lock on.
+    if (st.st === 'host') {
+      const guest = this.adapter.peers().find((p) => p.st === 'join' && p.vs === this.adapter.me);
+      if (guest) {
+        this.adapter.set({ st: 'duel', vs: guest.peer });
+        startDuel('online', st.seed, guest.nick);
+      }
+      return;
+    }
+    // Guest: wait for the host to point back.
+    if (st.st === 'join') {
+      const host = this.adapter.peers().find((p) => p.peer === st.vs);
+      if (host && host.st === 'duel' && host.vs === this.adapter.me) {
+        clearTimeout(this._joinTimer);
+        this.adapter.set({ st: 'duel' });
+        startDuel('online', st.seed, host.nick);
+      }
+      return;
+    }
+    // In a duel: mirror the opponent's live score, and notice if they leave.
+    if (st.st === 'duel' && duel && duel.kind === 'online') {
+      const opp = this.adapter.opponent();
+      if (!opp) {
+        if (!duel.abandoned) {
+          duel.abandoned = true;
+          duel.oppScore = duel.oppScore || 0;
+          duel.oppKnown = true;
+          toast(duel.oppName + ' left the duel');
+          if (S && !S.over) { S.over = true; }
+          showDuelResult();
+        }
+        return;
+      }
+      duel.oppName = opp.nick;
+      duel.oppScore = opp.score;
+      duel.oppKnown = true;
+      if (mode === 'duel') renderVs();
+      if (duel.finished && opp.done) {
+        if ($('ovDuelEnd').classList.contains('active')) showDuelResult();
+      }
+    }
+  },
+
+  opponentDone() {
+    if (!this.ready) return true;
+    const opp = this.adapter.opponent();
+    return !opp || opp.done;
+  },
+
+  onDuelStart() {
+    if (!this.ready || !duel || duel.kind !== 'online') return;
+    this.adapter.set({ score: 0, moves: M.DUEL_MOVES, done: false });
+  },
+
+  pushScore() {
+    if (!this.ready || !duel || duel.kind !== 'online' || !S) return;
+    this.adapter.set({ score: S.score, moves: S.movesLeft });
+  },
+
+  pushDone(score) {
+    if (!this.ready) return;
+    this.adapter.set({ score, done: true });
+  },
+
+  leaveDuel() {
+    if (!this.ready) return;
+    this.adapter.set({ st: 'lobby', seed: null, vs: null, score: 0, done: false });
+    $('btnHost').textContent = 'Open a table';
+    $('btnHost').onclick = () => this.host();
+  },
+};
+
+function openLobby() {
+  $('nickIn').value = save.nick || '';
+  if (net.ready) { net.adapter.setNick(myNick()); net.renderHosts(); }
+  show('lobby');
+}
+
+/* ---------------- wiring ---------------- */
+$('btnPlay').onclick = () => { armAudio(); sfx.tap(); mode = 'campaign'; renderMap(); show('map'); };
+$('btnRelax').onclick = () => { armAudio(); sfx.tap(); startRelax(); };
+$('btnDuel').onclick = () => { armAudio(); sfx.tap(); openLobby(); };
+$('btnShop').onclick = () => { refreshChrome(); $('ovShop').classList.add('active'); };
+$('shClose').onclick = () => $('ovShop').classList.remove('active');
+$('btnHow').onclick = () => $('ovHow').classList.add('active');
+$('howClose').onclick = () => $('ovHow').classList.remove('active');
+$('btnSound').onclick = () => { save.sound = !save.sound; persist(); refreshChrome(); sfx.tap(); };
+$('btnMusic').onclick = () => {
+  save.music = !save.music; persist(); refreshChrome();
+  if (save.music) { audioArmed = true; music.start(); } else music.stop();
+};
+$('btnMapBack').onclick = () => { show('home'); refreshChrome(); };
+$('btnLobbyBack').onclick = () => { if (net.ready) net.leaveDuel(); show('home'); refreshChrome(); };
+$('btnGameBack').onclick = () => {
+  clearTimeout(hintTimer);
+  if (isDuel()) { if (net.ready) net.leaveDuel(); duel = null; mode = 'campaign'; show('home'); }
+  else if (mode === 'relax') show('home');
+  else { renderMap(); show('map'); }
+  music.setEnergy(0);
+  refreshChrome();
+};
+$('stBack').onclick = () => $('ovStart').classList.remove('active');
+$('shClose2').onclick = () => {
+  $('ovShare').classList.remove('active');
+  duel = null; mode = 'campaign'; show('home'); refreshChrome();
+};
+
+$('nickIn').addEventListener('input', (e) => {
+  save.nick = e.target.value.slice(0, 16); persist();
+  if (net.ready) net.adapter.setNick(myNick());
+});
+$('btnHost').onclick = () => net.host();
+$('btnLocal').onclick = () => { armAudio(); startDuel('local', MP.randomSeed()); };
+$('btnLink').onclick = () => {
+  armAudio();
+  // Play first, then share the board you played with your score attached.
+  startDuel('link', MP.randomSeed(), null, null);
+  duel.sendAfter = true;
+  $('hintline').textContent = 'Play your round — then send the board to a friend.';
+  renderHud();
+};
+
+$('shAd').onclick = () => Monetization.showRewardedAd(() => {
+  save.coins += 50; persist(); refreshChrome(); toast('+50 🪙'); sfx.coin();
+});
+document.querySelectorAll('[data-buy]').forEach((b) => {
+  b.onclick = () => Monetization.purchase(b.dataset.buy, () => {
+    save.coins += Number(b.dataset.coins || 0);
+    save.hammers += Number(b.dataset.hammer || 0);
+    save.shuffles += Number(b.dataset.shuffle || 0);
+    persist(); refreshChrome(); toast('Asante sana! 🎉'); sfx.coin();
+  });
+});
+$('shLives').onclick = () => {
+  if (save.coins < 100) { toast('Not enough coins'); return; }
+  save.coins -= 100; save.lives = MAX_LIVES; save.lifeAt = 0;
+  persist(); refreshChrome(); toast('Hearts refilled ❤️');
+};
+$('lvAd').onclick = () => Monetization.showRewardedAd(() => {
+  save.lives = MAX_LIVES; save.lifeAt = 0; persist(); refreshChrome();
+  $('ovLives').classList.remove('active'); toast('Hearts refilled ❤️');
+});
+$('lvBuy').onclick = () => {
+  if (save.coins < 100) { toast('Not enough coins'); return; }
+  save.coins -= 100; save.lives = MAX_LIVES; save.lifeAt = 0;
+  persist(); refreshChrome(); $('ovLives').classList.remove('active'); toast('Hearts refilled ❤️');
+};
+$('lvRelax').onclick = () => { $('ovLives').classList.remove('active'); startRelax(); };
+$('lvClose').onclick = () => $('ovLives').classList.remove('active');
+
+refreshChrome();
+setInterval(refreshChrome, 30000);
+checkIncomingChallenge();
+net.init();
+</script>
+</body>
+</html>

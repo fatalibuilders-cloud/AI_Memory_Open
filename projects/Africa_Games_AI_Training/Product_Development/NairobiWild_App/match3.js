@@ -481,29 +481,39 @@
   }
 
   /* ---------------- Levels ----------------
-   * Difficulty ramps by squeezing moves against the target, then by adding
-   * collect goals that the player can't reach with score alone.
+   * A journey out of Nairobi and across Kenya. Difficulty ramps by squeezing
+   * moves against the target, then by adding collect goals the player can't
+   * reach on score alone.
+   *
+   * Colour index → animal (names live in the UI):
+   *   0 Simba (lion) · 1 Tembo (elephant) · 2 Punda Milia (zebra)
+   *   3 Twiga (giraffe) · 4 Kifaru (rhino) · 5 Chui (leopard)
+   * Goals are matched to the animal each place is actually known for.
    */
   const LEVELS = [
-    { n: 1,  moves: 25, target: 1500, collect: [],                          blurb: 'Set out the stall' },
-    { n: 2,  moves: 24, target: 2500, collect: [],                          blurb: 'Sweep the mat' },
-    { n: 3,  moves: 22, target: 3000, collect: [{ c: 2, n: 15 }],           blurb: 'Fill the mango crate' },
-    { n: 4,  moves: 22, target: 4000, collect: [{ c: 0, n: 18 }],           blurb: 'Count the cowries' },
-    { n: 5,  moves: 20, target: 5000, collect: [{ c: 1, n: 20 }],           blurb: 'Bag the maize' },
-    { n: 6,  moves: 20, target: 6000, collect: [{ c: 4, n: 18 }],           blurb: 'Bring in the catch' },
-    { n: 7,  moves: 18, target: 7000, collect: [{ c: 3, n: 20 }],           blurb: 'Bundle the greens' },
-    { n: 8,  moves: 18, target: 8500, collect: [{ c: 5, n: 20 }],           blurb: 'Kola for the elders' },
-    { n: 9,  moves: 18, target: 9500, collect: [{ c: 2, n: 18 }, { c: 4, n: 18 }], blurb: 'Market rush' },
-    { n: 10, moves: 16, target: 11000, collect: [{ c: 0, n: 22 }],          blurb: 'Midday heat' },
-    { n: 11, moves: 16, target: 12500, collect: [{ c: 1, n: 22 }, { c: 3, n: 22 }], blurb: 'Two stalls at once' },
-    { n: 12, moves: 15, target: 14000, collect: [{ c: 5, n: 25 }],          blurb: 'The big order' },
-    { n: 13, moves: 15, target: 16000, collect: [{ c: 2, n: 24 }, { c: 0, n: 24 }], blurb: 'Before the rain' },
-    { n: 14, moves: 14, target: 18000, collect: [{ c: 4, n: 26 }],          blurb: 'Last of the catch' },
-    { n: 15, moves: 14, target: 21000, collect: [{ c: 1, n: 26 }, { c: 5, n: 26 }], blurb: 'Closing time' },
+    { n: 1,  moves: 25, target: 1500,  collect: [],                                 blurb: 'Nairobi National Park' },
+    { n: 2,  moves: 24, target: 2500,  collect: [],                                 blurb: 'Karura Forest' },
+    { n: 3,  moves: 22, target: 3000,  collect: [{ c: 2, n: 15 }],                  blurb: 'Athi Plains' },
+    { n: 4,  moves: 22, target: 4000,  collect: [{ c: 5, n: 18 }],                  blurb: 'Nairobi River' },
+    { n: 5,  moves: 20, target: 5000,  collect: [{ c: 3, n: 20 }],                  blurb: 'Ngong Hills' },
+    { n: 6,  moves: 20, target: 6000,  collect: [{ c: 1, n: 18 }],                  blurb: 'Amboseli' },
+    { n: 7,  moves: 18, target: 7000,  collect: [{ c: 4, n: 20 }],                  blurb: 'Lake Nakuru' },
+    { n: 8,  moves: 18, target: 8500,  collect: [{ c: 2, n: 20 }],                  blurb: "Hell's Gate" },
+    { n: 9,  moves: 18, target: 9500,  collect: [{ c: 0, n: 18 }, { c: 1, n: 18 }], blurb: 'Tsavo East' },
+    { n: 10, moves: 16, target: 11000, collect: [{ c: 3, n: 22 }],                  blurb: 'Samburu' },
+    { n: 11, moves: 16, target: 12500, collect: [{ c: 5, n: 22 }, { c: 1, n: 22 }], blurb: 'The Aberdares' },
+    { n: 12, moves: 15, target: 14000, collect: [{ c: 4, n: 25 }],                  blurb: 'Mount Kenya' },
+    { n: 13, moves: 15, target: 16000, collect: [{ c: 0, n: 24 }, { c: 2, n: 24 }], blurb: 'Maasai Mara' },
+    { n: 14, moves: 14, target: 18000, collect: [{ c: 5, n: 26 }],                  blurb: 'Meru' },
+    { n: 15, moves: 14, target: 21000, collect: [{ c: 1, n: 26 }, { c: 0, n: 26 }], blurb: 'The Great Rift Valley' },
   ];
 
+  /* Head-to-head: identical board from a shared seed, fixed moves, pure score. */
+  const DUEL_MOVES = 20;
+  const DUEL_LEVEL = { n: 0, moves: DUEL_MOVES, target: 999999999, collect: [], blurb: 'Duel' };
+
   const Match3 = {
-    ROWS, COLS, COLORS, SPECIAL, LEVELS, BASE_POINTS,
+    ROWS, COLS, COLORS, SPECIAL, LEVELS, BASE_POINTS, DUEL_LEVEL, DUEL_MOVES,
     mulberry32, idx, rowOf, colOf, cloneBoard,
     findRuns, findGroups, hasMatch, specialFor, expandClears, collapse,
     fillBoard, hasMove, newBoard,
