@@ -1,24 +1,26 @@
-# Nairobi Wild — Architecture (v0.2)
+# Nairobi Wild — Architecture (v0.3)
 
 ## What it is
 A match-3 puzzle game made in and set in **Nairobi**. Swap adjacent animals, match three or more, chase a target inside a move limit. The mechanics are the genre standard (Candy Crush shape); the identity is Kenyan — the animals, the places, the music, the ornament.
 
 ## Design philosophy
-1. **Familiar mechanic, local world.** The match-3 loop needs no teaching. What makes it *ours* is the content: the Big Five and friends as tiles, a level journey that leaves Nairobi National Park for the Mara, Swahili in the copy, Maasai beadwork as the app's one ornament, and Benga in the speakers.
-2. **Data-light or die.** ~97 KB total, no external requests, **no image or audio assets at all** — every tile is emoji on a CSS gradient, the skyline is inline SVG, and all music and sound is synthesised at runtime. That is what keeps the install trivial on a Kenyan prepaid data bundle.
+1. **Familiar mechanic, local world.** The match-3 loop needs no teaching. What makes it *ours* is the content: the Big Five and friends as tiles that call out when you match them, a journey across 51 African cities from Nairobi to Cape Town, Swahili in the copy, Maasai beadwork as the app's one ornament, and Benga in the speakers.
+2. **Data-light or die.** ~123 KB total, no external requests, **no image or audio assets at all** — every tile is emoji on a CSS gradient, the skyline is inline SVG, and all music and sound is synthesised at runtime. That is what keeps the install trivial on a Kenyan prepaid data bundle.
 3. **Offline is the default, online is the bonus.** Solo, Relax, pass-and-play and challenge links all work with no network whatsoever. Live online duelling lights up when it can, and its absence never degrades the rest.
 4. **Engine/UI separation.** All rules are pure functions on plain state; the UI plays back engine-produced phases and never re-derives rules.
-5. **One seam per external concern.** `Monetization` for money, `multiplayer.js` for opponents. Neither is scattered through game code.
+5. **One seam per external concern.** `monetization.js` for money, `multiplayer.js` for opponents, `sounds.js`/`music.js` for audio. None of it is scattered through game code.
 
 ## Files
 | File | Role |
 |---|---|
-| `match3.js` | Engine: board generation, match detection, specials, cascades, gravity/refill, deadlock reshuffle, boosters, the 15-level Kenyan journey, duel config |
+| `match3.js` | Engine: board generation, match detection, specials, cascades, gravity/refill, deadlock reshuffle, boosters, the city table and generated campaign, duel config |
 | `music.js` | Generative Benga soundtrack + pure, testable pattern builders |
+| `sounds.js` | Animal voices — one synthesised call per species |
 | `multiplayer.js` | Challenge-link codec, the `room`-backed online adapter, and the production realtime seam |
+| `monetization.js` | Product catalogue, provider selection, AdMob / Play Billing / mobile-money checkout, revenue events |
 | `index.html` | All screens, animation, input, economy, persistence, lobby, duel flow |
-| `match3.test.mjs` | 22 tests — engine rules |
-| `extras.test.mjs` | 21 tests — music patterns + multiplayer |
+| `match3.test.mjs` | 28 tests — engine rules and the campaign |
+| `extras.test.mjs` | 39 tests — music, animal voices, multiplayer, monetization |
 
 ## The animals
 Colour index → animal, with the Swahili name the UI shows:
@@ -34,10 +36,25 @@ Colour index → animal, with the Swahili name the UI shows:
 
 Six distinct hues **and** six distinct silhouettes, so the board stays readable for colour-blind players — colour alone is never the only signal.
 
-Level goals are matched to what each place is actually known for (rhinos at Nakuru, giraffe at Samburu, elephants at Amboseli, lions in the Mara).
+### Animal voices
+Matching a herd sounds **that animal**, not a beep. `sounds.js` splits into a pure data spec per species and a renderer that turns it into WebAudio nodes, so the calls are unit-testable:
 
-## Sound: why it is synthesised
-There is not one audio file in the build. A licensed music bed would add megabytes to a game whose entire pitch is a tiny install, and would need clearing in every launch market. Instead `music.js` sequences a **Benga**-flavoured groove — the fast, guitar-led Nairobi dance style — from oscillators and filtered noise:
+| Animal | Call | How it is built |
+|---|---|---|
+| Simba | roar | sawtooth falling 150→55 Hz with a 24 Hz tremolo — the rumble is what makes it a roar rather than a groan |
+| Tembo | trumpet | bright rising sweep, band-passed so it blares |
+| Punda Milia | double bark | two short square pulses; a zebra barks, it does not whinny |
+| Twiga | hum | 92 Hz — giraffes really do hum at about this pitch at night |
+| Kifaru | snort | noise-dominant, almost no pitch |
+| Chui | sawing call | five rasping pulses in a row |
+
+Calls are short (≤1s), quiet, rate-limited to one per 70 ms, and rise in pitch as a cascade builds. A test asserts each is audible, brief and distinct from the others.
+
+### The campaign — one journey across Africa
+The 51 stages are **generated from a city table** (`CITIES`), so adding a city is one line and the difficulty curve stays consistent by construction. The route runs Nairobi → East Africa → the Horn → North Africa → West Africa → Central Africa → Southern Africa, ending in Cape Town, covering 40+ countries. Each stage carries its city, country and flag, and asks for the animal assigned to that place.
+
+## Music: why it is synthesised
+There is not one audio file in the build — not for the music, and not for the animals. A licensed music bed would add megabytes to a game whose entire pitch is a tiny install, and would need clearing in every launch market. Instead `music.js` sequences a **Benga**-flavoured groove — the fast, guitar-led Nairobi dance style — from oscillators and filtered noise:
 
 - **kick** four-on-the-floor with a syncopated push
 - **shaker** kayamba-style 16ths, off-beat accents
@@ -78,6 +95,17 @@ Handled: a guest who is not chosen falls back to the lobby; a 12-second join tim
 ### Production path
 For the standalone Android build there is no `room`, so implement `RealtimeAdapter` in `multiplayer.js` against a WebSocket service with the same method surface as `RoomAdapter` (`set`, `peers`, `openHosts`, `opponent`, `onChange`). Nothing in the UI changes. Offline modes need no server ever.
 
+## Money (`monetization.js`)
+The entire money layer is one module with four entry points — `rewardedAd`, `purchase`, `products`, `onEvent`. Game code never touches an SDK, a price or a network.
+
+**Provider selection is automatic and capability-checked** (a pure, tested function): Play Billing via the Digital Goods API when running as a TWA, a mobile-money checkout when a public key is configured, an AdMob bridge when one is present, and otherwise **simulated** — where every flow completes without charging anyone, so play-testing is never blocked by missing accounts.
+
+- **Ads:** four named rewarded placements (`continue`, `double`, `lives`, `shop`). The placement name is reported on every revenue event, because "which moment earned this" is the number worth having.
+- **IAP:** a single catalogue drives the shop, including local-currency display (KES by default) and a tip jar.
+- **Shipped config is inert on purpose:** empty IDs, `testMode: true`, no key in the repo. A test asserts `isLive().any === false` so no one can accidentally commit live credentials.
+
+`Finance/revenue-activation.md` is the checklist for switching it on: which accounts to open, in what order, the fees, and where the money lands.
+
 ## Economy & persistence (`localStorage` key `nairobiWild.v1`)
 `coins, lives, lifeAt, stars{}, unlocked, sound, music, streak, lastDay, hammers, shuffles, nick`.
 
@@ -86,7 +114,8 @@ For the standalone Android build there is no `room`, so implement `RealtimeAdapt
 - No accounts, no server, no PII. The only identity is a nickname the player types, kept on their own device.
 
 ## Verification status (2026-08-30)
-- `node match3.test.mjs` → **22/22**; `node extras.test.mjs` → **21/21**.
+- `node match3.test.mjs` → **28/28**; `node extras.test.mjs` → **39/39**.
+- Browser: shop renders 8 catalogue items with KES pricing and the honest "Demo mode" notice; a simulated purchase grants coins; and on a match the page creates both oscillator **and noise-buffer** nodes — the signature of a synthesised animal call rather than a beep.
 - Playwright, 412×880, both the source tree and the bundled single file:
   - **Offline solo:** level map (15 Kenyan locations) → 3 real matches → board stayed 64/64 filled.
   - **No-room degradation:** lobby correctly reports online unavailable, disables hosting, and still offers both offline duels.

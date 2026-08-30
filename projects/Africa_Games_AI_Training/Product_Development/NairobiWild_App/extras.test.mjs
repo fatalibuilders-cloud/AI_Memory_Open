@@ -10,6 +10,8 @@ const require = createRequire(import.meta.url);
 const Music = require('./music.js');
 const MP = require('./multiplayer.js');
 const M = require('./match3.js');
+const SND = require('./sounds.js');
+const MON = require('./monetization.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -219,6 +221,172 @@ test('a long nickname is clipped before it is published', () => {
   room._add({ peer: 'me1', isMe: true, sameTab: true, kind: 'viewer', presence: {} });
   a.setNick('X'.repeat(120));
   assert.ok(a.nick.length <= 16);
+});
+
+/* ---------------- animal voices ---------------- */
+
+test('every animal has its own voice', () => {
+  assert.equal(SND.SPECS.length, M.COLORS, 'one call per animal');
+  const names = SND.SPECS.map((s) => s.name);
+  assert.deepEqual(names, ['Simba', 'Tembo', 'Punda Milia', 'Twiga', 'Kifaru', 'Chui']);
+  assert.equal(new Set(names).size, names.length);
+});
+
+test('voice specs are physically sane — audible, short, not deafening', () => {
+  SND.SPECS.forEach((s) => {
+    [s.f0, s.f1, s.noiseFreq, s.filterFrom, s.filterTo].forEach((f) => {
+      assert.ok(f > 20 && f < 20000, s.name + ' frequency ' + f + ' is audible');
+    });
+    assert.ok(s.gain > 0 && s.gain <= 0.6, s.name + ' gain is polite');
+    assert.ok(s.noise >= 0 && s.noise <= 1, s.name + ' noise in range');
+    assert.ok(s.pulses >= 1 && s.pulses <= 8, s.name + ' pulse count');
+    assert.ok(s.attack > 0 && s.attack < s.pulseDur, s.name + ' attack fits the pulse');
+    // These fire on every match — anything long becomes torture.
+    assert.ok(SND.totalDuration(s) <= 1.0, s.name + ' call is ' + SND.totalDuration(s) + 's');
+  });
+});
+
+test('each call has a distinct character, not six versions of one beep', () => {
+  const fingerprints = SND.SPECS.map((s) => [s.type, s.pulses, Math.round(s.f0), Math.round(s.noise * 10)].join('/'));
+  assert.equal(new Set(fingerprints).size, fingerprints.length, 'all six differ');
+});
+
+test('the lion roars low, the zebra barks high', () => {
+  const lion = SND.voiceSpec(0);
+  const zebra = SND.voiceSpec(2);
+  assert.ok(lion.f0 < zebra.f0, 'a roar sits below a bark');
+  assert.ok(lion.f1 < lion.f0, 'a roar falls in pitch');
+  assert.ok(lion.tremoloDepth > 0, 'a roar rumbles');
+  assert.ok(SND.totalDuration(lion) > SND.totalDuration(zebra), 'a roar outlasts a bark');
+});
+
+test('the elephant trumpet rises; the giraffe hums near 92 Hz', () => {
+  const tembo = SND.voiceSpec(1);
+  assert.ok(tembo.f1 > tembo.f0, 'a trumpet climbs');
+  const twiga = SND.voiceSpec(3);
+  assert.ok(Math.abs(twiga.f0 - 92) < 6, 'giraffes hum at about 92 Hz');
+});
+
+test("the leopard's sawing call repeats; most others are single", () => {
+  assert.ok(SND.voiceSpec(5).pulses >= 4, 'a rasp is many strokes');
+  assert.equal(SND.voiceSpec(0).pulses, 1);
+  assert.equal(SND.pulseTimes(SND.voiceSpec(5)).length, SND.voiceSpec(5).pulses);
+});
+
+test('pulse timings run forward and never overlap', () => {
+  SND.SPECS.forEach((s) => {
+    const t = SND.pulseTimes(s);
+    for (let i = 1; i < t.length; i += 1) {
+      assert.ok(t[i] >= t[i - 1] + s.pulseDur, s.name + ' pulses do not overlap');
+    }
+  });
+});
+
+test('voiceSpec is total — any colour index resolves to a real voice', () => {
+  [0, 5, 6, 12, -1, -7].forEach((i) => {
+    assert.ok(SND.voiceSpec(i) && SND.voiceSpec(i).name, 'index ' + i);
+  });
+});
+
+test('voices degrade quietly with no WebAudio', () => {
+  const v = new SND.AnimalVoices();
+  v.attach(null);
+  v.play(0, { combo: 3 });   // must not throw
+  v.setVolume(0.5);
+});
+
+/* ---------------- monetization ---------------- */
+
+test('the shop catalogue is complete and priced', () => {
+  assert.ok(MON.PRODUCTS.length >= 5);
+  MON.PRODUCTS.forEach((p) => {
+    assert.ok(p.id && p.label && p.note, 'product ' + p.id + ' is described');
+    assert.ok(p.usd > 0 && p.usd < 100, p.id + ' has a sane price');
+    assert.ok(p.coins || p.lives, p.id + ' actually gives something');
+  });
+  assert.equal(new Set(MON.PRODUCTS.map((p) => p.id)).size, MON.PRODUCTS.length, 'ids unique');
+});
+
+test('nothing sold confers a gameplay advantage that cannot be earned free', () => {
+  const kinds = new Set(MON.PRODUCTS.map((p) => p.kind));
+  ['coins', 'bundle', 'lives', 'support'].forEach((k) => assert.ok(kinds.has(k), k));
+  // No product may skip levels or buy difficulty.
+  MON.PRODUCTS.forEach((p) => {
+    assert.ok(!/skip|unlock_level|win/i.test(p.id), p.id + ' must not sell progress');
+  });
+});
+
+test('prices are shown in local currency when one is configured', () => {
+  const p = MON.productById('coins_500');
+  const kes = MON.priceLabel(p, { web: { currency: 'KES', usdToLocal: 129 } });
+  assert.ok(kes.startsWith('KES '), kes);
+  const usd = MON.priceLabel(p, { web: { currency: 'USD', usdToLocal: 1 } });
+  assert.equal(usd, '$0.99');
+});
+
+test('the provider is chosen by what the environment can actually support', () => {
+  const bare = { admob: {}, play: {}, web: {} };
+  assert.equal(MON.selectProvider(bare, {}), 'simulated');
+
+  const play = { admob: {}, play: { enabled: true }, web: {} };
+  assert.equal(MON.selectProvider(play, { hasDigitalGoods: true }), 'play');
+  assert.equal(MON.selectProvider(play, { hasDigitalGoods: false }), 'simulated',
+    'Play billing is never claimed where the API is absent');
+
+  const web = { admob: {}, play: {}, web: { provider: 'flutterwave', publicKey: 'FLWPUBK-x' } };
+  assert.equal(MON.selectProvider(web, {}), 'web');
+
+  const ads = { admob: { rewardedUnitId: 'ca-app-pub-1/2' }, play: {}, web: {} };
+  assert.equal(MON.selectProvider(ads, { hasAdMobBridge: true }), 'admob');
+});
+
+test('the shipped config is safe: simulated, test ads, no real charges', () => {
+  assert.equal(MON.CONFIG.admob.testMode, true, 'test ads until the app is live');
+  assert.equal(MON.CONFIG.play.enabled, false);
+  assert.equal(MON.CONFIG.web.publicKey, '', 'no key committed to the repo');
+  const live = MON.isLive(MON.CONFIG);
+  assert.equal(live.any, false, 'nothing charges money until IDs are pasted in');
+});
+
+test('isLive reports exactly which revenue streams are switched on', () => {
+  assert.deepEqual(
+    MON.isLive({ admob: { rewardedUnitId: 'x', testMode: false }, play: {}, web: {} }),
+    { ads: true, iap: false, any: true });
+  assert.deepEqual(
+    MON.isLive({ admob: { rewardedUnitId: 'x', testMode: true }, play: {}, web: {} }),
+    { ads: false, iap: false, any: false }, 'test-mode ads earn nothing');
+  assert.deepEqual(
+    MON.isLive({ admob: {}, play: { enabled: true }, web: {} }),
+    { ads: false, iap: true, any: true });
+});
+
+test('a simulated purchase completes and reports revenue events', () => {
+  const seen = [];
+  const off = MON.onEvent((e) => seen.push(e.type));
+  let got = null;
+  MON.purchase('coins_500', (p) => { got = p; });
+  off();
+  assert.equal(got.coins, 500);
+  assert.deepEqual(seen, ['purchase_started', 'purchase_completed']);
+});
+
+test('an unknown product fails cleanly instead of granting anything', () => {
+  let failed = null;
+  let granted = false;
+  MON.purchase('free_everything', () => { granted = true; }, (r) => { failed = r; });
+  assert.equal(granted, false);
+  assert.equal(failed, 'unknown_product');
+});
+
+test('a rewarded ad grants its reward and records the placement', () => {
+  const seen = [];
+  const off = MON.onEvent((e) => seen.push(e));
+  let rewarded = false;
+  MON.rewardedAd('continue', () => { rewarded = true; });
+  off();
+  assert.equal(rewarded, true);
+  assert.equal(seen[0].placement, 'continue', 'placement is reported for revenue analysis');
+  assert.ok(seen.some((e) => e.type === 'ad_rewarded'));
 });
 
 console.log('\n' + passed + ' tests passed' + (process.exitCode ? ' (with failures)' : ''));

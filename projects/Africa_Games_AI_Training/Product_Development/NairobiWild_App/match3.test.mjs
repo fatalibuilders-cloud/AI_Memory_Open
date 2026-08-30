@@ -279,11 +279,15 @@ test('the board is never left deadlocked after a move', () => {
   }
 });
 
-test('all 15 levels are well-formed and get harder', () => {
-  assert.equal(M.LEVELS.length, 15);
+test('every level is well-formed and the campaign gets harder', () => {
+  assert.ok(M.LEVELS.length >= 50, 'a real campaign, not a demo');
+  assert.equal(M.LEVELS.length, M.CITIES.length, 'one stage per city');
   M.LEVELS.forEach((l, k) => {
     assert.ok(l.moves > 0 && l.target > 0, 'level ' + l.n);
-    assert.ok(l.blurb && l.blurb.length > 0);
+    assert.equal(l.n, k + 1, 'levels are numbered in order');
+    assert.ok(l.blurb && l.blurb.length > 0, 'level ' + l.n + ' has a city');
+    assert.ok(l.country && l.country.length > 0, 'level ' + l.n + ' has a country');
+    assert.ok(l.flag && l.flag.length > 0, 'level ' + l.n + ' has a flag');
     (l.collect || []).forEach((g) => {
       assert.ok(g.c >= 0 && g.c < M.COLORS, 'goal colour in range');
       assert.ok(g.n > 0);
@@ -293,6 +297,63 @@ test('all 15 levels are well-formed and get harder', () => {
       assert.ok(l.moves <= M.LEVELS[k - 1].moves, 'moves tighten at level ' + l.n);
     }
   });
+});
+
+test('the safari starts in Nairobi and crosses the continent', () => {
+  assert.equal(M.LEVELS[0].blurb, 'Nairobi', 'the game is from Nairobi');
+  assert.equal(M.LEVELS[0].country, 'Kenya');
+  assert.equal(M.LEVELS[0].collect.length, 0, 'the first stage teaches, it does not test');
+  const countries = new Set(M.CITIES.map((c) => c.country));
+  assert.ok(countries.size >= 30, 'reaches ' + countries.size + ' countries');
+  // Every region of the continent is represented.
+  ['Egypt', 'Nigeria', 'South Africa', 'DR Congo', 'Kenya', 'Morocco', 'Ethiopia']
+    .forEach((c) => assert.ok(countries.has(c), 'missing ' + c));
+});
+
+test('no city appears twice in the journey', () => {
+  const seen = M.CITIES.map((c) => c.city + ', ' + c.country);
+  assert.equal(new Set(seen).size, seen.length);
+});
+
+test('collect goals stay reachable — never more than the moves allow', () => {
+  M.LEVELS.forEach((l) => {
+    const needed = (l.collect || []).reduce((a, g) => a + g.n, 0);
+    // Three tiles minimum per move is the floor; real play clears far more.
+    assert.ok(needed <= l.moves * 3 + 30,
+      'level ' + l.n + ' asks for ' + needed + ' in ' + l.moves + ' moves');
+  });
+});
+
+test('buildLevels is data-driven — adding a city adds a stage', () => {
+  const extra = M.CITIES.concat([{ city: 'Bissau', country: 'Guinea-Bissau', flag: '🇬🇼', c: 2 }]);
+  const built = M.buildLevels(extra);
+  assert.equal(built.length, M.CITIES.length + 1);
+  assert.equal(built[built.length - 1].blurb, 'Bissau');
+  assert.ok(built[built.length - 1].target > built[built.length - 2].target);
+});
+
+test('phases report which animals were cleared, so the UI can sound them', () => {
+  const s = M.newGame(M.LEVELS[0], 3);
+  let done = null;
+  for (let i = 0; i < 64 && !done; i += 1) {
+    for (const j of [i + 1, i + C]) {
+      if (j >= 64 || !M.adjacent(i, j, C)) continue;
+      const r = M.resolveMove(s, i, j);
+      if (r.valid) { done = r; break; }
+    }
+  }
+  done.phases.forEach((p) => {
+    assert.ok(Array.isArray(p.colors), 'every phase carries colours');
+    assert.equal(p.colors.length, p.cleared.length, 'one colour per cleared tile');
+    p.colors.forEach((c) => assert.ok(c === null || (c >= 0 && c < M.COLORS), 'colour in range'));
+  });
+  assert.ok(done.phases[0].colors.length >= 3);
+});
+
+test('the hammer booster also reports cleared colours', () => {
+  const s = M.newGame(M.LEVELS[0], 17);
+  const r = M.useBooster(s, 'hammer', M.idx(4, 4, C));
+  assert.equal(r.phases[0].colors.length, r.phases[0].cleared.length);
 });
 
 console.log('\n' + passed + ' tests passed' + (process.exitCode ? ' (with failures)' : ''));

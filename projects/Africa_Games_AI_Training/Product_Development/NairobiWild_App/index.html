@@ -240,7 +240,7 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
       <div class="chip">❤️ <b id="hLives">5</b></div>
       <div class="chip">🪙 <b id="hCoins">0</b></div>
       <div class="chip">🔥 <b id="hStreak">0</b></div>
-      <div class="chip">⭐ <b id="hStars">0</b>/45</div>
+      <div class="chip">⭐ <b id="hStars">0</b>/<span id="hStarMax">150</span></div>
     </div>
   </div>
 
@@ -431,16 +431,13 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 
 <div class="ov" id="ovShop"><div class="cardbox">
   <h2>Shop</h2>
-  <p class="sub">Balance: <b id="shopCoins">0</b> 🪙 · win levels to earn more</p>
+  <p class="sub">Balance: <b id="shopCoins">0</b> 🪙 · win stages to earn more</p>
   <div class="col">
     <div class="shopitem"><span class="ic">🎬</span><div class="info"><b>Watch an ad</b><small>+50 coins, any time</small></div><button class="btn sm" id="shAd">Free</button></div>
-    <div class="shopitem"><span class="ic">🪙</span><div class="info"><b>Handful of coins</b><small>500 coins</small></div><button class="btn sm" data-buy="coins_500" data-coins="500">$0.99</button></div>
-    <div class="shopitem"><span class="ic">💰</span><div class="info"><b>Ranger's purse</b><small>1,500 coins + 5 hammers</small></div><button class="btn sm" data-buy="coins_1500" data-coins="1500" data-hammer="5">$2.49</button></div>
-    <div class="shopitem"><span class="ic">👑</span><div class="info"><b>Big Five bundle</b><small>4,000 coins + 15 boosters</small></div><button class="btn sm" data-buy="bundle_big5" data-coins="4000" data-hammer="15" data-shuffle="15">$5.99</button></div>
-    <div class="shopitem"><span class="ic">❤️</span><div class="info"><b>Refill lives</b><small>Back to 5 hearts</small></div><button class="btn sm" id="shLives">🪙 100</button></div>
+    <div id="shopList" class="col"></div>
   </div>
   <div class="col" style="margin-top:12px">
-    <p class="sub" style="margin:0 0 8px">Pay by card or mobile money — M-Pesa, Airtel Money, MoMo.</p>
+    <p class="sub" id="shopPay" style="margin:0 0 8px">Pay by M-Pesa, Airtel Money or card.</p>
     <button class="btn ghost sm" id="shClose">Close</button>
   </div>
 </div></div>
@@ -464,27 +461,34 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 <script src="match3.js"></script>
 <script src="music.js"></script>
 <script src="multiplayer.js"></script>
+<script src="sounds.js"></script>
+<script src="monetization.js"></script>
 <script>
 'use strict';
 const M = window.Match3, MU = window.NairobiMusic, MP = window.NairobiMP;
+const SND = window.AnimalSounds, MONEY = window.NairobiMoney;
 const $ = (id) => document.getElementById(id);
 
 /* ==================================================================
- * Monetization — the ONLY place real money/ad SDKs get wired in.
- * TODO(production): showRewardedAd → AdMob rewarded video;
- *   purchase → Play Billing + Flutterwave/Paystack for mobile money
- *   (M-Pesa, Airtel Money, MTN MoMo) and airtime billing.
- * Everything sold is coins/boosters/convenience. Skill is never for
- * sale, and Relax Mode stays free and unlimited forever.
+ * Money. All of it lives in monetization.js; this page only supplies the
+ * placeholder ad player and a thin wrapper for the old call sites.
+ * Paste your AdMob / Play / Flutterwave IDs into that file's CONFIG to
+ * switch real revenue on — see Finance/revenue-activation.md.
  * ================================================================== */
+MONEY.useSimulatedAdPlayer((onReward) => {
+  const el = $('ad'), bar = $('adBar');
+  el.classList.add('active'); bar.style.width = '0';
+  requestAnimationFrame(() => { bar.style.width = '100%'; });
+  setTimeout(() => { el.classList.remove('active'); onReward(); }, 2700);
+});
+
+/* Revenue telemetry — where a real analytics SDK plugs in. Placement is
+ * recorded because "which moment earned this" is the number that matters. */
+MONEY.onEvent((e) => console.info('[revenue]', e.type, e.placement || e.productId || ''));
+
 const Monetization = {
-  showRewardedAd(onReward) {
-    const el = $('ad'), bar = $('adBar');
-    el.classList.add('active'); bar.style.width = '0';
-    requestAnimationFrame(() => { bar.style.width = '100%'; });
-    setTimeout(() => { el.classList.remove('active'); onReward(); }, 2700);
-  },
-  purchase(id, ok) { console.info('[Monetization] purchase:', id); ok(); },
+  showRewardedAd(onReward, placement) { MONEY.rewardedAd(placement || 'shop', onReward); },
+  purchase(id, ok) { MONEY.purchase(id, ok, (why) => { if (why !== 'cancelled') toast('Payment not completed'); }); },
 };
 
 /* ---------------- animals ---------------- */
@@ -553,12 +557,32 @@ const sfx = {
   coin:()=>{blip(900,.07,'square',.08);setTimeout(()=>blip(1300,.1,'square',.08),60);},
 };
 const buzz = (p) => { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
+
+/* When a herd matches, that animal calls — see sounds.js. */
+const voices = new SND.AnimalVoices();
+function callOf(phase, combo) {
+  if (!save.sound) return;
+  const colors = (phase.colors || []).filter((c) => c !== null && c !== undefined);
+  if (colors.length === 0) return;
+  // Sound whichever animal the match was mostly made of.
+  const tally = new Array(M.COLORS).fill(0);
+  colors.forEach((c) => { tally[c] += 1; });
+  let best = 0;
+  for (let i = 1; i < tally.length; i += 1) if (tally[i] > tally[best]) best = i;
+  voices.play(best, { combo });
+}
+
 /* Browsers require a gesture before any audio starts. */
 let audioArmed = false;
 function armAudio() {
   if (audioArmed) return;
   audioArmed = true;
   if (save.music) music.start();
+  // The voices share the music engine's context so everything mixes together.
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    voices.attach(music.ctx || ac, (music.ctx || ac).destination);
+  } catch (e) {}
 }
 document.addEventListener('pointerdown', armAudio, { once: true });
 
@@ -576,6 +600,7 @@ function refreshChrome() {
   $('hLives').textContent = save.lives; $('mLives').textContent = save.lives;
   $('hCoins').textContent = save.coins; $('mCoins').textContent = save.coins;
   $('hStreak').textContent = save.streak; $('hStars').textContent = totalStars();
+  $('hStarMax').textContent = M.LEVELS.length * 3;
   $('shopCoins').textContent = save.coins;
   $('btnSound').textContent = save.sound ? '🔊 SFX' : '🔇 SFX';
   $('btnMusic').textContent = save.music ? '🥁 Music' : '🔇 Music';
@@ -597,7 +622,7 @@ function renderMap() {
       ? lv.collect.map((g) => ANIMALS[g.c].g + '×' + g.n).join('  ')
       : lv.target.toLocaleString() + ' pts';
     b.innerHTML = `<span class="num">${locked ? '🔒' : lv.n}</span>
-      <span class="txt"><b>${lv.blurb}</b><small>${goal} · ${lv.moves} moves</small></span>
+      <span class="txt"><b>${lv.flag || ''} ${lv.blurb}</b><small>${lv.country || ''} · ${goal} · ${lv.moves} moves</small></span>
       <span class="stars">${starStr(stars)}</span>`;
     b.onclick = () => openStart(lv);
     wrap.appendChild(b);
@@ -614,9 +639,9 @@ const isDuel = () => mode === 'duel';
 function openStart(lv) {
   syncLives();
   if (save.lives <= 0) { $('livesSub').textContent = livesText(); $('ovLives').classList.add('active'); return; }
-  $('stGlyph').textContent = (lv.collect && lv.collect.length) ? ANIMALS[lv.collect[0].c].g : '🎯';
-  $('stTitle').textContent = 'Level ' + lv.n;
-  $('stBlurb').textContent = lv.blurb;
+  $('stGlyph').textContent = lv.flag || ((lv.collect && lv.collect.length) ? ANIMALS[lv.collect[0].c].g : '🎯');
+  $('stTitle').textContent = lv.blurb;
+  $('stBlurb').textContent = lv.country ? ('Stage ' + lv.n + ' · ' + lv.country) : ('Stage ' + lv.n);
   $('stGoals').innerHTML =
     `<div class="chip" style="justify-content:center">🎯 ${lv.target.toLocaleString()} points</div>` +
     (lv.collect || []).map((g) =>
@@ -766,7 +791,8 @@ function playPhases(phases, next, done) {
     }
     const el = $('board'), cols = new Set();
     p.cleared.forEach((i) => { const d = el.children[i]; if (d) d.classList.add('pop'); cols.add(i % S.cols); });
-    if (p.created.length > 0) sfx.special(); else sfx.match(p.combo);
+    callOf(p, p.combo);
+    if (p.created.length > 0) sfx.special();
     buzz(p.combo > 1 ? 28 : 16);
     comboBanner(p.combo);
     if (p.cleared.length) floatScore(p.cleared[0], '+' + p.gained.toLocaleString());
@@ -888,7 +914,7 @@ $('bMoves').onclick = () => {
   Monetization.showRewardedAd(() => {
     usedAdMoves = true; S.movesLeft += 5; S.over = false;
     renderHud(); toast('+5 moves'); sfx.coin();
-  });
+  }, 'continue');
 };
 
 /* ---------------- solo end ---------------- */
@@ -923,7 +949,7 @@ function endLevel() {
     Monetization.showRewardedAd(() => {
       save.coins += reward; persist(); refreshChrome();
       $('endDouble').textContent = '✓ Doubled'; toast('+' + reward + ' 🪙'); sfx.coin();
-    });
+    }, 'double');
   };
   $('endNext').onclick = () => {
     $('ovEnd').classList.remove('active');
@@ -1280,7 +1306,7 @@ function openLobby() {
 $('btnPlay').onclick = () => { armAudio(); sfx.tap(); mode = 'campaign'; renderMap(); show('map'); };
 $('btnRelax').onclick = () => { armAudio(); sfx.tap(); startRelax(); };
 $('btnDuel').onclick = () => { armAudio(); sfx.tap(); openLobby(); };
-$('btnShop').onclick = () => { refreshChrome(); $('ovShop').classList.add('active'); };
+$('btnShop').onclick = () => { refreshChrome(); renderShop(); $('ovShop').classList.add('active'); };
 $('shClose').onclick = () => $('ovShop').classList.remove('active');
 $('btnHow').onclick = () => $('ovHow').classList.add('active');
 $('howClose').onclick = () => $('ovHow').classList.remove('active');
@@ -1321,25 +1347,62 @@ $('btnLink').onclick = () => {
 };
 
 $('shAd').onclick = () => Monetization.showRewardedAd(() => {
-  save.coins += 50; persist(); refreshChrome(); toast('+50 🪙'); sfx.coin();
-});
-document.querySelectorAll('[data-buy]').forEach((b) => {
-  b.onclick = () => Monetization.purchase(b.dataset.buy, () => {
-    save.coins += Number(b.dataset.coins || 0);
-    save.hammers += Number(b.dataset.hammer || 0);
-    save.shuffles += Number(b.dataset.shuffle || 0);
-    persist(); refreshChrome(); toast('Asante sana! 🎉'); sfx.coin();
+  save.coins += 50; persist(); refreshChrome(); renderShop(); toast('+50 🪙'); sfx.coin();
+}, 'shop');
+/* The shop is drawn from the monetization catalogue, so prices, products
+   and currency all come from one place. */
+function grant(product) {
+  if (product.coins) save.coins += product.coins;
+  if (product.hammers) save.hammers += product.hammers;
+  if (product.shuffles) save.shuffles += product.shuffles;
+  if (product.lives) { save.lives = MAX_LIVES; save.lifeAt = 0; }
+  persist(); refreshChrome(); renderShop();
+  toast(product.kind === 'support' ? 'Asante sana! 💛' : 'Asante sana! 🎉');
+  sfx.coin();
+}
+function renderShop() {
+  const list = $('shopList');
+  list.innerHTML = '';
+  MONEY.products().forEach((p) => {
+    const icon = p.kind === 'support' ? '💛' : p.kind === 'lives' ? '❤️'
+      : p.kind === 'bundle' ? '👑' : p.usd >= 2 ? '💰' : '🪙';
+    const row = document.createElement('div');
+    row.className = 'shopitem';
+    row.innerHTML = `<span class="ic">${icon}</span>
+      <div class="info"><b></b><small></small></div>`;
+    row.querySelector('b').textContent = p.label;
+    row.querySelector('small').textContent = p.note;
+    const btn = document.createElement('button');
+    btn.className = 'btn sm' + (p.kind === 'support' ? ' green' : '');
+    btn.textContent = p.price;
+    btn.onclick = () => Monetization.purchase(p.id, grant);
+    row.appendChild(btn);
+    list.appendChild(row);
   });
-});
-$('shLives').onclick = () => {
-  if (save.coins < 100) { toast('Not enough coins'); return; }
-  save.coins -= 100; save.lives = MAX_LIVES; save.lifeAt = 0;
-  persist(); refreshChrome(); toast('Hearts refilled ❤️');
-};
+  // A refill can also be paid for in coins the player already earned.
+  const coinRow = document.createElement('div');
+  coinRow.className = 'shopitem';
+  coinRow.innerHTML = `<span class="ic">❤️</span>
+    <div class="info"><b>Refill lives with coins</b><small>Back to 5 hearts</small></div>`;
+  const cb = document.createElement('button');
+  cb.className = 'btn sm ghost'; cb.textContent = '🪙 100';
+  cb.onclick = () => {
+    if (save.coins < 100) { toast('Not enough coins'); return; }
+    save.coins -= 100; save.lives = MAX_LIVES; save.lifeAt = 0;
+    persist(); refreshChrome(); toast('Hearts refilled ❤️');
+  };
+  coinRow.appendChild(cb);
+  list.appendChild(coinRow);
+
+  const live = MONEY.isLive();
+  $('shopPay').textContent = live.iap
+    ? 'Pay by M-Pesa, Airtel Money or card.'
+    : 'Demo mode — nothing is charged. Payments switch on once the store accounts are connected.';
+}
 $('lvAd').onclick = () => Monetization.showRewardedAd(() => {
   save.lives = MAX_LIVES; save.lifeAt = 0; persist(); refreshChrome();
   $('ovLives').classList.remove('active'); toast('Hearts refilled ❤️');
-});
+}, 'lives');
 $('lvBuy').onclick = () => {
   if (save.coins < 100) { toast('Not enough coins'); return; }
   save.coins -= 100; save.lives = MAX_LIVES; save.lifeAt = 0;

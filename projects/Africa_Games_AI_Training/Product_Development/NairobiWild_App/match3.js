@@ -1,5 +1,5 @@
 /*
- * Market Day — match-3 engine
+ * Nairobi Wild — match-3 engine
  *
  * Pure, dependency-free. Shared by the browser UI (index.html) and the Node
  * test suite (match3.test.mjs). All randomness goes through an injectable RNG
@@ -367,9 +367,13 @@
       score += gained;
 
       const clearedList = [];
+      const clearedColors = [];
       clears.forEach((i) => {
         if (board[i]) collected[board[i].c] += 1;
         clearedList.push(i);
+        // Captured before the cell is emptied: the UI sounds the call of
+        // whichever animal was matched.
+        clearedColors.push(board[i] ? board[i].c : null);
         board[i] = null;
       });
       created.forEach((cr) => { board[cr.i] = { c: cr.c, s: cr.s }; });
@@ -377,6 +381,7 @@
       collapse(board, rows, cols, colors, state.rng);
       phases.push({
         cleared: clearedList,
+        colors: clearedColors,
         created,
         gained,
         combo,
@@ -390,7 +395,7 @@
     while (!hasMove(board, rows, cols) && guard < 50) {
       const shuffled = newBoard(rows, cols, colors, state.rng);
       for (let i = 0; i < board.length; i += 1) board[i] = shuffled[i];
-      phases.push({ cleared: [], created: [], gained: 0, combo: 0, board: cloneBoard(board), shuffled: true });
+      phases.push({ cleared: [], colors: [], created: [], gained: 0, combo: 0, board: cloneBoard(board), shuffled: true });
       guard += 1;
     }
 
@@ -426,18 +431,20 @@
       if (target === undefined || !board[target]) return { valid: false, phases: [], state };
       const clears = expandClears(board, rows, cols, new Set([target]));
       const clearedList = [];
+      const clearedColors = [];
       clears.forEach((i) => {
         if (board[i]) collected[board[i].c] += 1;
         clearedList.push(i);
+        clearedColors.push(board[i] ? board[i].c : null);
         board[i] = null;
       });
       score += clears.size * BASE_POINTS;
       collapse(board, rows, cols, colors, state.rng);
-      phases.push({ cleared: clearedList, created: [], gained: score, combo: 1, board: cloneBoard(board), shuffled: false });
+      phases.push({ cleared: clearedList, colors: clearedColors, created: [], gained: score, combo: 1, board: cloneBoard(board), shuffled: false });
     } else if (kind === 'shuffle') {
       const shuffled = newBoard(rows, cols, colors, state.rng);
       for (let i = 0; i < board.length; i += 1) board[i] = shuffled[i];
-      phases.push({ cleared: [], created: [], gained: 0, combo: 0, board: cloneBoard(board), shuffled: true });
+      phases.push({ cleared: [], colors: [], created: [], gained: 0, combo: 0, board: cloneBoard(board), shuffled: true });
     } else {
       return { valid: false, phases: [], state };
     }
@@ -464,14 +471,16 @@
       const gained = clears.size * BASE_POINTS * combo;
       score += gained;
       const clearedList = [];
+      const clearedColors = [];
       clears.forEach((i) => {
         if (board[i]) collected[board[i].c] += 1;
         clearedList.push(i);
+        clearedColors.push(board[i] ? board[i].c : null);
         board[i] = null;
       });
       created.forEach((cr) => { board[cr.i] = { c: cr.c, s: cr.s }; });
       collapse(board, rows, cols, colors, state.rng);
-      phases.push({ cleared: clearedList, created, gained, combo, board: cloneBoard(board), shuffled: false });
+      phases.push({ cleared: clearedList, colors: clearedColors, created, gained, combo, board: cloneBoard(board), shuffled: false });
     }
 
     const next = { ...state, board, score: state.score + score, collected };
@@ -480,40 +489,113 @@
     return { valid: true, phases, state: next };
   }
 
-  /* ---------------- Levels ----------------
-   * A journey out of Nairobi and across Kenya. Difficulty ramps by squeezing
-   * moves against the target, then by adding collect goals the player can't
-   * reach on score alone.
+  /* ---------------- The Great Safari ----------------
+   * The campaign is one journey across Africa, starting where the game is
+   * made — Nairobi — and travelling the continent city by city: East
+   * Africa, up through the Horn and North Africa, west along the coast,
+   * down through Central Africa and home through the South.
    *
    * Colour index → animal (names live in the UI):
    *   0 Simba (lion) · 1 Tembo (elephant) · 2 Punda Milia (zebra)
    *   3 Twiga (giraffe) · 4 Kifaru (rhino) · 5 Chui (leopard)
-   * Goals are matched to the animal each place is actually known for.
+   *
+   * Levels are DATA, generated from this table, so adding a city is one
+   * line and the difficulty curve stays consistent by construction.
+   * `c` is the animal that city's stage asks you to collect.
    */
-  const LEVELS = [
-    { n: 1,  moves: 25, target: 1500,  collect: [],                                 blurb: 'Nairobi National Park' },
-    { n: 2,  moves: 24, target: 2500,  collect: [],                                 blurb: 'Karura Forest' },
-    { n: 3,  moves: 22, target: 3000,  collect: [{ c: 2, n: 15 }],                  blurb: 'Athi Plains' },
-    { n: 4,  moves: 22, target: 4000,  collect: [{ c: 5, n: 18 }],                  blurb: 'Nairobi River' },
-    { n: 5,  moves: 20, target: 5000,  collect: [{ c: 3, n: 20 }],                  blurb: 'Ngong Hills' },
-    { n: 6,  moves: 20, target: 6000,  collect: [{ c: 1, n: 18 }],                  blurb: 'Amboseli' },
-    { n: 7,  moves: 18, target: 7000,  collect: [{ c: 4, n: 20 }],                  blurb: 'Lake Nakuru' },
-    { n: 8,  moves: 18, target: 8500,  collect: [{ c: 2, n: 20 }],                  blurb: "Hell's Gate" },
-    { n: 9,  moves: 18, target: 9500,  collect: [{ c: 0, n: 18 }, { c: 1, n: 18 }], blurb: 'Tsavo East' },
-    { n: 10, moves: 16, target: 11000, collect: [{ c: 3, n: 22 }],                  blurb: 'Samburu' },
-    { n: 11, moves: 16, target: 12500, collect: [{ c: 5, n: 22 }, { c: 1, n: 22 }], blurb: 'The Aberdares' },
-    { n: 12, moves: 15, target: 14000, collect: [{ c: 4, n: 25 }],                  blurb: 'Mount Kenya' },
-    { n: 13, moves: 15, target: 16000, collect: [{ c: 0, n: 24 }, { c: 2, n: 24 }], blurb: 'Maasai Mara' },
-    { n: 14, moves: 14, target: 18000, collect: [{ c: 5, n: 26 }],                  blurb: 'Meru' },
-    { n: 15, moves: 14, target: 21000, collect: [{ c: 1, n: 26 }, { c: 0, n: 26 }], blurb: 'The Great Rift Valley' },
+  const CITIES = [
+    // East Africa
+    { city: 'Nairobi',       country: 'Kenya',            flag: '🇰🇪', c: 0 },
+    { city: 'Mombasa',       country: 'Kenya',            flag: '🇰🇪', c: 1 },
+    { city: 'Zanzibar',      country: 'Tanzania',         flag: '🇹🇿', c: 2 },
+    { city: 'Dar es Salaam', country: 'Tanzania',         flag: '🇹🇿', c: 3 },
+    { city: 'Arusha',        country: 'Tanzania',         flag: '🇹🇿', c: 0 },
+    { city: 'Kampala',       country: 'Uganda',           flag: '🇺🇬', c: 4 },
+    { city: 'Kigali',        country: 'Rwanda',           flag: '🇷🇼', c: 5 },
+    { city: 'Bujumbura',     country: 'Burundi',          flag: '🇧🇮', c: 1 },
+    // Horn of Africa
+    { city: 'Addis Ababa',   country: 'Ethiopia',         flag: '🇪🇹', c: 2 },
+    { city: 'Djibouti',      country: 'Djibouti',         flag: '🇩🇯', c: 3 },
+    { city: 'Mogadishu',     country: 'Somalia',          flag: '🇸🇴', c: 0 },
+    { city: 'Asmara',        country: 'Eritrea',          flag: '🇪🇷', c: 4 },
+    { city: 'Khartoum',      country: 'Sudan',            flag: '🇸🇩', c: 5 },
+    // North Africa
+    { city: 'Cairo',         country: 'Egypt',            flag: '🇪🇬', c: 1 },
+    { city: 'Alexandria',    country: 'Egypt',            flag: '🇪🇬', c: 2 },
+    { city: 'Tripoli',       country: 'Libya',            flag: '🇱🇾', c: 3 },
+    { city: 'Tunis',         country: 'Tunisia',          flag: '🇹🇳', c: 0 },
+    { city: 'Algiers',       country: 'Algeria',          flag: '🇩🇿', c: 4 },
+    { city: 'Casablanca',    country: 'Morocco',          flag: '🇲🇦', c: 5 },
+    { city: 'Marrakesh',     country: 'Morocco',          flag: '🇲🇦', c: 1 },
+    // West Africa
+    { city: 'Nouakchott',    country: 'Mauritania',       flag: '🇲🇷', c: 2 },
+    { city: 'Dakar',         country: 'Senegal',          flag: '🇸🇳', c: 3 },
+    { city: 'Banjul',        country: 'The Gambia',       flag: '🇬🇲', c: 0 },
+    { city: 'Conakry',       country: 'Guinea',           flag: '🇬🇳', c: 4 },
+    { city: 'Freetown',      country: 'Sierra Leone',     flag: '🇸🇱', c: 5 },
+    { city: 'Monrovia',      country: 'Liberia',          flag: '🇱🇷', c: 1 },
+    { city: 'Abidjan',       country: "Côte d'Ivoire",    flag: '🇨🇮', c: 2 },
+    { city: 'Accra',         country: 'Ghana',            flag: '🇬🇭', c: 3 },
+    { city: 'Lomé',          country: 'Togo',             flag: '🇹🇬', c: 0 },
+    { city: 'Cotonou',       country: 'Benin',            flag: '🇧🇯', c: 4 },
+    { city: 'Lagos',         country: 'Nigeria',          flag: '🇳🇬', c: 5 },
+    { city: 'Abuja',         country: 'Nigeria',          flag: '🇳🇬', c: 1 },
+    { city: 'Kano',          country: 'Nigeria',          flag: '🇳🇬', c: 2 },
+    { city: 'Niamey',        country: 'Niger',            flag: '🇳🇪', c: 3 },
+    { city: 'Ouagadougou',   country: 'Burkina Faso',     flag: '🇧🇫', c: 0 },
+    { city: 'Bamako',        country: 'Mali',             flag: '🇲🇱', c: 4 },
+    // Central Africa
+    { city: "N'Djamena",     country: 'Chad',             flag: '🇹🇩', c: 5 },
+    { city: 'Yaoundé',       country: 'Cameroon',         flag: '🇨🇲', c: 1 },
+    { city: 'Douala',        country: 'Cameroon',         flag: '🇨🇲', c: 2 },
+    { city: 'Libreville',    country: 'Gabon',            flag: '🇬🇦', c: 3 },
+    { city: 'Brazzaville',   country: 'Congo',            flag: '🇨🇬', c: 0 },
+    { city: 'Kinshasa',      country: 'DR Congo',         flag: '🇨🇩', c: 4 },
+    { city: 'Luanda',        country: 'Angola',           flag: '🇦🇴', c: 5 },
+    // Southern Africa
+    { city: 'Windhoek',      country: 'Namibia',          flag: '🇳🇦', c: 1 },
+    { city: 'Gaborone',      country: 'Botswana',         flag: '🇧🇼', c: 2 },
+    { city: 'Harare',        country: 'Zimbabwe',         flag: '🇿🇼', c: 3 },
+    { city: 'Lusaka',        country: 'Zambia',           flag: '🇿🇲', c: 0 },
+    { city: 'Maputo',        country: 'Mozambique',       flag: '🇲🇿', c: 4 },
+    { city: 'Antananarivo',  country: 'Madagascar',       flag: '🇲🇬', c: 5 },
+    { city: 'Johannesburg',  country: 'South Africa',     flag: '🇿🇦', c: 1 },
+    { city: 'Cape Town',     country: 'South Africa',     flag: '🇿🇦', c: 0 },
   ];
+
+  /*
+   * Difficulty by construction: the target climbs steadily while moves
+   * tighten in steps, and collect goals appear once the player has the
+   * basics — one goal from stage 3, a second from stage 12.
+   */
+  function buildLevels(cities) {
+    return cities.map((place, i) => {
+      const n = i + 1;
+      const target = 1500 + i * 900 + Math.floor(i * i * 3.2);
+      const moves = Math.max(13, 25 - Math.floor(i / 4));
+      const collect = [];
+      if (i >= 2) collect.push({ c: place.c, n: Math.min(30, 14 + Math.floor(i / 2)) });
+      if (i >= 11) collect.push({ c: (place.c + 3) % COLORS, n: Math.min(28, 12 + Math.floor(i / 3)) });
+      return {
+        n,
+        moves,
+        target,
+        collect,
+        blurb: place.city,
+        country: place.country,
+        flag: place.flag,
+      };
+    });
+  }
+
+  const LEVELS = buildLevels(CITIES);
 
   /* Head-to-head: identical board from a shared seed, fixed moves, pure score. */
   const DUEL_MOVES = 20;
   const DUEL_LEVEL = { n: 0, moves: DUEL_MOVES, target: 999999999, collect: [], blurb: 'Duel' };
 
   const Match3 = {
-    ROWS, COLS, COLORS, SPECIAL, LEVELS, BASE_POINTS, DUEL_LEVEL, DUEL_MOVES,
+    ROWS, COLS, COLORS, SPECIAL, LEVELS, CITIES, buildLevels, BASE_POINTS, DUEL_LEVEL, DUEL_MOVES,
     mulberry32, idx, rowOf, colOf, cloneBoard,
     findRuns, findGroups, hasMatch, specialFor, expandClears, collapse,
     fillBoard, hasMove, newBoard,
