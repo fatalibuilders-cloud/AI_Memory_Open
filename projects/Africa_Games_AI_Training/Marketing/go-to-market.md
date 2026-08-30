@@ -1,6 +1,10 @@
-# Oware Legends — Go-to-Market (Pan-African)
+# Africa Games — Go-to-Market (Pan-African)
 
-**Positioning:** *"The game your grandmother can beat you at."* — Africa's own strategy game, finally done justice on the phone. Cultural pride + genuine skill game, not another imported match-3.
+**Two titles, one funnel.** **Market Day** (match-3) is the acquisition engine — the genre with the largest proven audience. **Oware Legends** (mancala) is the retention and credibility play, cross-promoted to players who want more depth.
+
+**Market Day positioning:** *"The market you already know, in your pocket."* Everything on the board — cowries, maize, mangoes, greens, fish, kola — is a good any generation recognizes. Creatives should show a real stall cutting to the phone.
+
+**Oware Legends positioning:** *"The game your grandmother can beat you at."* — Africa's own strategy game, finally done justice on the phone.
 
 ---
 
