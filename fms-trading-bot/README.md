@@ -381,6 +381,36 @@ Two rules for reading it honestly:
 The genuinely useful outcome is often "nothing survived" — that saves you
 the money you would have lost finding out live.
 
+### The decisive test — `find_edge.py`
+
+`optimize.py` searches one symbol and *warns* you the survivor may be luck.
+`find_edge.py` settles it, and is the tool to run before risking anything:
+
+```powershell
+.\.venv\Scripts\python.exe find_edge.py --days 60
+```
+
+It applies two tests a single-symbol search cannot:
+
+1. **Across instruments.** A real edge shows up on several symbols; a
+   coincidence shows up on exactly one.
+2. **Against its own null.** For every symbol it re-runs the identical
+   search on *shuffled copies of the same bars* — same volatility, same
+   fat tails, every predictable pattern destroyed. Whatever the search
+   finds there, it found in nothing. A strategy only counts if it beats
+   that, at p < 0.05 on a binomial test.
+
+The second test is the one that matters, and it was not optional. An
+earlier version of this tool used a hand-picked bar (profit factor 1.1
+over 5 trades) and confidently recommended `ema_cross` on **pure random
+walks with no edge in them by construction**. Both tests are verified in
+both directions: silent on random walks, and on synthetic series with a
+real trend built in it flags breakout, trend-following and momentum on
+6 of 6 symbols at p < 0.001.
+
+Judge on profit factor. A win rate is chosen by where you put the stop —
+`winrate.py` will engineer any figure you name and show you what it costs.
+
 ## One size does not fit gold, Bitcoin and EURUSD
 
 The live account's own record made this unavoidable: metals were 8% of the
@@ -463,6 +493,8 @@ fms-trading-bot/
 ├── report.py              # what your real trades actually did
 ├── backtest.py            # replay the strategy over history
 ├── optimize.py            # search strategies, judge out-of-sample
+├── find_edge.py           # is it an edge, or noise? the decisive test
+├── winrate.py             # engineer any win rate, and see its cost
 ├── tune_symbols.py        # per-instrument settings from real spreads
 ├── check_config.py        # validate .env before restarting
 └── fmsbot/
