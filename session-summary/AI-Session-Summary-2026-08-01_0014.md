@@ -43,9 +43,18 @@
 - Also silenced `websockets`' own background-callback tracebacks (routed to DEBUG), which were printing next to the clean error message and would have confused a first-time user.
 - Test count rose from 183 to 221.
 
+**Build — Bitcoin-only scope (owner request)**
+
+- Owner asked for Bitcoin only. `.env.example` now ships `DERIV_SYMBOLS=BTC` as the default; clearing it restores all-crypto behaviour.
+- Added alias resolution in `market.py`: `BTC`, `BTC/USD`, and `cryBTCUSD` all resolve against the symbols Deriv actually reports, so the owner need not know Deriv's exact ticker and an upstream rename cannot silently empty the universe. Resolution happens **after** the crypto filter, so the crypto-only invariant is unchanged.
+- Unmatched entries now explain themselves — "not a cryptocurrency" versus "no match, here is what is available" — instead of being dropped with a generic warning.
+- The preflight check reports the restriction explicitly: which symbol was resolved, how many other coins are being skipped, and that `MAX_OPEN_TRADES` is moot with a single symbol (one position per symbol means only one trade open at a time).
+- Verified end to end: given five symbols including three other coins and a forex pair, the trader fetched candles for, priced, and bought only `cryBTCUSD`.
+- Test count rose from 269 to 287.
+
 **Verification**
 
-- `python -m pytest` → 221 passed.
+- `python -m pytest` → 287 passed.
 - `setup.sh` executed end to end in a clean environment: venv created, dependencies installed, suite run, `.env` scaffolded. Re-run confirmed idempotent.
 - `python -m deriv_bot.check` executed against the blocked sandbox proxy and produced a clean, actionable NOT READY report with no traceback.
 - Confirmed `.env` and `.venv` are git-ignored and were never staged.

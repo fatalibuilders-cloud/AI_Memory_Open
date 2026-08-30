@@ -1,8 +1,10 @@
 # Deriv Crypto Bot
 
-An automated trading bot for [Deriv](https://deriv.com) that trades **cryptocurrency only** and runs **24/7**.
+An automated trading bot for [Deriv](https://deriv.com) that trades **Bitcoin only** and runs **24/7**.
 
-It watches crypto markets on a schedule, looks for a specific price pattern, and places a trade when it finds one — then keeps doing that indefinitely, reconnecting on its own when the network drops.
+It watches the Bitcoin market on a schedule, looks for a specific price pattern, and places a trade when it finds one — then keeps doing that indefinitely, reconnecting on its own when the network drops.
+
+Bitcoin is the default (`DERIV_SYMBOLS=BTC`). Clearing that one setting widens it to every crypto Deriv offers; it can never widen beyond crypto.
 
 ---
 
@@ -42,15 +44,31 @@ Every decision the bot makes, including every *refusal* to trade, is logged with
 
 The strategy lives in one file, `deriv_bot/strategy.py`. Replacing it means writing a function with the same shape — nothing else in the bot needs to change.
 
+### Bitcoin only
+
+`DERIV_SYMBOLS=BTC` in `.env` restricts the bot to Bitcoin. You can write it three ways and all resolve to the same market:
+
+```
+DERIV_SYMBOLS=BTC          # simplest
+DERIV_SYMBOLS=BTC/USD      # the display name
+DERIV_SYMBOLS=cryBTCUSD    # Deriv's exact ticker
+```
+
+The bot matches your entry against the symbols Deriv actually reports, so you don't need to know its exact spelling, and a rename upstream won't silently leave the bot with nothing to trade. The preflight check prints exactly which symbol it resolved to, and how many others it is therefore skipping.
+
+To trade all crypto instead, leave `DERIV_SYMBOLS` blank. For a few named coins: `DERIV_SYMBOLS=BTC,ETH`.
+
+> With a single symbol, `MAX_OPEN_TRADES` has no practical effect — the bot holds at most one position per symbol, so only one trade is ever open at a time. The check points this out.
+
 ### How "crypto only" is enforced
 
-The bot never trades forex, synthetic indices, commodities, or stocks. That is enforced at three independent points:
+Underneath the Bitcoin restriction sits a harder guarantee: the bot never trades forex, synthetic indices, commodities, or stocks, whatever `DERIV_SYMBOLS` says. That is enforced at three independent points:
 
 1. Symbols are **discovered** from Deriv's own market listing and filtered to `market == "cryptocurrency"`. Nothing is hardcoded.
-2. If you name symbols in `DERIV_SYMBOLS`, they are still checked against that same filter — putting a forex pair there drops it with an error in the log rather than trading it.
+2. `DERIV_SYMBOLS` entries are resolved **after** that filter, so an alias can only ever match something already known to be crypto. Putting a forex pair there drops it with an explanation in the log rather than trading it.
 3. A final check immediately before every purchase confirms the symbol is still in the verified crypto set for that cycle.
 
-There are tests for all three. See `tests/test_cycle.py::TestCryptoOnly`.
+There are tests for all three, plus the alias path. See `tests/test_cycle.py::TestCryptoOnly` and `tests/test_market.py::TestBitcoinOnly`.
 
 ---
 
@@ -333,7 +351,7 @@ Full list with comments in `.env.example`. The ones that matter most:
 | `MAX_OPEN_TRADES` | `2` | How many positions can be open at once |
 | `MAX_TRADES_PER_DAY` | `40` | Ceiling on trades opened per UTC day |
 | `SYMBOL_COOLDOWN` | `300` | Seconds before the same symbol can be traded again |
-| `DERIV_SYMBOLS` | *(blank)* | Blank = all open crypto. Otherwise a comma-separated allowlist |
+| `DERIV_SYMBOLS` | `BTC` | Bitcoin only. Blank = all open crypto. Accepts `BTC`, `BTC/USD`, or `cryBTCUSD` |
 | `TRADE_DURATION` / `_UNIT` | `5` / `m` | Contract length. Clamped to what Deriv allows for that symbol |
 
 The stake actually used is the **smallest** of: `STAKE`, `MAX_STAKE_FRACTION` × balance, and your remaining daily loss budget. A single trade can never take you past the daily limit in one go.
@@ -347,7 +365,7 @@ pip install pytest
 python -m pytest
 ```
 
-269 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
+287 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
 
 ---
 

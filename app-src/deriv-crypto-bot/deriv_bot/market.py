@@ -50,30 +50,85 @@ def is_crypto(raw: dict) -> bool:
     return str(raw.get("market", "")).strip().lower() == CRYPTO_MARKET
 
 
+def _normalise(text: str) -> str:
+    """Lowercase, keeping only letters and digits, so 'BTC/USD' and 'cryBTCUSD'
+    can be compared on equal terms."""
+    return "".join(ch for ch in str(text).lower() if ch.isalnum())
+
+
+# Shorter than this, a substring match would be far too greedy ("c" would
+# match every crypto symbol Deriv lists).
+_MIN_ALIAS_LENGTH = 3
+
+
+def resolve_alias(alias: str, candidates: list[SymbolInfo]) -> list[SymbolInfo]:
+    """Match one configured entry against discovered symbols.
+
+    Accepts the exact ticker (`cryBTCUSD`), the display name (`BTC/USD`), or a
+    plain substring (`BTC`, `bitcoin`). Deriv's exact spelling is therefore not
+    something the operator has to know or get right, and a rename upstream does
+    not silently empty the universe.
+    """
+    wanted = _normalise(alias)
+    if not wanted:
+        return []
+
+    exact = [
+        info
+        for info in candidates
+        if wanted in (_normalise(info.symbol), _normalise(info.display_name))
+    ]
+    if exact:
+        return exact
+
+    if len(wanted) < _MIN_ALIAS_LENGTH:
+        return []
+
+    return [
+        info
+        for info in candidates
+        if wanted in _normalise(info.symbol) or wanted in _normalise(info.display_name)
+    ]
+
+
 def select_symbols(active_symbols: list[dict], config: Config) -> list[SymbolInfo]:
     """Pick the tradable crypto universe for this cycle.
 
     Applies, in order: the crypto-market filter, the operator's allowlist (if
     any), the open/not-suspended filter, and finally the MAX_SYMBOLS cap.
+
+    Allowlist entries are resolved *after* the crypto filter, so an alias can
+    never reach a non-crypto symbol however it is spelled.
     """
     crypto = [SymbolInfo.from_api(raw) for raw in active_symbols if is_crypto(raw)]
+    non_crypto = [SymbolInfo.from_api(raw) for raw in active_symbols if not is_crypto(raw)]
 
-    rejected = {
-        str(raw.get("symbol")) for raw in active_symbols if not is_crypto(raw)
-    }
     if config.symbols:
-        allowed = set(config.symbols)
-        wrong_market = allowed & rejected
-        if wrong_market:
-            log.error(
-                "ignoring configured symbols that are not cryptocurrency: %s",
-                ", ".join(sorted(wrong_market)),
-            )
-        known = {info.symbol for info in crypto}
-        unknown = allowed - known - wrong_market
-        if unknown:
-            log.error("ignoring unknown configured symbols: %s", ", ".join(sorted(unknown)))
-        crypto = [info for info in crypto if info.symbol in allowed]
+        chosen: dict[str, SymbolInfo] = {}
+        for alias in config.symbols:
+            matches = resolve_alias(alias, crypto)
+            if matches:
+                for info in matches:
+                    chosen[info.symbol] = info
+                if [info.symbol for info in matches] != [alias]:
+                    log.info(
+                        "'%s' matched %s", alias, ", ".join(sorted(i.symbol for i in matches))
+                    )
+                continue
+
+            # Explain the miss precisely rather than just dropping it.
+            if resolve_alias(alias, non_crypto):
+                log.error(
+                    "ignoring '%s': it is not a cryptocurrency, and this bot trades crypto only",
+                    alias,
+                )
+            else:
+                log.error(
+                    "ignoring '%s': no cryptocurrency symbol matches it. Available: %s",
+                    alias,
+                    ", ".join(sorted(i.symbol for i in crypto)) or "(none)",
+                )
+        crypto = list(chosen.values())
 
     open_symbols = [info for info in crypto if info.is_open]
     closed = [info.symbol for info in crypto if not info.is_open]

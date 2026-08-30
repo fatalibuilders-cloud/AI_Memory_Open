@@ -112,12 +112,30 @@ class TestUniverseReporting:
         report, _ = self.run_universe(monkeypatch, [forex("frxEURUSD")])
         assert report.failures
 
-    def test_bad_symbol_allowlist_explains_itself(self, monkeypatch, capsys):
+    def test_bad_symbol_allowlist_lists_what_is_available(self, monkeypatch, capsys):
         report, _ = self.run_universe(
             monkeypatch, [crypto("cryBTCUSD")], symbols=("cryTYPOUSD",)
         )
         assert report.failures
-        assert "typos" in capsys.readouterr().out.lower()
+        out = capsys.readouterr().out
+        assert "cryTYPOUSD" in out
+        assert "Deriv currently offers: cryBTCUSD" in out
+
+    def test_a_single_symbol_restriction_is_reported(self, monkeypatch, capsys):
+        report, _ = self.run_universe(
+            monkeypatch, [crypto("cryBTCUSD"), crypto("cryETHUSD")], symbols=("BTC",)
+        )
+        out = capsys.readouterr().out
+        assert not report.failures
+        assert "Restricted to 1 symbol(s)" in out
+        assert "cryBTCUSD" in out
+        assert "1 other crypto symbol(s) will not be traded" in out
+
+    def test_single_symbol_notes_that_max_open_trades_is_moot(self, monkeypatch, capsys):
+        self.run_universe(
+            monkeypatch, [crypto("cryBTCUSD")], symbols=("BTC",), max_open_trades=3
+        )
+        assert "only one trade will ever be open" in capsys.readouterr().out
 
     def test_it_only_ever_fetches_candles_for_crypto(self, monkeypatch, capsys):
         universe = [crypto("cryBTCUSD"), forex("frxEURUSD")]

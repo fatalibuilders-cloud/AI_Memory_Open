@@ -239,10 +239,34 @@ async def _universe_checks(api: DerivAPI, config: Config, report: Report) -> Non
         report.fail("No tradable crypto symbols after filtering")
         if config.symbols:
             report.note(f"DERIV_SYMBOLS is set to: {', '.join(config.symbols)}")
-            report.note("Check for typos, or clear it to trade all open crypto.")
+            available = sorted(
+                str(raw.get("symbol")) for raw in raw_symbols if is_crypto(raw)
+            )
+            if available:
+                report.note(f"Deriv currently offers: {', '.join(available)}")
+                report.note("Set DERIV_SYMBOLS to one of those, or clear it to")
+                report.note("trade every open crypto symbol.")
+            else:
+                report.note("Deriv is reporting no open crypto markets at all.")
         return
 
-    report.ok(f"{len(universe)} symbols selected", ", ".join(s.symbol for s in universe))
+    selected = ", ".join(s.symbol for s in universe)
+    if config.symbols:
+        report.ok(
+            f"Restricted to {len(universe)} symbol(s)",
+            f"{selected}  (from DERIV_SYMBOLS={','.join(config.symbols)})",
+        )
+        skipped = len([r for r in raw_symbols if is_crypto(r)]) - len(universe)
+        if skipped > 0:
+            report.note(f"{skipped} other crypto symbol(s) will not be traded.")
+        if len(universe) == 1 and config.max_open_trades > 1:
+            report.note(
+                f"With one symbol, MAX_OPEN_TRADES={config.max_open_trades} has no "
+                "effect - the bot holds at most one position per symbol, so only "
+                "one trade will ever be open."
+            )
+    else:
+        report.ok(f"{len(universe)} symbols selected", selected)
 
     # -- data and strategy ------------------------------------------------
     report.heading("4. Market data and strategy")

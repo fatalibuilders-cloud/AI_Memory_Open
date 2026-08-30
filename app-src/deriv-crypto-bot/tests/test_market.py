@@ -174,3 +174,80 @@ class TestResolveDuration:
     def test_unparseable_bounds_keep_configuration(self):
         entry = {"min_contract_duration": "???", "max_contract_duration": "???"}
         assert resolve_duration(entry, make_config(trade_duration=7)) == (7, "m")
+
+
+class TestBitcoinOnly:
+    """Restricting to Bitcoin is the configured default, so it gets its own
+    coverage — including that an alias can never escape the crypto filter."""
+
+    UNIVERSE = [
+        symbol("cryBTCUSD"),
+        symbol("cryETHUSD"),
+        symbol("cryLTCUSD"),
+        symbol("frxEURUSD", market="forex"),
+        symbol("R_100", market="synthetic_index"),
+    ]
+
+    def select(self, aliases, universe=None):
+        config = make_config(symbols=tuple(aliases))
+        return [s.symbol for s in select_symbols(universe or self.UNIVERSE, config)]
+
+    @pytest.mark.parametrize("alias", ["cryBTCUSD", "crybtcusd", "CRYBTCUSD", "BTC", "btc"])
+    def test_bitcoin_resolves_from_several_spellings(self, alias):
+        assert self.select([alias]) == ["cryBTCUSD"]
+
+    def test_display_name_resolves(self):
+        universe = [
+            {**symbol("cryBTCUSD"), "display_name": "BTC/USD"},
+            {**symbol("cryETHUSD"), "display_name": "ETH/USD"},
+        ]
+        assert self.select(["BTC/USD"], universe) == ["cryBTCUSD"]
+
+    def test_bitcoin_only_excludes_every_other_coin(self):
+        selected = self.select(["BTC"])
+        assert selected == ["cryBTCUSD"]
+        assert "cryETHUSD" not in selected
+        assert "cryLTCUSD" not in selected
+
+    def test_an_alias_cannot_reach_a_non_crypto_symbol(self):
+        # The central invariant, restated for aliases: however it is spelled,
+        # a match is only ever drawn from the crypto-filtered set.
+        assert self.select(["EUR"]) == []
+        assert self.select(["frxEURUSD"]) == []
+        assert self.select(["R_100"]) == []
+
+    def test_a_too_short_alias_does_not_match_everything(self):
+        assert self.select(["c"]) == []
+
+    def test_exact_match_wins_over_substring(self):
+        universe = [symbol("cryBTCUSD"), symbol("cryBTCUSDT")]
+        assert self.select(["cryBTCUSD"], universe) == ["cryBTCUSD"]
+
+    def test_a_substring_may_match_several_pairs(self):
+        universe = [symbol("cryBTCUSD"), symbol("cryBTCEUR"), symbol("cryETHUSD")]
+        assert sorted(self.select(["BTC"], universe)) == ["cryBTCEUR", "cryBTCUSD"]
+
+    def test_multiple_aliases_combine(self):
+        assert sorted(self.select(["BTC", "ETH"])) == ["cryBTCUSD", "cryETHUSD"]
+
+    def test_duplicate_aliases_do_not_duplicate_symbols(self):
+        assert self.select(["BTC", "cryBTCUSD", "btc"]) == ["cryBTCUSD"]
+
+    def test_a_closed_bitcoin_market_yields_nothing(self):
+        universe = [symbol("cryBTCUSD", is_open=0), symbol("cryETHUSD")]
+        assert self.select(["BTC"], universe) == []
+
+    def test_unmatched_alias_is_reported(self, caplog):
+        import logging
+
+        with caplog.at_level(logging.ERROR):
+            assert self.select(["DOGE"]) == []
+        assert "DOGE" in caplog.text
+        assert "cryBTCUSD" in caplog.text  # lists what is available
+
+    def test_non_crypto_alias_says_why(self, caplog):
+        import logging
+
+        with caplog.at_level(logging.ERROR):
+            self.select(["frxEURUSD"])
+        assert "not a cryptocurrency" in caplog.text
