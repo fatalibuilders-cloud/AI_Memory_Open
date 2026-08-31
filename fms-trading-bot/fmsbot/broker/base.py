@@ -72,6 +72,14 @@ class Broker(ABC):
         """
         return 0.0
 
+    def is_demo(self) -> Optional[bool]:
+        """True on a practice account, False on real money, None if unknown.
+
+        Unknown is not "safe": a caller deciding whether to risk real money
+        must treat None as possibly-real.
+        """
+        return None
+
     def spread(self, symbol: str) -> float:
         """Current ask - bid, in price units. 0.0 if the broker cannot say."""
         return 0.0

@@ -170,6 +170,14 @@ class MT5Broker(Broker):
             raise BrokerError("account_info failed")
         return float(info.equity)
 
+    def is_demo(self):
+        """MT5 reports 0 = demo, 1 = contest, 2 = real."""
+        info = self._require().account_info()
+        mode = getattr(info, "trade_mode", None) if info else None
+        if mode is None:
+            return None
+        return int(mode) != 2
+
     # -- market data ---------------------------------------------------------
 
     def bars(self, symbol: str, timeframe: str, count: int) -> list[Bar]:

@@ -15,6 +15,7 @@ from typing import Optional
 
 from .broker.base import Broker, BrokerError
 from .config import BrokerConfig, Settings
+from .evidence import Evidence, fingerprint
 from .risk import RiskManager
 
 log = logging.getLogger("fmsbot.session")
@@ -38,6 +39,8 @@ class BrokerSession:
     broker: Broker
     risk: RiskManager
     symbols: list[str]
+    #: the running record of what this configuration actually did
+    evidence: Optional[Evidence] = None
     connected: bool = False
     last_bar: dict[str, int] = field(default_factory=dict)
     symbol_warned: dict[str, float] = field(default_factory=dict)
@@ -120,7 +123,8 @@ def check_mt5_conflict(configs) -> None:
             f"those use their own APIs.")
 
 
-def build_sessions(settings: Settings) -> list[BrokerSession]:
+def build_sessions(settings: Settings,
+                   strategy_name: str = "ema_cross") -> list[BrokerSession]:
     from .broker import build_broker_from_config
     configs = settings.broker_configs()
     check_mt5_conflict(configs)
@@ -132,5 +136,9 @@ def build_sessions(settings: Settings) -> list[BrokerSession]:
             # one state file per account: limits belong to an account
             risk=RiskManager(settings, state_file=f"risk_{cfg.name}.json"),
             symbols=list(cfg.symbols),
+            evidence=Evidence.load(
+                f"evidence_{cfg.name}.json",
+                fingerprint(settings, strategy_name),
+                settings.evidence_min_trades, settings.evidence_alpha),
         ))
     return sessions

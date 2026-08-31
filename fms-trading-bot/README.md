@@ -411,6 +411,39 @@ real trend built in it flags breakout, trend-following and momentum on
 Judge on profit factor. A win rate is chosen by where you put the stop —
 `winrate.py` will engineer any figure you name and show you what it costs.
 
+## The bot keeps score on itself, and stops when it is losing
+
+This is the most important safety feature in the project, and it exists
+because of what the live account did: over **139 real trades it won 21.6%
+against a 42.9% chance rate — z = -5.07, a one-in-two-million result — and
+lost $46.28.** The evidence that it was losing was conclusive by trade 30.
+Nothing was watching, so it kept going for another 109.
+
+`fmsbot/evidence.py` now watches. It records every closed trade and asks
+one question of the running total: *could a strategy with no edge at all
+have produced this?*
+
+- **Losing beyond chance** → trading halts, and Telegram says why.
+  Replayed against that real 139-trade record, the halt fires at trade 30
+  and the loss stops at **-$10.55 instead of -$48.66**.
+- **Never proved anything** → real-money accounts are refused entirely.
+  Demo is where a configuration earns the right to trade money.
+  (`LIVE_REQUIRES_EVIDENCE=false` overrides this, deliberately.)
+- **Winning beyond chance** → it says so, and calls it permission to keep
+  testing rather than permission to add money.
+
+Check it any time from your phone with `/evidence`, and `/evidence reset`
+after you change something real. The record is keyed to a fingerprint of
+the settings that produced it, so changing the strategy, timeframe or
+exits starts the scoring again by itself — results from a different
+configuration are not evidence about this one.
+
+The threshold is p < 0.01, not the usual 0.05, because the test runs after
+every single trade and repeated looks at growing data find "significance"
+by chance far more often than one look does. Verified against 300
+simulated zero-edge records: 1.7% were misjudged, inside the 1% alpha plus
+sampling error, and a genuine edge is still recognised.
+
 ## One size does not fit gold, Bitcoin and EURUSD
 
 The live account's own record made this unavoidable: metals were 8% of the

@@ -274,6 +274,15 @@ class Settings:
     # market regime is clearly against the strategy rather than keep paying
     # to find out. 0 disables.
     max_consecutive_losses: int = 3
+    #: Stop trading when the record shows the configuration losing beyond
+    #: chance. The bot lost $46 over 139 trades while the evidence that it
+    #: was losing had been conclusive for a hundred of them.
+    halt_on_failed_evidence: bool = True
+    #: Refuse to open trades on a REAL account until a record proves the
+    #: configuration profitable. Demo is where a strategy earns that.
+    live_requires_evidence: bool = True
+    evidence_min_trades: int = 30
+    evidence_alpha: float = 0.01
     # How long the pause lasts before trading may resume.
     loss_pause_minutes: int = 60
     # Count trades over a rolling window rather than a calendar day, so a
@@ -462,6 +471,10 @@ class Settings:
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
             max_consecutive_losses=_i("MAX_CONSECUTIVE_LOSSES", 3),
+            halt_on_failed_evidence=_b("HALT_ON_FAILED_EVIDENCE", True),
+            live_requires_evidence=_b("LIVE_REQUIRES_EVIDENCE", True),
+            evidence_min_trades=_i("EVIDENCE_MIN_TRADES", 30),
+            evidence_alpha=_f("EVIDENCE_ALPHA", 0.01),
             loss_pause_minutes=_i("LOSS_PAUSE_MINUTES", 60),
             rolling_trade_window_hours=_i("ROLLING_TRADE_WINDOW_HOURS", 24),
             breakeven_at_money=_f("BREAKEVEN_AT_MONEY", 0.0),

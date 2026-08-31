@@ -15,6 +15,7 @@ from dataclasses import replace
 from typing import Optional
 
 from .broker.base import BrokerError
+from . import evidence
 from .config import Settings
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
 from .strategy import EmaCrossStrategy
@@ -61,8 +62,9 @@ def sizing_label(settings) -> str:
 class TradingBot:
     def __init__(self, settings: Settings, sessions: Optional[list[BrokerSession]] = None):
         self.s = settings
-        self.sessions = sessions if sessions is not None else build_sessions(settings)
         self.strategy = EmaCrossStrategy(settings)
+        self.sessions = (sessions if sessions is not None
+                         else build_sessions(settings, "ema_cross"))
         self.remote = TelegramRemote(
             settings.tg_token, settings.tg_password,
             settings.tg_state_file, self._on_command)
@@ -255,6 +257,13 @@ class TradingBot:
         all_pos = broker.positions()
         # broker may report its own spelling (EURUSDm vs a config typo EURUSDM)
         sym_pos = [p for p in all_pos if p.symbol.lower() == symbol.lower()]
+        blocked = self._evidence_blocks(session)
+        if blocked:
+            log.info("[%s] %s signal %s blocked: %s",
+                     session.name, symbol, signal.side, blocked)
+            session.last_block = f"{symbol} {signal.side} blocked — {blocked}"
+            return
+
         ok, reason = risk.can_enter(symbol, balance, equity, len(all_pos), len(sym_pos))
         if not ok:
             log.info("[%s] %s signal %s blocked: %s",
@@ -492,8 +501,68 @@ class TradingBot:
             pause_msg = session.risk.record_result(pnl)
             if pause_msg:
                 self.remote.broadcast(f"⏸ [{session.name}] {pause_msg}")
+            if session.evidence:
+                session.evidence.record(pnl)
+                self._announce_verdict(session)
         session.known_tickets |= current
         self._protect_profits(session, positions)
+
+    def _announce_verdict(self, session: BrokerSession) -> None:
+        """Say it once when the record reaches a verdict, not every loop."""
+        ev = session.evidence
+        if ev is None:
+            return
+        verdict = ev.verdict()
+        if verdict == ev.announced or verdict == evidence.PROVING:
+            return
+        ev.announced = verdict
+        ev.save()
+        if verdict == evidence.FAILED:
+            log.warning("[%s] evidence FAILED after %d trades: net %.2f, "
+                        "profit factor %.2f, z %.2f",
+                        session.name, ev.count, ev.net, ev.profit_factor, ev.z)
+            self.remote.broadcast(
+                f"🛑 [{session.name}] STOPPED — the record says this loses.\n\n"
+                f"{ev.explain()}\n\n"
+                f"Trading more will not change the answer, only the amount. "
+                f"Change something real — /symbols, the timeframe, the "
+                f"strategy — then /evidence reset to score the new "
+                f"configuration from zero.")
+        else:
+            self.remote.broadcast(
+                f"✅ [{session.name}] the record now beats chance.\n\n"
+                f"{ev.explain()}\n\n"
+                f"This is permission to keep testing, not to add money.")
+
+    def _evidence_blocks(self, session: BrokerSession) -> Optional[str]:
+        """Why this account must not open a trade right now, if it must not.
+
+        Two separate gates. One stops a configuration the record has already
+        convicted; the other stops real money being risked on a
+        configuration that has never proved anything.
+        """
+        ev = session.evidence
+        if ev is None:
+            return None
+        verdict = ev.verdict()
+        if self.s.halt_on_failed_evidence and verdict == evidence.FAILED:
+            return (f"the record over {ev.count} trades says this configuration "
+                    f"loses (profit factor {ev.profit_factor:.2f}, z {ev.z:+.2f}). "
+                    f"Change something, then /evidence reset")
+        if not self.s.live_requires_evidence or verdict == evidence.PASSED:
+            return None
+        try:
+            demo = session.broker.is_demo()
+        except BrokerError:
+            demo = None
+        if demo:
+            return None
+        # None means the broker would not say. Real money is the assumption
+        # that costs least when wrong.
+        which = "a real account" if demo is False else "an account of unknown type"
+        return (f"this is {which} and the configuration has not proved itself "
+                f"({ev.count}/{ev.min_trades} trades). Run it on demo first, or "
+                f"set LIVE_REQUIRES_EVIDENCE=false to override")
 
     def _realised_pnl(self, session: BrokerSession, ticket: int) -> Optional[float]:
         """Profit of a just-closed position, from the broker's own history."""
@@ -676,10 +745,31 @@ class TradingBot:
             log.info("Auto-trading PAUSED from phone.")
             return "⏸ Auto-trading OFF (open positions untouched)."
 
+        if command == "evidence":
+            if args and args[0].lower() == "reset":
+                for s in sessions:
+                    if s.evidence:
+                        s.evidence.reset()
+                return ("Record cleared. Scoring starts from the next closed "
+                        "trade.\n\nThis only makes sense if you changed "
+                        "something real. Clearing it to keep trading the same "
+                        "losing settings just repeats the test you already "
+                        "failed.")
+            out = []
+            for s in sessions:
+                out.append(f"— {s.name} —")
+                out.append(s.evidence.explain() if s.evidence
+                           else "  no record kept")
+            return "\n".join(out)
+
         if command == "why":
             lines = []
             if self.paused:
                 lines.append("⏸ THE BOT IS PAUSED — send /resume.\n")
+            for s in sessions:
+                blocked = self._evidence_blocks(s)
+                if blocked:
+                    lines.append(f"🛑 {s.name}: {blocked}\n")
             for s in sessions:
                 lines.append(f"— {s.name} —")
                 if not s.connected:
