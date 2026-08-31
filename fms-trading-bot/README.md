@@ -599,6 +599,14 @@ Mostly one position per symbol — raise MAX_POSITIONS_PER_SYMBOL, or add
 symbols — the interval cannot help while every symbol is occupied.
 ```
 
+Two refusals both mention the spread and need opposite responses, so they
+carry different labels: a **spread spike** is abnormal widening, temporary
+and worth waiting out, while a **stop too tight for the spread** is a
+permanent property of the settings that will refuse every trade until the
+exits change. Reporting the second as the first sends you to wait out a
+quiet market while your configuration is broken, which is worse than
+saying nothing — so both readings have their own regression test.
+
 `/pace` shows the same thing on demand. A bot quietly missing its target
 while you adjust the wrong setting is worse than one that tells you which
 gate is closed.

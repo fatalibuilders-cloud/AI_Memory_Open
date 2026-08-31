@@ -24,7 +24,16 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 #: Block reasons, grouped into the thing you would actually change.
+#: Order matters: the first match wins, so the specific readings of a
+#: refusal must come before the general ones. Two quite different things
+#: both mention the spread, and they need opposite responses -- an
+#: abnormal widening is temporary and worth waiting out, while a stop too
+#: tight to clear the spread is a permanent property of the settings and
+#: will block every trade until they change.
 CATEGORIES = (
+    ("abnormal conditions", "spread spike"),
+    ("stop (limit", "stop too tight for the spread"),
+    ("cost of the trade", "target too small for the spread"),
     ("cooldown", "cooldown"),
     ("already positioned", "one position per symbol"),
     ("max open positions", "open-position limit"),
@@ -33,10 +42,9 @@ CATEGORIES = (
     ("daily loss limit", "daily loss limit"),
     ("paused after", "loss-streak pause"),
     ("consecutive", "loss-streak pause"),
-    ("spread", "spread filter"),
-    ("below", "reward-vs-cost filter"),
     ("record over", "evidence halt"),
     ("has not proved", "evidence gate"),
+    ("spread", "spread filter"),
 )
 
 
@@ -118,6 +126,11 @@ class Pace:
             for label, count in worst:
                 lines.append(f"  {count} x {label}")
             top = worst[0][0]
+            if top in ("stop too tight for the spread",
+                       "target too small for the spread"):
+                lines.append("This is a SETTINGS problem, not a quiet market: "
+                             "it will refuse every trade until the exits "
+                             "change.")
             fix = {
                 "one position per symbol":
                     "raise MAX_POSITIONS_PER_SYMBOL, or add symbols — the "
@@ -128,11 +141,20 @@ class Pace:
                     "lower COOLDOWN_SECONDS",
                 "trade cap":
                     "raise MAX_TRADES_PER_DAY",
+                "spread spike":
+                    "spreads have widened abnormally — news or thin "
+                    "liquidity. This is temporary and worth waiting out",
+                "stop too tight for the spread":
+                    "the stop is too close to be worth taking against this "
+                    "spread. This will block EVERY trade until the exits "
+                    "change: run tune_symbols.py --apply, which sizes them "
+                    "so they clear the spread by construction",
+                "target too small for the spread":
+                    "the target does not clear the round trip, so the trade "
+                    "could not pay even when right: run tune_symbols.py "
+                    "--apply",
                 "spread filter":
-                    "spreads are wide right now; this one is protecting you",
-                "reward-vs-cost filter":
-                    "targets are too small to clear the spread — run "
-                    "tune_symbols.py",
+                    "a spread check refused it",
                 "daily loss limit":
                     "the day's loss limit is doing its job; it is not a "
                     "throughput problem",
