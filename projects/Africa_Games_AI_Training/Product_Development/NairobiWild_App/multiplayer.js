@@ -108,6 +108,14 @@
       this._pending = setTimeout(push, PRESENCE_MS - since);
     };
 
+    // A player who is thinking sends nothing, and would look stale — and
+    // then be treated as having quit. A slow heartbeat keeps them present.
+    this._beat = setInterval(() => this._push(), Math.floor(STALE_MS / 3));
+    // Under Node (the test suite) a bare interval would keep the process
+    // alive forever; in a browser setInterval returns a number and this
+    // is simply skipped.
+    if (this._beat && typeof this._beat.unref === 'function') this._beat.unref();
+
     this._subs.push(this.room.onPeers((change) => {
       const mine = change.peers.find((p) => p.isMe && p.sameTab);
       if (mine) this.me = mine.peer;
@@ -157,6 +165,7 @@
   RoomAdapter.prototype.dispose = function () {
     this._subs.forEach((u) => { try { u(); } catch (e) {} });
     this._subs = [];
+    clearInterval(this._beat);
     clearTimeout(this._pending);
     try { this.room.presence({ st: null, seed: null, vs: null, score: null, moves: null, done: null }); } catch (e) {}
   };

@@ -6,3 +6,4 @@
 | `session-summary/2026-08-30--pivot-to-match3-market-day.md` | 2026-08-30 | pivot, match-3, candy-crush, market-day, flagship, relax-mode, lives, generations, artifact, restructure |
 | `session-summary/2026-08-30--nairobi-wild-multiplayer-music.md` | 2026-08-30 | nairobi, kenya, wildlife, animals, multiplayer, online, duel, room, presence, benga, music, culture, rename |
 | `session-summary/2026-08-30--animal-calls-african-cities-revenue.md` | 2026-08-30 | animal sounds, voices, synthesis, african cities, 51 levels, campaign, monetization, admob, m-pesa, revenue |
+| `session-summary/2026-08-30--animal-voices-actually-audible.md` | 2026-08-30 | animal calls, voices, formants, harmonics, phone speakers, audio verification, ducking, heartbeat, bugfix |

@@ -2,81 +2,97 @@
  * Nairobi Wild — animal voices
  *
  * When a herd matches, that animal calls. Every call is synthesised at
- * runtime from oscillators and filtered noise — there is still not one
- * audio file in the build.
+ * runtime; there is still not one audio file in the build.
  *
- * The design is split in two so it can be tested:
- *   voiceSpec(colour)  — a pure DATA description of the call
+ * WHY THIS IS BUILT THE WAY IT IS
+ * A single oscillator swept through a low-pass does not sound like an
+ * animal — it sounds like a buzz. Two things fix that, and both are here:
+ *
+ *  1. HARMONIC STACK. Real calls are rich. Each voice sums several
+ *     partials (multiples of the fundamental), so the ear hears a voice
+ *     rather than a test tone.
+ *  2. FORMANTS. An animal's throat and mouth resonate at fixed
+ *     frequencies regardless of pitch. A parallel bank of narrow
+ *     band-passes reproduces that, and it is what makes a roar read as a
+ *     roar rather than a low hum.
+ *
+ * PHONE SPEAKERS. A phone cannot reproduce much below ~300 Hz. A lion's
+ * real fundamental is far below that, so a "accurate" 55 Hz roar is
+ * silent on the device most players will use. Every voice here therefore
+ * carries its character in partials and formants inside roughly
+ * 300–3000 Hz, where a phone speaker actually works, while keeping the
+ * fundamental honest. A test asserts each call has audible energy in
+ * that band.
+ *
+ * The design is split so it can be tested without audio hardware:
+ *   voiceSpec(colour)   — pure DATA describing the call
  *   AnimalVoices.play() — turns a spec into WebAudio nodes
- *
- * A spec is a short sequence of pulses. Each pulse sweeps a tone from f0
- * to f1 while a noise bed and a moving filter shape the timbre:
- *
- *   Simba (lion)       a low sawtooth falling 150→55 Hz with a 24 Hz
- *                      rumble — the tremolo is what makes a roar read as
- *                      a roar rather than a groan.
- *   Tembo (elephant)   a bright rising trumpet, band-passed so it blares.
- *   Punda Milia (zebra) two short barks; a zebra's call is a double bark,
- *                      not a horse's whinny.
- *   Twiga (giraffe)    a 92 Hz hum. Giraffes really do hum at around this
- *                      pitch at night — it is the one call they have.
- *   Kifaru (rhino)     a noise-dominant snort with almost no pitch.
- *   Chui (leopard)     the sawing call: five rasping pulses in a row.
- *
- * Calls are kept short and quiet on purpose. They fire on every match, so
- * anything long or loud would be unbearable inside a minute.
  */
 (function (global) {
   'use strict';
 
+  /*
+   * partials: multiples of the fundamental — [multiple, gain, wave]
+   * formants: fixed throat resonances — {freq, q, gain}
+   * am:       amplitude roughness; a growl is a fast, deep tremolo
+   * noise:    breath, rasp, snort — a band-passed noise bed that sweeps
+   */
   const SPECS = [
-    { // 0 — Simba, lion
-      name: 'Simba', gain: 0.5, pulses: 1, pulseDur: 0.85, gap: 0,
-      type: 'sawtooth', f0: 150, f1: 55,
-      noise: 0.34, noiseFilter: 'lowpass', noiseFreq: 780,
-      filterFrom: 900, filterTo: 260,
-      tremoloRate: 24, tremoloDepth: 0.34,
-      attack: 0.05,
+    { // 0 — Simba, the lion: a long roar with a heavy growl
+      name: 'Simba', gain: 0.55, pulses: 1, pulseDur: 1.0, gap: 0,
+      f0: 200, f1: 75,
+      partials: [[1, 1.0, 'sawtooth'], [2, 0.55, 'sawtooth'], [3, 0.3, 'triangle'], [4, 0.15, 'sine']],
+      formants: [{ freq: 420, q: 5, gain: 1.0 }, { freq: 900, q: 6, gain: 0.65 }, { freq: 1850, q: 8, gain: 0.3 }],
+      noise: { amount: 0.28, from: 950, to: 420, q: 1.1 },
+      am: { rate: 28, depth: 0.45 },
+      attack: 0.06,
     },
-    { // 1 — Tembo, elephant
-      name: 'Tembo', gain: 0.34, pulses: 1, pulseDur: 0.62, gap: 0,
-      type: 'sawtooth', f0: 300, f1: 660,
-      noise: 0.1, noiseFilter: 'bandpass', noiseFreq: 1500,
-      filterFrom: 700, filterTo: 2200,
-      tremoloRate: 0, tremoloDepth: 0,
-      attack: 0.03,
+    { // 1 — Tembo, the elephant: a rising brass trumpet
+      name: 'Tembo', gain: 0.42, pulses: 1, pulseDur: 0.72, gap: 0,
+      f0: 380, f1: 800,
+      partials: [[1, 1.0, 'sawtooth'], [2, 0.6, 'sawtooth'], [3, 0.35, 'square'], [4, 0.16, 'sawtooth']],
+      formants: [{ freq: 1150, q: 7, gain: 1.0 }, { freq: 2100, q: 8, gain: 0.55 }],
+      noise: { amount: 0.12, from: 1800, to: 3000, q: 1.4 },
+      am: { rate: 0, depth: 0 },
+      attack: 0.02,
     },
-    { // 2 — Punda Milia, zebra
-      name: 'Punda Milia', gain: 0.32, pulses: 2, pulseDur: 0.12, gap: 0.1,
-      type: 'square', f0: 430, f1: 170,
-      noise: 0.4, noiseFilter: 'bandpass', noiseFreq: 1100,
-      filterFrom: 1800, filterTo: 500,
-      tremoloRate: 0, tremoloDepth: 0,
-      attack: 0.005,
+    { // 2 — Punda Milia, the zebra: two sharp barks, not a whinny
+      name: 'Punda Milia', gain: 0.46, pulses: 2, pulseDur: 0.14, gap: 0.09,
+      f0: 520, f1: 200,
+      partials: [[1, 1.0, 'sawtooth'], [2, 0.5, 'square']],
+      formants: [{ freq: 720, q: 4, gain: 1.0 }, { freq: 1600, q: 6, gain: 0.55 }],
+      noise: { amount: 0.5, from: 1800, to: 700, q: 1.0 },
+      am: { rate: 0, depth: 0 },
+      attack: 0.004,
     },
-    { // 3 — Twiga, giraffe
-      name: 'Twiga', gain: 0.36, pulses: 1, pulseDur: 0.7, gap: 0,
-      type: 'sine', f0: 92, f1: 88,
-      noise: 0.05, noiseFilter: 'lowpass', noiseFreq: 300,
-      filterFrom: 260, filterTo: 190,
-      tremoloRate: 6, tremoloDepth: 0.16,
-      attack: 0.09,
+    { // 3 — Twiga, the giraffe: the 92 Hz night hum, voiced so a phone
+      //     can carry it — the fundamental stays honest, the harmonics
+      //     do the work.
+      name: 'Twiga', gain: 0.5, pulses: 1, pulseDur: 0.8, gap: 0,
+      f0: 92, f1: 88,
+      partials: [[1, 0.9, 'sine'], [2, 0.8, 'sine'], [3, 0.6, 'triangle'], [5, 0.3, 'sine'], [7, 0.15, 'sine']],
+      formants: [{ freq: 300, q: 4, gain: 1.0 }, { freq: 580, q: 5, gain: 0.6 }, { freq: 1000, q: 6, gain: 0.25 }],
+      noise: { amount: 0.07, from: 500, to: 350, q: 1.2 },
+      am: { rate: 7, depth: 0.22 },
+      attack: 0.1,
     },
-    { // 4 — Kifaru, rhino
-      name: 'Kifaru', gain: 0.4, pulses: 1, pulseDur: 0.26, gap: 0,
-      type: 'triangle', f0: 105, f1: 70,
-      noise: 0.8, noiseFilter: 'lowpass', noiseFreq: 620,
-      filterFrom: 700, filterTo: 300,
-      tremoloRate: 0, tremoloDepth: 0,
-      attack: 0.008,
+    { // 4 — Kifaru, the rhino: a double snort, mostly breath
+      name: 'Kifaru', gain: 0.5, pulses: 2, pulseDur: 0.16, gap: 0.06,
+      f0: 170, f1: 95,
+      partials: [[1, 0.8, 'sawtooth'], [2, 0.45, 'sawtooth'], [3, 0.2, 'triangle']],
+      formants: [{ freq: 430, q: 3, gain: 1.0 }, { freq: 980, q: 4, gain: 0.65 }],
+      noise: { amount: 0.85, from: 1300, to: 380, q: 1.2 },
+      am: { rate: 0, depth: 0 },
+      attack: 0.006,
     },
-    { // 5 — Chui, leopard
-      name: 'Chui', gain: 0.3, pulses: 5, pulseDur: 0.1, gap: 0.075,
-      type: 'sawtooth', f0: 118, f1: 88,
-      noise: 0.55, noiseFilter: 'bandpass', noiseFreq: 900,
-      filterFrom: 800, filterTo: 340,
-      tremoloRate: 0, tremoloDepth: 0,
-      attack: 0.01,
+    { // 5 — Chui, the leopard: the sawing call, five rasping strokes
+      name: 'Chui', gain: 0.44, pulses: 5, pulseDur: 0.11, gap: 0.07,
+      f0: 210, f1: 145,
+      partials: [[1, 1.0, 'sawtooth'], [2, 0.55, 'sawtooth'], [3, 0.28, 'sawtooth']],
+      formants: [{ freq: 620, q: 5, gain: 1.0 }, { freq: 1300, q: 6, gain: 0.55 }],
+      noise: { amount: 0.6, from: 1500, to: 520, q: 1.1 },
+      am: { rate: 45, depth: 0.5 },
+      attack: 0.012,
     },
   ];
 
@@ -84,7 +100,6 @@
     return SPECS[((color % SPECS.length) + SPECS.length) % SPECS.length];
   }
 
-  /* When each pulse of a call starts, relative to the call's own start. */
   function pulseTimes(spec) {
     const out = [];
     for (let i = 0; i < spec.pulses; i += 1) out.push(i * (spec.pulseDur + spec.gap));
@@ -94,6 +109,17 @@
   function totalDuration(spec) {
     const t = pulseTimes(spec);
     return t[t.length - 1] + spec.pulseDur;
+  }
+
+  /*
+   * The highest frequency the voice puts real energy into — the check
+   * that decides whether a phone speaker can carry the call at all.
+   * Formants resonate regardless of pitch, so they count too.
+   */
+  function topAudibleFreq(spec) {
+    const highestPartial = Math.max(...spec.partials.map((p) => p[0])) * Math.max(spec.f0, spec.f1);
+    const highestFormant = Math.max(...spec.formants.map((f) => f.freq));
+    return Math.max(highestPartial, highestFormant);
   }
 
   function makeNoiseBuffer(ctx) {
@@ -108,9 +134,10 @@
     this.ctx = null;
     this.master = null;
     this.noise = null;
-    this.volume = 0.9;
+    this.volume = 1.0;
     this.enabled = true;
-    this._last = 0;
+    this._last = -1;          // so the very first call is never suppressed
+    this.onPlay = null;       // the game uses this to duck the music
   }
 
   AnimalVoices.prototype.attach = function (ctx, destination) {
@@ -126,53 +153,77 @@
     const ctx = this.ctx;
     const bend = Math.pow(2, (semitones || 0) / 12);
     const dur = spec.pulseDur;
+    const f0 = spec.f0 * bend;
+    const f1 = Math.max(20, spec.f1 * bend);
 
+    // One envelope for the whole pulse.
     const amp = ctx.createGain();
     amp.gain.setValueAtTime(0.0001, t);
     amp.gain.exponentialRampToValueAtTime(spec.gain, t + spec.attack);
     amp.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-
-    const shaper = ctx.createBiquadFilter();
-    shaper.type = 'lowpass';
-    shaper.frequency.setValueAtTime(spec.filterFrom, t);
-    shaper.frequency.exponentialRampToValueAtTime(Math.max(60, spec.filterTo), t + dur);
-    shaper.Q.value = 3;
-    shaper.connect(amp);
     amp.connect(this.master);
 
-    // Tone: the pitch sweep is the call's shape.
-    const osc = ctx.createOscillator();
-    osc.type = spec.type;
-    osc.frequency.setValueAtTime(spec.f0 * bend, t);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(20, spec.f1 * bend), t + dur);
-    osc.connect(shaper);
-    osc.start(t);
-    osc.stop(t + dur + 0.02);
-
-    // A roar is a rumble: amplitude modulation at ~24 Hz.
-    if (spec.tremoloDepth > 0) {
+    // A growl is amplitude roughness, not pitch — modulate the envelope.
+    if (spec.am && spec.am.depth > 0) {
       const lfo = ctx.createOscillator();
       const lfoGain = ctx.createGain();
-      lfo.frequency.value = spec.tremoloRate;
-      lfoGain.gain.value = spec.tremoloDepth * spec.gain;
-      lfo.connect(lfoGain).connect(amp.gain);
+      lfo.type = 'sine';
+      lfo.frequency.value = spec.am.rate;
+      lfoGain.gain.value = spec.am.depth * spec.gain;
+      lfo.connect(lfoGain);
+      lfoGain.connect(amp.gain);
       lfo.start(t);
       lfo.stop(t + dur + 0.02);
     }
 
-    // Noise bed: breath, rasp and snort live here.
-    if (spec.noise > 0) {
+    // Parallel formant bank — the throat. This is what gives the call a body.
+    const mix = ctx.createGain();
+    mix.gain.value = 1;
+    spec.formants.forEach((f) => {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f.freq;
+      bp.Q.value = f.q;
+      const g = ctx.createGain();
+      g.gain.value = f.gain;
+      mix.connect(bp);
+      bp.connect(g);
+      g.connect(amp);
+    });
+    // A little dry signal keeps the attack crisp.
+    const dry = ctx.createGain();
+    dry.gain.value = 0.35;
+    mix.connect(dry);
+    dry.connect(amp);
+
+    // Harmonic stack — the voice.
+    spec.partials.forEach(([mult, gain, wave]) => {
+      const o = ctx.createOscillator();
+      o.type = wave;
+      o.frequency.setValueAtTime(f0 * mult, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, f1 * mult), t + dur);
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      o.connect(g);
+      g.connect(mix);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    });
+
+    // Breath / rasp / snort.
+    if (spec.noise && spec.noise.amount > 0) {
       const src = ctx.createBufferSource();
       src.buffer = this.noise;
       const nf = ctx.createBiquadFilter();
-      nf.type = spec.noiseFilter;
-      nf.frequency.value = spec.noiseFreq * bend;
-      nf.Q.value = 1.1;
+      nf.type = 'bandpass';
+      nf.frequency.setValueAtTime(spec.noise.from, t);
+      nf.frequency.exponentialRampToValueAtTime(Math.max(60, spec.noise.to), t + dur);
+      nf.Q.value = spec.noise.q;
       const ng = ctx.createGain();
-      ng.gain.setValueAtTime(0.0001, t);
-      ng.gain.exponentialRampToValueAtTime(spec.noise * spec.gain, t + spec.attack);
-      ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      src.connect(nf).connect(ng).connect(this.master);
+      ng.gain.value = spec.noise.amount;
+      src.connect(nf);
+      nf.connect(ng);
+      ng.connect(amp);
       src.start(t);
       src.stop(t + dur + 0.02);
     }
@@ -180,14 +231,14 @@
 
   /*
    * Sound the call for a matched animal.
-   * opts.combo lifts the pitch slightly as a cascade builds, so a long
-   * chain rises instead of repeating flat.
+   * opts.combo lifts the pitch as a cascade builds, so a long chain rises
+   * instead of repeating flat.
    */
   AnimalVoices.prototype.play = function (color, opts) {
-    if (!this.enabled || !this.ctx || !this.master) return;
+    if (!this.enabled || !this.ctx || !this.master) return false;
     const now = this.ctx.currentTime;
     // Never stack more than a few calls a second, however fast the cascade.
-    if (now - this._last < 0.07) return;
+    if (this._last >= 0 && now - this._last < 0.07) return false;
     this._last = now;
 
     const spec = voiceSpec(color);
@@ -195,7 +246,11 @@
     const semis = Math.min(6, (combo - 1) * 1.5) + (Math.random() * 1.2 - 0.6);
     try {
       pulseTimes(spec).forEach((offset) => this._pulse(spec, now + 0.01 + offset, semis));
-    } catch (e) { /* audio can fail on locked-down devices; play on regardless */ }
+      if (this.onPlay) this.onPlay(spec, totalDuration(spec));
+      return true;
+    } catch (e) {
+      return false; // audio can fail on locked-down devices; play on regardless
+    }
   };
 
   AnimalVoices.prototype.setVolume = function (v) {
@@ -203,7 +258,7 @@
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
   };
 
-  const Sounds = { SPECS, voiceSpec, pulseTimes, totalDuration, AnimalVoices };
+  const Sounds = { SPECS, voiceSpec, pulseTimes, totalDuration, topAudibleFreq, AnimalVoices };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = Sounds;
   else global.AnimalSounds = Sounds;

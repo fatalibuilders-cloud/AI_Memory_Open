@@ -213,6 +213,13 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 .shopitem .info { flex:1; text-align:left; }
 .shopitem .info b { display:block; font-size:14.5px; }
 .shopitem .info small { color:var(--ink-dim); font-size:12px; }
+.voices { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.voice { border-radius:13px; padding:9px 4px; background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.14); display:flex; flex-direction:column; align-items:center; gap:2px; }
+.voice .g { font-size:24px; line-height:1.1; }
+.voice .n { font-size:11.5px; font-weight:bold; }
+.voice .c { font-size:10px; color:var(--ink-dim); }
+.voice.calling { border-color:var(--amber); box-shadow:0 0 0 2px var(--amber); transform:scale(1.06); }
 #toast { position:absolute; left:50%; bottom:20px; transform:translate(-50%,90px); background:var(--kenya);
   color:#fff; font-weight:bold; padding:10px 18px; border-radius:999px; box-shadow:var(--shadow);
   transition:transform .3s; z-index:40; max-width:88vw; text-align:center; }
@@ -452,6 +459,8 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
     <li>Make an <b>L or T</b> shape for a stampede that clears everything around it.</li>
     <li>Reach the target before the moves run out.</li>
   </ol>
+  <p class="sub" style="text-align:center;margin:14px 0 6px">Tap an animal to hear it call</p>
+  <div id="voiceLegend" class="voices"></div>
   <div class="col" style="margin-top:14px"><button class="btn ghost" id="howClose">Got it</button></div>
 </div></div>
 
@@ -561,7 +570,6 @@ const buzz = (p) => { if (navigator.vibrate) try { navigator.vibrate(p); } catch
 /* When a herd matches, that animal calls — see sounds.js. */
 const voices = new SND.AnimalVoices();
 function callOf(phase, combo) {
-  if (!save.sound) return;
   const colors = (phase.colors || []).filter((c) => c !== null && c !== undefined);
   if (colors.length === 0) return;
   // Sound whichever animal the match was mostly made of.
@@ -582,6 +590,8 @@ function armAudio() {
   try {
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     voices.attach(music.ctx || ac, (music.ctx || ac).destination);
+    // Dip the groove under each call, or the drums bury it.
+    voices.onPlay = (spec, dur) => music.duck(dur);
   } catch (e) {}
 }
 document.addEventListener('pointerdown', armAudio, { once: true });
@@ -603,6 +613,7 @@ function refreshChrome() {
   $('hStarMax').textContent = M.LEVELS.length * 3;
   $('shopCoins').textContent = save.coins;
   $('btnSound').textContent = save.sound ? '🔊 SFX' : '🔇 SFX';
+  voices.enabled = save.sound;
   $('btnMusic').textContent = save.music ? '🥁 Music' : '🔇 Music';
   $('ctHammer').textContent = save.hammers > 0 ? ('×' + save.hammers) : '50 🪙';
   $('ctShuffle').textContent = save.shuffles > 0 ? ('×' + save.shuffles) : '30 🪙';
@@ -1308,7 +1319,27 @@ $('btnRelax').onclick = () => { armAudio(); sfx.tap(); startRelax(); };
 $('btnDuel').onclick = () => { armAudio(); sfx.tap(); openLobby(); };
 $('btnShop').onclick = () => { refreshChrome(); renderShop(); $('ovShop').classList.add('active'); };
 $('shClose').onclick = () => $('ovShop').classList.remove('active');
-$('btnHow').onclick = () => $('ovHow').classList.add('active');
+const CALL_NAMES = ['roar', 'trumpet', 'bark', 'hum', 'snort', 'rasp'];
+function renderVoiceLegend() {
+  const wrap = $('voiceLegend');
+  if (wrap.childElementCount) return;
+  ANIMALS.forEach((a, i) => {
+    const b = document.createElement('button');
+    b.className = 'voice';
+    b.innerHTML = `<span class="g">${a.g}</span><span class="n"></span><span class="c"></span>`;
+    b.querySelector('.n').textContent = a.sw;
+    b.querySelector('.c').textContent = CALL_NAMES[i];
+    b.onclick = () => {
+      armAudio();
+      const spoke = voices.play(i, { combo: 1 });
+      if (!spoke) { toast('Turn SFX on to hear the calls'); return; }
+      b.classList.add('calling');
+      setTimeout(() => b.classList.remove('calling'), 900);
+    };
+    wrap.appendChild(b);
+  });
+}
+$('btnHow').onclick = () => { renderVoiceLegend(); $('ovHow').classList.add('active'); };
 $('howClose').onclick = () => $('ovHow').classList.remove('active');
 $('btnSound').onclick = () => { save.sound = !save.sound; persist(); refreshChrome(); sfx.tap(); };
 $('btnMusic').onclick = () => {

@@ -241,6 +241,19 @@
     }
   };
 
+  /*
+   * Dip the groove so an animal call can be heard over it. Without this
+   * the drums and riff sit right on top of the calls and bury them.
+   */
+  Engine.prototype.duck = function (seconds) {
+    if (!this.playing || !this.master || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const hold = Math.min(1.2, Math.max(0.15, seconds || 0.4));
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setTargetAtTime(this.volume * 0.3, t, 0.02);
+    this.master.gain.setTargetAtTime(this.volume, t + hold, 0.18);
+  };
+
   /* A quick swell for a big cascade, then back down. */
   Engine.prototype.flourish = function () {
     if (!this.playing) return;

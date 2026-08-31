@@ -29,6 +29,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--pivot-to-match3-market-day.md` | 2026-08-30 | match-3, market-day, candy-crush, pivot, project rename, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--nairobi-wild-multiplayer-music.md` | 2026-08-30 | nairobi-wild, wildlife, multiplayer, online duels, afro music, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--animal-calls-african-cities-revenue.md` | 2026-08-30 | animal sounds, african cities, levels, revenue, monetization, games |
+| `projects/Africa_Games_AI_Training/session-summary/2026-08-30--animal-voices-actually-audible.md` | 2026-08-30 | animal voices, audio, bugfix, verification, games |
 
 ---
 

@@ -37,18 +37,30 @@ Colour index → animal, with the Swahili name the UI shows:
 Six distinct hues **and** six distinct silhouettes, so the board stays readable for colour-blind players — colour alone is never the only signal.
 
 ### Animal voices
-Matching a herd sounds **that animal**, not a beep. `sounds.js` splits into a pure data spec per species and a renderer that turns it into WebAudio nodes, so the calls are unit-testable:
+Matching a herd sounds **that animal**, not a beep. `sounds.js` splits into a pure data spec per species and a renderer that turns it into WebAudio nodes, so the calls are unit-testable.
+
+Two things make a synthesised call sound like an animal rather than a buzz, and both are in every voice:
+
+1. **A harmonic stack.** Real calls are rich, so each voice sums several partials (multiples of the fundamental) rather than using one oscillator.
+2. **Formants.** An animal's throat resonates at fixed frequencies regardless of pitch. A parallel bank of narrow band-passes reproduces that, and it is what gives a roar its body.
 
 | Animal | Call | How it is built |
 |---|---|---|
-| Simba | roar | sawtooth falling 150→55 Hz with a 24 Hz tremolo — the rumble is what makes it a roar rather than a groan |
-| Tembo | trumpet | bright rising sweep, band-passed so it blares |
-| Punda Milia | double bark | two short square pulses; a zebra barks, it does not whinny |
-| Twiga | hum | 92 Hz — giraffes really do hum at about this pitch at night |
-| Kifaru | snort | noise-dominant, almost no pitch |
-| Chui | sawing call | five rasping pulses in a row |
+| Simba | roar | 4 partials sweeping 200→75 Hz, formants at 420/900/1850 Hz, and a 28 Hz amplitude growl |
+| Tembo | trumpet | brass-like stack climbing 380→800 Hz, formants at 1150/2100 Hz |
+| Punda Milia | double bark | two short sharp pulses — a zebra barks, it does not whinny |
+| Twiga | hum | the real 92 Hz night hum, voiced with 7 partials so a phone can carry it |
+| Kifaru | snort | a double puff, 85% breath |
+| Chui | sawing call | five rasping strokes with a 45 Hz rasp |
 
-Calls are short (≤1s), quiet, rate-limited to one per 70 ms, and rise in pitch as a cascade builds. A test asserts each is audible, brief and distinct from the others.
+**Phone speakers set the design.** A phone reproduces almost nothing below ~300 Hz, so a "correct" 55 Hz lion roar is *silent* on the device most players use. Every voice therefore carries its character in partials and formants inside roughly 300–3000 Hz while keeping the fundamental honest. Measured by rendering each call offline and high-passing at 300 Hz, the share of energy a phone can actually reproduce is:
+
+| | Simba | Tembo | Punda Milia | Twiga | Kifaru | Chui |
+|---|---|---|---|---|---|---|
+| before | 55% | 79% | 82% | 28% | 37% | 59% |
+| **after** | **76%** | **94%** | **92%** | **59%** | **78%** | **81%** |
+
+Calls are short (≤1.1 s), rate-limited to one per 70 ms, and rise in pitch as a cascade builds. **The music ducks to 30% under each call** — without that the Benga groove sits on top of the calls and buries them. A tappable legend in *How to play* lets any player hear all six on demand.
 
 ### The campaign — one journey across Africa
 The 51 stages are **generated from a city table** (`CITIES`), so adding a city is one line and the difficulty curve stays consistent by construction. The route runs Nairobi → East Africa → the Horn → North Africa → West Africa → Central Africa → Southern Africa, ending in Cape Town, covering 40+ countries. Each stage carries its city, country and flag, and asks for the animal assigned to that place.
