@@ -452,6 +452,33 @@ fingerprint and the record starts scoring again from zero. That is
 deliberate — results from the old exits are not evidence about the new
 ones.
 
+### Trailing stops from PowerShell
+
+The bot trails continuously once `TRAIL_ATR_MULT` is set. `Trail-Stops.ps1`
+does the same job as a standalone tool — for positions opened by hand or
+by another EA, or just to watch the arithmetic on real numbers:
+
+```powershell
+.\Trail-Stops.ps1                                  # preview, sends nothing
+.\Trail-Stops.ps1 -Apply -Multiplier 1.5
+.\Trail-Stops.ps1 -Apply -Watch -IntervalSeconds 30
+```
+
+PowerShell cannot talk to MetaTrader 5 — its API is a Python package that
+speaks to the terminal over local IPC — so the script calls `bridge.py`,
+which exposes the bot's own broker layer as JSON (`positions`, `bars`,
+`info`, `modify`). Because it is the same layer, the script works against
+Exness, Deriv, Vantage, OANDA and Binance unchanged.
+
+`Get-ATR` there is Wilder's ATR and is checked against the Python the bot
+actually trades on: on the same 120 bars both return 2.7356467117,
+identical to the last digit. Peaks are persisted to `trail_peaks.json`
+between passes — a trailing stop that forgets the peak follows the trade
+back down.
+
+Stop the bot before running it. Two processes cannot share one MT5
+terminal, and both would be moving the same stops.
+
 ## The bot keeps score on itself, and stops when it is losing
 
 This is the most important safety feature in the project, and it exists
@@ -571,6 +598,8 @@ fms-trading-bot/
 ├── winrate.py             # engineer any win rate, and see its cost
 ├── tune_symbols.py        # per-instrument settings from real spreads
 ├── check_config.py        # validate .env before restarting
+├── bridge.py              # the broker as JSON, for other languages
+├── Trail-Stops.ps1        # ATR trailing stops from PowerShell
 └── fmsbot/
     ├── config.py          # settings
     ├── indicators.py      # EMA / RSI / ATR (pure python)
