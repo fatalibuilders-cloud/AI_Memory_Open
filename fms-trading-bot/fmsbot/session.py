@@ -16,6 +16,7 @@ from typing import Optional
 from .broker.base import Broker, BrokerError
 from .config import BrokerConfig, Settings
 from .evidence import Evidence, fingerprint
+from .pace import Pace
 from .risk import RiskManager
 
 log = logging.getLogger("fmsbot.session")
@@ -41,6 +42,8 @@ class BrokerSession:
     symbols: list[str]
     #: the running record of what this configuration actually did
     evidence: Optional[Evidence] = None
+    #: trade-rate control, and the diagnosis when the rate cannot be met
+    pace: Optional[Pace] = None
     connected: bool = False
     last_bar: dict[str, int] = field(default_factory=dict)
     symbol_warned: dict[str, float] = field(default_factory=dict)
@@ -144,5 +147,7 @@ def build_sessions(settings: Settings,
                 f"evidence_{cfg.name}.json",
                 fingerprint(settings, strategy_name),
                 settings.evidence_min_trades, settings.evidence_alpha),
+            pace=Pace(target_per_hour=settings.min_trades_per_hour,
+                      floor_seconds=settings.entry_interval_floor_seconds),
         ))
     return sessions

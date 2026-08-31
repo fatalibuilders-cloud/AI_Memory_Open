@@ -379,6 +379,13 @@ class Settings:
     max_open_positions: int = 3
     max_positions_per_symbol: int = 1
     max_trades_per_day: int = 10
+    #: Hold at least this many entries an hour: when the rate falls behind,
+    #: the entry interval shortens to catch up. 0 leaves the pace alone.
+    #: It cannot manufacture a trade the gates refuse — it reports which
+    #: gate is throttling instead.
+    min_trades_per_hour: float = 0.0
+    #: The interval never goes below this, however far behind the pace is.
+    entry_interval_floor_seconds: int = 5
     daily_loss_limit_pct: float = 3.0 # stop for the day at -3% of day-start balance
     cooldown_seconds: int = 300       # per-symbol pause between entries
     start_paused: bool = True         # trade only after /resume from your phone
@@ -504,6 +511,8 @@ class Settings:
             max_open_positions=_i("MAX_OPEN_POSITIONS", 3),
             max_positions_per_symbol=_i("MAX_POSITIONS_PER_SYMBOL", 1),
             max_trades_per_day=_i("MAX_TRADES_PER_DAY", 10),
+            min_trades_per_hour=_f("MIN_TRADES_PER_HOUR", 0.0),
+            entry_interval_floor_seconds=_i("ENTRY_INTERVAL_FLOOR_SECONDS", 5),
             daily_loss_limit_pct=_f("DAILY_LOSS_LIMIT_PCT", 3.0),
             cooldown_seconds=_i("COOLDOWN_SECONDS", 300),
             start_paused=_b("START_PAUSED", True),

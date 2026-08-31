@@ -184,7 +184,12 @@ class TradingBot:
 
         if self.s.entry_mode == "interval":
             elapsed = time.time() - session.last_entry_attempt.get(symbol, 0.0)
-            if elapsed < self.s.entry_interval_seconds:
+            interval = cfg.entry_interval_seconds
+            if session.pace:
+                interval = session.pace.effective_interval(
+                    cfg.entry_interval_seconds, len(session.active_symbols()),
+                    session.risk.stats.entry_times)
+            if elapsed < interval:
                 return
             session.last_entry_attempt[symbol] = time.time()
             signal = self.strategy.trend_signal(closed)
@@ -263,6 +268,8 @@ class TradingBot:
             log.info("[%s] %s signal %s blocked: %s",
                      session.name, symbol, signal.side, blocked)
             session.last_block = f"{symbol} {signal.side} blocked — {blocked}"
+            if session.pace:
+                session.pace.record_block(blocked)
             return
 
         ok, reason = risk.can_enter(symbol, balance, equity, len(all_pos), len(sym_pos))
@@ -270,6 +277,8 @@ class TradingBot:
             log.info("[%s] %s signal %s blocked: %s",
                      session.name, symbol, signal.side, reason)
             session.last_block = f"{symbol} {signal.side} blocked — {reason}"
+            if session.pace:
+                session.pace.record_block(reason)
             return
 
         risk_amount = risk.risk_amount(balance)
@@ -329,6 +338,8 @@ class TradingBot:
                                   f"typical {typical:.5f} — abnormal conditions")
                         log.info("[%s] %s skipped: %s", session.name, symbol, reason)
                         session.last_block = f"{symbol} skipped — {reason}"
+                        if session.pace:
+                            session.pace.record_block(reason)
                         return
                 history.append(spread)
                 del history[:-100]
@@ -342,6 +353,8 @@ class TradingBot:
                     log.info("[%s] %s %s skipped: %s",
                              session.name, symbol, signal.side, reason)
                     session.last_block = f"{symbol} skipped — {reason}"
+                    if session.pace:
+                        session.pace.record_block(reason)
                     return
 
         # Brokers reject stops closer than their minimum distance (10011 "bad
@@ -371,6 +384,8 @@ class TradingBot:
                               f"the ${cost:.3f} cost of the trade")
                     log.info("[%s] %s skipped: %s", session.name, symbol, reason)
                     session.last_block = f"{symbol} skipped — {reason}"
+                    if session.pace:
+                        session.pace.record_block(reason)
                     return
 
         signal = replace(signal, sl_distance=sl_distance, tp_distance=tp_distance)
@@ -512,6 +527,12 @@ class TradingBot:
             session.peak_price.pop(ticket, None)
         self._protect_profits(session, positions)
         self._trail_stops(session, positions)
+        if session.pace:
+            report = session.pace.shortfall_report(
+                session.risk.stats.entry_times, len(session.active_symbols()))
+            if report:
+                log.info("[%s] behind pace:\n%s", session.name, report)
+                self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
 
     def _trail_stops(self, session: BrokerSession, positions) -> None:
         """Chandelier exit: follow the best price the trade has reached.
@@ -831,6 +852,29 @@ class TradingBot:
             self.paused = True
             log.info("Auto-trading PAUSED from phone.")
             return "⏸ Auto-trading OFF (open positions untouched)."
+
+        if command == "pace":
+            out = []
+            for s in sessions:
+                out.append(f"— {s.name} —")
+                if not s.pace or s.pace.target_per_hour <= 0:
+                    out.append("  no rate target (MIN_TRADES_PER_HOUR is 0)")
+                    continue
+                times = s.risk.stats.entry_times
+                done = s.pace.rate(times)
+                short = s.pace.deficit(times)
+                interval = s.pace.effective_interval(
+                    self.s.entry_interval_seconds, len(s.active_symbols()), times)
+                out.append(f"  {done} trades in the last hour, target "
+                           f"{s.pace.target_per_hour:.0f}")
+                out.append(f"  interval now {interval}s across "
+                           f"{len(s.active_symbols())} symbol(s)")
+                out.append(f"  {'behind by %.0f' % short if short > 0 else 'on or ahead of pace'}")
+                if s.pace.blocks:
+                    out.append("  refused this hour:")
+                    for label, count in s.pace.blocks.most_common(4):
+                        out.append(f"    {count} x {label}")
+            return "\n".join(out)
 
         if command == "evidence":
             if args and args[0].lower() == "reset":

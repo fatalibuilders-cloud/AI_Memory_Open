@@ -516,6 +516,34 @@ symbols at real Exness spreads, 2,000 trades a day costs **$231 a day in
 spread alone** — $4,856 a month. Volume cannot create an edge. It
 multiplies whatever edge exists, including a negative one.
 
+### Enforcing the rate
+
+`MIN_TRADES_PER_HOUR` holds the pace rather than hoping for it. When the
+trailing-hour count falls behind, the entry interval shortens in
+proportion to the shortfall, down to `ENTRY_INTERVAL_FLOOR_SECONDS`. It
+never lengthens past `ENTRY_INTERVAL_SECONDS` and never drops below the
+floor.
+
+But an interval only controls how often the bot *tries*. Whether a try
+becomes a trade depends on gates that have nothing to do with the clock —
+a symbol already holding a position, a cooldown, the open-position limit,
+the daily loss cap. So the more important half is the diagnosis: every
+refusal is counted and grouped by the setting you would actually change,
+and once an hour the shortfall is reported with the binding one named:
+
+```
+0 trades in the last hour, target 100.
+What refused the rest:
+  60 x one position per symbol
+  12 x cooldown
+Mostly one position per symbol — raise MAX_POSITIONS_PER_SYMBOL, or add
+symbols — the interval cannot help while every symbol is occupied.
+```
+
+`/pace` shows the same thing on demand. A bot quietly missing its target
+while you adjust the wrong setting is worse than one that tells you which
+gate is closed.
+
 ## The bot keeps score on itself, and stops when it is losing
 
 This is the most important safety feature in the project, and it exists

@@ -192,6 +192,7 @@ class TelegramRemote:
                 "  (add an account name to scope: /positions deriv)\n"
                 "/why — why has it not traded?\n"
                 "/evidence — does this configuration actually make money?\n"
+                "/pace — trade rate, and what is throttling it\n"
                 "/diag — is MetaTrader allowing trades?\n"
                 "/resume — enable auto-trading\n"
                 "/pause — stop opening new trades\n"

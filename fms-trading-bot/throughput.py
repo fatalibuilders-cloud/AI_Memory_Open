@@ -154,6 +154,8 @@ def main() -> int:
               "(headroom, or the cap itself becomes the limit)")
         print(f"    MAX_OPEN_POSITIONS={max(1, int(concurrent * 1.5) + 1)}   "
               f"(about {concurrent:.0f} will be open at once)")
+        print(f"    MIN_TRADES_PER_HOUR={args.target / args.hours:.0f}   "
+              f"(enforced: the interval shortens when the rate falls behind)")
 
         # --- the bill --------------------------------------------------
         mean_cost = sum(costs.values()) / len(costs)
@@ -198,6 +200,7 @@ def main() -> int:
             "COOLDOWN_SECONDS": str(interval),
             "MAX_TRADES_PER_DAY": str(int(args.target * 1.2)),
             "MAX_OPEN_POSITIONS": str(max(1, int(concurrent * 1.5) + 1)),
+            "MIN_TRADES_PER_HOUR": f"{args.target / args.hours:.0f}",
         }
         lines = env_path.read_text(encoding="utf-8-sig").splitlines()
         out, seen = [], set()
