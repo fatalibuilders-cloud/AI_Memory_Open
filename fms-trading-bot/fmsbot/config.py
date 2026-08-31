@@ -95,6 +95,11 @@ def _symbol_overrides() -> dict[str, dict[str, object]]:
     return out
 
 
+def _pct_stages(name: str) -> list[tuple[float, float]]:
+    """Rungs expressed as a percentage of the trade's own target."""
+    return parse_stages(os.environ.get(name, ""))
+
+
 def _stages(name: str) -> list[tuple[float, float]]:
     """Parse 'trigger:lock,trigger:lock' into sorted (trigger, lock) pairs."""
     return parse_stages(os.environ.get(name, ""))
@@ -316,6 +321,17 @@ class Settings:
     profit_stages: list[tuple[float, float]] = field(default_factory=list)
 
     #: Per-symbol overrides, e.g. SYM_XAUUSDM_TP_MONEY=2.00 in .env.
+    #: Protection rungs as a PERCENTAGE of each trade's own take-profit,
+    #: e.g. "50:0,75:50" = at half the target move the stop to break-even,
+    #: at three-quarters lock half. Overrides the absolute PROFIT_STAGES.
+    #:
+    #: Absolute rungs are the trap this exists to avoid: $0.10 is a
+    #: reasonable rung on a $0.40 EURUSD target and a cap that throws away
+    #: 95% of a $2.20 gold move. A share of the target cannot be mis-scaled
+    #: by instrument, volatility or lot size, because it is measured
+    #: against the thing the trade was actually aiming at.
+    profit_stages_pct: list[tuple[float, float]] = field(default_factory=list)
+
     #: One setting cannot fit instruments whose spreads differ by two orders
     #: of magnitude: a $0.50 target is 4x the spread on EURUSD, below it on
     #: gold, and a rounding error on Bitcoin.
@@ -502,6 +518,7 @@ class Settings:
             breakeven_at_money=_f("BREAKEVEN_AT_MONEY", 0.0),
             breakeven_lock_money=_f("BREAKEVEN_LOCK_MONEY", 0.0),
             profit_stages=_stages("PROFIT_STAGES"),
+            profit_stages_pct=_pct_stages("PROFIT_STAGES_PCT"),
             symbol_overrides=_symbol_overrides(),
             max_slippage_ratio=_f("MAX_SLIPPAGE_RATIO", 0.5),
             spread_spike_factor=_f("SPREAD_SPIKE_FACTOR", 3.0),

@@ -544,6 +544,37 @@ symbols — the interval cannot help while every symbol is occupied.
 while you adjust the wrong setting is worse than one that tells you which
 gate is closed.
 
+## Rungs in dollars cap your winners
+
+A live account produced this, over and over:
+
+```
+XAUUSDm #3159433562 at +2.20 — stage 2/2: stop raised to lock in +0.10
+position 3159433562 closed +0.10
+```
+
+Every winner closed at exactly `+0.10`. That is the ladder working as
+configured, and it is a losing structure. Once the last rung is applied
+the stop stops moving, so the trade can never make more than that rung's
+lock — while the losses stay full size. With a $9.28 gold stop, capping
+winners at $0.10 raises the break-even win rate from **76% to 98.9%**.
+
+Fixed-dollar rungs cannot avoid this, because the right number depends on
+the instrument, the volatility and the lot size all at once. So set them
+as a share of what the trade is actually aiming at:
+
+```env
+PROFIT_STAGES_PCT=50:0,75:50
+```
+
+At half the target the stop goes to break-even; at three-quarters it
+locks half. That is correct on EURUSD and on gold and on Bitcoin without
+being tuned, because it is measured against each trade's own take-profit.
+It overrides `PROFIT_STAGES` when set.
+
+The bot also now notices the failure directly: if the last rung's lock is
+under 20% of the target, it says so once and shows the fix.
+
 ## A hard cap on what one trade may lose
 
 A stop loss is the broker's promise, and promises fail: placed at the

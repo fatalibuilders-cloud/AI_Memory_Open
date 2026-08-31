@@ -536,6 +536,64 @@ class TradingBot:
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
 
+    def _ladder_for(self, session: BrokerSession, cfg, p) -> list:
+        """This position's protection rungs, in cash.
+
+        With PROFIT_STAGES_PCT the rungs are a share of the trade's own
+        take-profit, which is the only definition that cannot be mis-scaled:
+        it is measured against what this trade was aiming at, so it adapts
+        to the instrument, the volatility and the lot size at once.
+        """
+        if not cfg.profit_stages_pct:
+            return cfg.stages()
+        if not p.tp or not p.entry_price:
+            return cfg.stages()
+        try:
+            per_price = session.broker.value_per_price(p.symbol, p.volume)
+        except BrokerError:
+            return cfg.stages()
+        target = abs(p.tp - p.entry_price) * per_price
+        if target <= 0:
+            return cfg.stages()
+        return sorted((target * trigger / 100.0, target * lock / 100.0)
+                      for trigger, lock in cfg.profit_stages_pct)
+
+    def _warn_if_ladder_caps(self, session: BrokerSession, ladder, p) -> None:
+        """Say so when the ladder is about to throw the trade away.
+
+        Once the last rung is applied the stop stops moving, so the trade
+        can never make more than that rung's lock. If the lock is a small
+        fraction of the target, every winner is converted into that
+        fraction -- a position reaching +2.20 closing at +0.10 is the
+        ladder working exactly as configured, and it is a losing structure
+        because the losses are still full size.
+        """
+        if session.ladder_warned:
+            return
+        top_lock = ladder[-1][1]
+        try:
+            per_price = session.broker.value_per_price(p.symbol, p.volume)
+        except BrokerError:
+            return
+        target = abs(p.tp - p.entry_price) * per_price if p.tp else 0.0
+        if target <= 0 or top_lock <= 0 or top_lock >= target * 0.2:
+            return
+        session.ladder_warned = True
+        log.warning("[%s] %s ladder caps every winner at %.2f against a %.2f "
+                    "target", session.name, p.symbol, top_lock, target)
+        self.remote.broadcast(
+            f"⚠️ [{session.name}] YOUR LADDER IS CAPPING EVERY WINNER.\n\n"
+            f"{p.symbol} is aiming at {target:.2f}, but the last rung locks "
+            f"{top_lock:.2f} and the stop never moves again. So a trade that "
+            f"reaches {target:.2f} still closes at {top_lock:.2f} — you keep "
+            f"{top_lock/target*100:.0f}% of every winner while the losses stay "
+            f"full size.\n\n"
+            f"Fix it with rungs measured against the target instead of in "
+            f"fixed dollars:\n"
+            f"  PROFIT_STAGES_PCT=50:0,75:50\n"
+            f"and clear PROFIT_STAGES. Or set TRAIL_ATR_MULT so the stop "
+            f"keeps following.")
+
     def _enforce_loss_cap(self, session: BrokerSession, positions) -> list:
         """Close anything losing more than the cap, without waiting.
 
@@ -782,9 +840,11 @@ class TradingBot:
         protect one instrument and never trigger on another.
         """
         for p in positions:
-            ladder = self.s.for_symbol(p.symbol).stages()
+            cfg = self.s.for_symbol(p.symbol)
+            ladder = self._ladder_for(session, cfg, p)
             if not ladder:
                 continue
+            self._warn_if_ladder_caps(session, ladder, p)
             # Highest stage this position has earned, if any beyond the last
             # one already applied.
             reached = [i for i, (trigger, _) in enumerate(ladder)

@@ -230,6 +230,7 @@ def fingerprint(settings, strategy_name: str) -> str:
         settings.tp_money, settings.sl_money, settings.tp_runner_money,
         settings.entry_confirm_money,
         settings.trail_atr_mult, settings.trail_start_money,
+        settings.profit_stages_pct,
         sorted(settings.symbol_overrides.items()),
     ]
     return "|".join(str(p) for p in parts)

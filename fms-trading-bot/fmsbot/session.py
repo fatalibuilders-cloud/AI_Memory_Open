@@ -46,6 +46,8 @@ class BrokerSession:
     pace: Optional[Pace] = None
     #: the money-scale warning is worth saying once, not every loop
     scale_checked: bool = False
+    #: likewise the warning that the ladder is capping every winner
+    ladder_warned: bool = False
     connected: bool = False
     last_bar: dict[str, int] = field(default_factory=dict)
     symbol_warned: dict[str, float] = field(default_factory=dict)
