@@ -491,6 +491,31 @@ back down.
 Stop the bot before running it. Two processes cannot share one MT5
 terminal, and both would be moving the same stops.
 
+## Trading more often
+
+Trade count is not a setting. It falls out of four things, three of which
+fight each other: how many symbols, how long a position stays open (a
+symbol already positioned cannot open another), the entry interval and
+cooldown, and the caps. `throughput.py` solves the system:
+
+```powershell
+.\.venv\Scripts\python.exe throughput.py --target 2000
+.\.venv\Scripts\python.exe throughput.py --target 2000 --apply
+```
+
+Hold time is the binding constraint and it is estimated, not guessed: for
+a driftless walk absorbed at -a or +b the expected time is a*b over the
+per-bar variance, so with the stop at 1.5 ATR and the target at 2.0 ATR a
+position lasts about 3 bars. That is 15 minutes on M5 and 3 minutes on
+M1 — which is why 2,000/day needs M1 and cannot be reached on M5 with six
+symbols, whatever the interval is set to.
+
+Then it prices it, because the spread is charged on every trade whether
+it wins or loses, and trading more often multiplies it exactly. On six
+symbols at real Exness spreads, 2,000 trades a day costs **$231 a day in
+spread alone** — $4,856 a month. Volume cannot create an edge. It
+multiplies whatever edge exists, including a negative one.
+
 ## The bot keeps score on itself, and stops when it is losing
 
 This is the most important safety feature in the project, and it exists
@@ -610,6 +635,7 @@ fms-trading-bot/
 ├── winrate.py             # engineer any win rate, and see its cost
 ├── tune_symbols.py        # per-instrument settings from real spreads
 ├── check_config.py        # validate .env before restarting
+├── throughput.py          # solve for a trades-per-day target, and price it
 ├── Set-BotSetting.ps1     # change a setting safely, then restart
 ├── bridge.py              # the broker as JSON, for other languages
 ├── Trail-Stops.ps1        # ATR trailing stops from PowerShell
