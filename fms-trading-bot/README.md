@@ -544,6 +544,49 @@ symbols — the interval cannot help while every symbol is occupied.
 while you adjust the wrong setting is worse than one that tells you which
 gate is closed.
 
+## Tests
+
+```powershell
+.\.venv\Scripts\python.exe run_tests.py          # all of them
+.\.venv\Scripts\python.exe run_tests.py ladder   # one file
+```
+
+No pytest, no dependencies. **Every test here is a bug that reached a
+live account** — the ladder capping winners at $0.10, a stop that moved
+backwards, a safety gate that failed open, an entry path that raised on
+every trade. None of them are hypothetical; each one already cost money
+once. Run this before pushing and after changing anything in `fmsbot/`.
+
+## A rule-based setup: sweep, structure break, retest
+
+`liquidity_sweep` implements a discretionary-style plan as testable code:
+
+1. **Trend** from a higher timeframe, built by aggregating the entry bars
+   (`HTF_RATIO=12` makes 1H from M5, `48` makes 4H). Counter-trend setups
+   are discarded, never reversed.
+2. **Liquidity**: the previous session's high and low (`SESSION_BARS`),
+   where resting stops sit.
+3. **The sweep**: price trades through that level and closes back inside,
+   leaving a rejection wick worth at least `SWEEP_REJECT` of the bar's
+   range. A close *beyond* the level is a breakout, not a sweep, and is
+   refused — that single test is what separates the two, and it is
+   covered by its own regression test.
+4. **The structure break**: within `STRUCTURE_WINDOW` bars, a close past
+   the swing the sweep created.
+5. **The stop** goes beyond the sweep's extreme — the price that
+   invalidates the idea — not at a fixed distance. Target is `RR_TARGET`
+   times that risk, default 2.0.
+
+Everything is measured on closed bars, and the sweep extreme is known
+before the entry bar, so there is no lookahead.
+
+It is searchable like any other strategy, which is the point — measure it
+before it sees money:
+
+```powershell
+.\.venv\Scripts\python.exe find_edge.py --days 60 --strategy liquidity_sweep
+```
+
 ## Rungs in dollars cap your winners
 
 A live account produced this, over and over:

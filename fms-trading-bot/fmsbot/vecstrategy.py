@@ -278,8 +278,137 @@ class BollingerBreakout(VecStrategy):
         return None
 
 
+
+
+class LiquiditySweep(VecStrategy):
+    """Sweep of a session level, structure break, entry on the retest.
+
+    The sequence this looks for, in order:
+
+      1. **Trend.** A higher-timeframe EMA, built by aggregating the entry
+         bars, decides which side may be taken. Counter-trend setups are
+         discarded rather than reversed.
+      2. **Liquidity.** The high and low of the previous session are where
+         resting stops sit, so those are the levels price reaches for.
+      3. **The sweep.** Price must trade through the level and close back
+         inside it, leaving a wick beyond it worth at least `sweep_reject`
+         of the bar's range. A close beyond the level is a breakout, not a
+         sweep -- that is the test which separates the two.
+      4. **The structure break.** Within `structure_window` bars, price
+         must close beyond the swing that formed the sweep, which is what
+         makes it a reversal rather than a pause.
+      5. **The stop** goes beyond the sweep's extreme -- the point that
+         invalidates the idea -- not at a fixed distance. The target is
+         `rr_target` times that risk.
+
+    Every part is measured on closed bars only. The sweep extreme is known
+    before the entry bar, so there is no lookahead.
+    """
+    name = "liquidity_sweep"
+
+    def warmup(self) -> int:
+        return max(self.s.session_bars * 2,
+                   self.s.htf_ratio * self.s.ema_slow,
+                   self.s.atr_period + 2) + 2
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        highs = [b.high for b in bars]
+        lows = [b.low for b in bars]
+
+        # Higher-timeframe trend: aggregate N entry bars into one, take an
+        # EMA of those closes, then spread it back over the entry bars so
+        # bar i knows the trend as of the last COMPLETED higher bar.
+        ratio = max(1, self.s.htf_ratio)
+        htf_close = [closes[i] for i in range(ratio - 1, len(closes), ratio)]
+        fast = ema_full(htf_close, self.s.ema_fast)
+        slow = ema_full(htf_close, self.s.ema_slow)
+        trend: list[Optional[int]] = []
+        for i in range(len(bars)):
+            k = i // ratio - 1          # last completed higher-timeframe bar
+            if k < 0 or k >= len(fast) or fast[k] is None or slow[k] is None:
+                trend.append(None)
+            else:
+                trend.append(1 if fast[k] > slow[k] else -1)
+
+        # Previous session's extremes: the pool of resting stops.
+        n = self.s.session_bars
+        prev_high: list[Optional[float]] = []
+        prev_low: list[Optional[float]] = []
+        for i in range(len(bars)):
+            start, end = i - 2 * n, i - n
+            if start < 0:
+                prev_high.append(None)
+                prev_low.append(None)
+            else:
+                prev_high.append(max(highs[start:end]))
+                prev_low.append(min(lows[start:end]))
+
+        return {"high": highs, "low": lows, "close": closes,
+                "trend": trend, "prev_high": prev_high, "prev_low": prev_low,
+                "atr": atr_full(highs, lows, closes, self.s.atr_period)}
+
+    def _swept(self, a, i, side) -> Optional[tuple[int, float]]:
+        """Index and extreme of a sweep within the structure window."""
+        for j in range(max(1, i - self.s.structure_window), i):
+            level = a["prev_high"][j] if side == "sell" else a["prev_low"][j]
+            if level is None:
+                continue
+            span = a["high"][j] - a["low"][j]
+            if span <= 0:
+                continue
+            if side == "sell":
+                # Through the level, then closed back under it.
+                if a["high"][j] <= level or a["close"][j] > level:
+                    continue
+                # And rejected: the wick above must be a real share of the
+                # bar. Measuring the give-back against the poke instead
+                # would be vacuous, since closing back inside the level
+                # always gives the whole poke back.
+                if (a["high"][j] - a["close"][j]) / span >= self.s.sweep_reject:
+                    return j, a["high"][j]
+            else:
+                if a["low"][j] >= level or a["close"][j] < level:
+                    continue
+                if (a["close"][j] - a["low"][j]) / span >= self.s.sweep_reject:
+                    return j, a["low"][j]
+        return None
+
+    def at(self, i, a):
+        trend, v = a["trend"][i], a["atr"][i]
+        if trend is None or v is None or v <= 0:
+            return None
+        side = "buy" if trend > 0 else "sell"
+
+        # A buy follows a sweep of the LOW (stops taken below, then up).
+        sweep = self._swept(a, i, side)
+        if sweep is None:
+            return None
+        j, extreme = sweep
+
+        # Structure break: close beyond the swing the sweep created.
+        window = a["high"][j:i] if side == "buy" else a["low"][j:i]
+        if not window:
+            return None
+        price = a["close"][i]
+        if side == "buy":
+            if price <= max(window):
+                return None
+            risk = price - extreme
+        else:
+            if price >= min(window):
+                return None
+            risk = extreme - price
+        if risk <= 0:
+            return None
+        # Beyond the invalidation point, with a little air for the spread.
+        risk += v * 0.1
+        return VecSignal(side, risk, risk * self.s.rr_target,
+                         f"{side} after sweep, {self.s.rr_target:.1f}R")
+
+
 VEC_STRATEGIES: dict[str, type[VecStrategy]] = {
     cls.name: cls for cls in (EmaCross, MeanReversion, Breakout, TrendAlways,
                               InvertedEmaCross, RsiReversion, Momentum,
-                              BollingerBreakout)
+                              BollingerBreakout, LiquiditySweep)
 }

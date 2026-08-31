@@ -788,11 +788,12 @@ class TradingBot:
         convicted; the other stops real money being risked on a
         configuration that has never proved anything.
         """
+        # A missing record is not an absent objection: it means this
+        # configuration has proved nothing, which is exactly what the live
+        # gate is for. A safety gate that fails open is not a safety gate.
         ev = session.evidence
-        if ev is None:
-            return None
-        verdict = ev.verdict()
-        if self.s.halt_on_failed_evidence and verdict == evidence.FAILED:
+        verdict = ev.verdict() if ev else evidence.PROVING
+        if ev and self.s.halt_on_failed_evidence and verdict == evidence.FAILED:
             return (f"the record over {ev.count} trades says this configuration "
                     f"loses (profit factor {ev.profit_factor:.2f}, z {ev.z:+.2f}). "
                     f"Change something, then /evidence reset")
@@ -807,8 +808,10 @@ class TradingBot:
         # None means the broker would not say. Real money is the assumption
         # that costs least when wrong.
         which = "a real account" if demo is False else "an account of unknown type"
+        done = ev.count if ev else 0
+        need = ev.min_trades if ev else self.s.evidence_min_trades
         return (f"this is {which} and the configuration has not proved itself "
-                f"({ev.count}/{ev.min_trades} trades). Run it on demo first, or "
+                f"({done}/{need} trades). Run it on demo first, or "
                 f"set LIVE_REQUIRES_EVIDENCE=false to override")
 
     def _realised_pnl(self, session: BrokerSession, ticket: int) -> Optional[float]:

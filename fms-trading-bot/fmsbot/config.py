@@ -275,6 +275,21 @@ class Settings:
     bb_std: float = 2.0
     donchian_period: int = 20
 
+    # --- liquidity sweep / market-structure strategy ---------------------
+    #: How many entry bars make one higher-timeframe bar for the trend
+    #: filter. On M5 entries, 12 = 1H and 48 = 4H.
+    htf_ratio: int = 12
+    #: Bars forming the "previous session" whose high and low are the
+    #: liquidity pool price reaches for. On M5, 288 = one day.
+    session_bars: int = 288
+    #: A sweep must reject at least this share of its own extension back
+    #: inside the level, or it is a plain breakout, not a sweep.
+    sweep_reject: float = 0.5
+    #: Bars after the sweep in which a structure break must appear.
+    structure_window: int = 12
+    #: Risk-to-reward on the swing-based stop.
+    rr_target: float = 2.0
+
     # --- Safety controls --------------------------------------------------
     # Pause after this many losses in a row. The point is to stop while a
     # market regime is clearly against the strategy rather than keep paying
@@ -503,6 +518,11 @@ class Settings:
             bb_period=_i("BB_PERIOD", 20),
             bb_std=_f("BB_STD", 2.0),
             donchian_period=_i("DONCHIAN_PERIOD", 20),
+            htf_ratio=_i("HTF_RATIO", 12),
+            session_bars=_i("SESSION_BARS", 288),
+            sweep_reject=_f("SWEEP_REJECT", 0.5),
+            structure_window=_i("STRUCTURE_WINDOW", 12),
+            rr_target=_f("RR_TARGET", 2.0),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
             trail_atr_mult=_f("TRAIL_ATR_MULT", 0.0),

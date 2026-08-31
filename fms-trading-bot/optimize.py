@@ -77,6 +77,17 @@ GRIDS = {
         "atr_sl_mult": [1.0, 1.5, 2.0],
         "atr_tp_mult": [1.5, 2.5, 3.5],
     },
+    # Sweep of a session level, structure break, entry on the retest.
+    # The grid is deliberately small: this strategy already has five
+    # conditions, and searching many variants of each is how a rule set
+    # gets fitted to its own history.
+    "liquidity_sweep": {
+        "htf_ratio": [12, 48],
+        "session_bars": [288],
+        "sweep_reject": [0.4, 0.6],
+        "structure_window": [8, 12, 20],
+        "rr_target": [2.0, 3.0],
+    },
     "bollinger_breakout": {
         "bb_period": [14, 20, 30],
         "bb_std": [1.5, 2.0, 2.5],
