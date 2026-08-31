@@ -206,8 +206,16 @@ class TelegramListener:
         if not use_bot and not target:
             return
         want_skips = settings.notify_skips if use_bot else self.config.telegram.notify_skips
-        if not decision.accepted and not want_skips:
-            return
+        if not decision.accepted:
+            if not want_skips:
+                return
+            # Only report refusals of messages that looked like signals. A
+            # signal room is mostly conversation, and reporting every "no trade
+            # direction found" on someone's good-morning turns the useful
+            # refusals into noise nobody reads.
+            if not decision.near_miss:
+                log.debug("not reporting chatter: %s", decision.reason)
+                return
 
         signal = decision.signal
         if decision.accepted and signal is not None:

@@ -176,7 +176,9 @@ class Engine:
         if not result.ok or result.signal is None:
             self.journal.record_skip(source, result.error, text)
             log.debug("ignored message: %s", result.error)
-            return Decision(accepted=False, reason=result.error)
+            return Decision(
+                accepted=False, reason=result.error, near_miss=result.near_miss
+            )
 
         signal = result.signal
         for note in result.warnings:
@@ -195,13 +197,13 @@ class Engine:
             reason = f"paused{f' ({self.paused_reason})' if self.paused_reason else ''}"
             self.journal.record_signal(signal, accepted=False, reason=reason)
             log.info("ignored %s: %s", signal.summary(), reason)
-            return Decision(accepted=False, reason=reason, signal=signal)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
 
         if not self.broker_ready and not self.retry_broker():
             reason = f"broker not connected: {self.broker_error or 'unavailable'}"
             self.journal.record_signal(signal, accepted=False, reason=reason)
             log.warning("cannot trade %s — %s", signal.summary(), reason)
-            return Decision(accepted=False, reason=reason, signal=signal)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
 
         broker_symbol = self.resolver.resolve(signal.symbol)
         if broker_symbol is None:
@@ -211,13 +213,13 @@ class Engine:
             )
             self.journal.record_signal(signal, accepted=False, reason=reason)
             log.warning(reason)
-            return Decision(accepted=False, reason=reason, signal=signal)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
 
         info = self.broker.symbol_info(broker_symbol)
         if info is None:
             reason = f"no symbol info for {broker_symbol}"
             self.journal.record_signal(signal, accepted=False, reason=reason)
-            return Decision(accepted=False, reason=reason, signal=signal)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
 
         # The paper book has no feed of its own; each signal's price is the only
         # market data it ever sees. Use it first to settle whatever is already
@@ -239,20 +241,20 @@ class Engine:
         if not gate.ok:
             self.journal.record_signal(signal, accepted=False, reason=gate.reason)
             log.info("rejected %s: %s", signal.summary(), gate.reason)
-            return Decision(accepted=False, reason=gate.reason, signal=signal)
+            return Decision(accepted=False, reason=gate.reason, signal=signal, near_miss=True)
 
         entry_plan = self._plan_entry(signal, info)
         if entry_plan is None:
             reason = "no usable entry price"
             self.journal.record_signal(signal, accepted=False, reason=reason)
-            return Decision(accepted=False, reason=reason, signal=signal)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
         order_type, price, reference = entry_plan
 
         slip = self._slippage_reason(signal, info, reference)
         if slip:
             self.journal.record_signal(signal, accepted=False, reason=slip)
             log.info("rejected %s: %s", signal.summary(), slip)
-            return Decision(accepted=False, reason=slip, signal=signal)
+            return Decision(accepted=False, reason=slip, signal=signal, near_miss=True)
 
         take_profits = risk_rules.select_take_profits(signal, self.config)
         multiplier = group.risk_multiplier if group else 1.0
@@ -268,7 +270,7 @@ class Engine:
         if not sizing.ok:
             self.journal.record_signal(signal, accepted=False, reason=sizing.error)
             log.warning("cannot size %s: %s", signal.summary(), sizing.error)
-            return Decision(accepted=False, reason=sizing.error, signal=signal)
+            return Decision(accepted=False, reason=sizing.error, signal=signal, near_miss=True)
         for note in sizing.notes:
             log.info("sizing note [%s]: %s", broker_symbol, note)
 
@@ -423,7 +425,7 @@ class Engine:
             reason = f"{signal.action.value}: no matching open position found"
             self.journal.record_signal(signal, accepted=False, reason=reason)
             log.info(reason)
-            return Decision(accepted=False, reason=reason, signal=signal)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
 
         self.journal.record_signal(signal, accepted=True, reason="")
         results: list[OrderResult] = []

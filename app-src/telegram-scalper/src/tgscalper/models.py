@@ -213,6 +213,9 @@ class Decision:
     reason: str = ""
     signal: Optional[Signal] = None
     orders: list[OrderResult] = field(default_factory=list)
+    # A refusal worth reporting: the message looked like a signal. Plain
+    # conversation is not, and reporting it drowns out everything else.
+    near_miss: bool = False
 
     @property
     def placed(self) -> int:

@@ -105,6 +105,11 @@ class ParseResult:
     signal: Optional[Signal] = None
     error: str = ""
     warnings: list[str] = field(default_factory=list)
+    # True when the message carried the marks of a signal — an instrument, or a
+    # stop/target — but was still not traded. That is worth reporting. Ordinary
+    # conversation is not, and a signal room is mostly conversation, so
+    # reporting every refusal buries the ones that matter.
+    near_miss: bool = False
 
     @property
     def ok(self) -> bool:
@@ -356,6 +361,16 @@ def _parse_management(text: str, source: Optional[MessageRef], raw: str) -> Opti
 # --- entry point -------------------------------------------------------------
 
 
+def _looks_like_a_signal(text: str) -> bool:
+    """Did this message carry any of the marks of a trade instruction?"""
+    return bool(
+        find_symbol(text)
+        or _SL_RE.search(text)
+        or _TP_RE.search(text)
+        or _DIRECTION_RE.search(text)
+    )
+
+
 def parse(
     raw: str,
     source: Optional[MessageRef] = None,
@@ -386,7 +401,10 @@ def parse(
         # a trade out of nothing.
         emoji_side = _emoji_direction(raw)
         if emoji_side is None or not (_SL_RE.search(text) and _TP_RE.search(text)):
-            return ParseResult(error="no trade direction found")
+            return ParseResult(
+            error="no trade direction found",
+            near_miss=_looks_like_a_signal(text),
+        )
         side = emoji_side
         emoji_direction = True
         warnings.append(
@@ -406,7 +424,9 @@ def parse(
                 return ParseResult(signal=managed)
 
     if canonical is None:
-        return ParseResult(error="no tradable symbol found")
+        return ParseResult(
+            error="no tradable symbol found", near_miss=_looks_like_a_signal(text)
+        )
 
     working = _mask_symbol(text, canonical, aliases)
     working = _mask(working, _NOISE_PATTERNS)
@@ -472,11 +492,13 @@ def parse(
         return ParseResult(
             error="reads as analysis, not an order (hedging language without full SL/TP)",
             warnings=warnings,
+            near_miss=True,
         )
 
     error = _validate(signal, require_sl=require_sl, reference=reference)
     if error:
-        return ParseResult(error=error, warnings=warnings)
+        # It parsed far enough to be validated, so it plainly looked like one.
+        return ParseResult(error=error, warnings=warnings, near_miss=True)
     return ParseResult(signal=signal, warnings=warnings)
 
 

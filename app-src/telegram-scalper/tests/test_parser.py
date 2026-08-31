@@ -360,3 +360,46 @@ class TestFingerprint:
         first = signal("GOLD BUY 2350\nSL 2344\nTP 2360")
         second = signal("GOLD SELL 2350\nSL 2356\nTP 2340")
         assert first.fingerprint() != second.fingerprint()
+
+
+class TestNearMissClassification:
+    """Which refusals are worth telling the user about.
+
+    A signal room is mostly conversation. Reporting every "no trade direction
+    found" on ordinary chat buries the refusals that actually matter.
+    """
+
+    def test_plain_chatter_is_not_a_near_miss(self):
+        for text in [
+            "Good morning everyone 🙏",
+            "Great week team, well done",
+            "Welcome to all the new members",
+            "Market closed, see you Monday",
+        ]:
+            assert not parse(text).near_miss, text
+
+    def test_a_message_naming_an_instrument_is_a_near_miss(self):
+        # Worth surfacing: the room mentioned gold and we did nothing.
+        assert parse("gold looking heavy today, watch out").near_miss
+
+    def test_a_message_with_levels_is_a_near_miss(self):
+        assert parse("SL 2344 TP 2360 — from the earlier idea").near_miss
+
+    def test_a_rejected_signal_is_always_a_near_miss(self):
+        # Parsed fully, then refused by validation: definitely worth reporting.
+        result = parse("BUY GOLD 2350 SL 2360 TP 2370")
+        assert not result.ok and result.near_miss
+
+    def test_analysis_is_a_near_miss(self):
+        result = parse("Analysis: gold looking bullish on H4, watch 2350 zone")
+        assert not result.ok and result.near_miss
+
+    def test_a_missing_stop_is_a_near_miss(self):
+        result = parse("BUY GOLD 2350 TP 2360")
+        assert not result.ok and result.near_miss
+
+    def test_an_accepted_signal_needs_no_flag(self):
+        assert parse("GOLD BUY 2350\nSL 2344\nTP 2360").ok
+
+    def test_an_empty_message_is_not_a_near_miss(self):
+        assert not parse("   ").near_miss

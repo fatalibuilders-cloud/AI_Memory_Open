@@ -24,7 +24,9 @@ telegram:
 
 control_bot:
   notify: true
-  notify_skips: true  # turn off once you trust what it is doing
+  # Report refusals too. Only messages that looked like signals are reported —
+  # ordinary room chatter is never sent. Turn off once you trust it.
+  notify_skips: true
 
 execution:
   mode: paper
