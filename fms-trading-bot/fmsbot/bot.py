@@ -19,7 +19,7 @@ from . import evidence
 from .config import Settings
 from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
-from .strategy import EmaCrossStrategy
+from .live import build_strategy, strategy_name
 from .telegram import TelegramRemote
 
 log = logging.getLogger("fmsbot.bot")
@@ -63,9 +63,10 @@ def sizing_label(settings) -> str:
 class TradingBot:
     def __init__(self, settings: Settings, sessions: Optional[list[BrokerSession]] = None):
         self.s = settings
-        self.strategy = EmaCrossStrategy(settings)
+        self.strategy = build_strategy(settings)
         self.sessions = (sessions if sessions is not None
-                         else build_sessions(settings, "ema_cross"))
+                         else build_sessions(settings,
+                                             strategy_name(self.strategy)))
         self.remote = TelegramRemote(
             settings.tg_token, settings.tg_password,
             settings.tg_state_file, self._on_command)

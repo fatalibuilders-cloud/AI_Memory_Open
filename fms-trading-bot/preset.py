@@ -77,6 +77,40 @@ PRESETS["highfreq"] = {
     "COOLDOWN_SECONDS": "30",
 }
 
+# The blueprint: higher-timeframe trend, a sweep of the previous session's
+# extremes, a structure break, and a stop at the invalidation point. Risk
+# numbers are the specified ones -- 0.5% a trade, 2% a day, three
+# positions, pause after three losses -- and the protection ladder is
+# expressed against each trade's own target so it cannot cap the winners.
+PRESETS["sweep"] = {
+    "STRATEGY": "liquidity_sweep",
+    "ENTRY_MODE": "signal",
+    "TIMEFRAME": "M5",
+    "HTF_RATIO": "12",              # 1H trend from M5 bars
+    "SESSION_BARS": "288",          # one day of M5
+    "SWEEP_REJECT": "0.5",
+    "STRUCTURE_WINDOW": "12",
+    "RR_TARGET": "2.0",
+    "ATR_PERIOD": "14",
+    "FIXED_LOT": "0",               # size from risk, not a fixed lot
+    "RISK_PCT": "0.5",
+    "DAILY_LOSS_LIMIT_PCT": "2",
+    "MAX_OPEN_POSITIONS": "3", "MAX_POSITIONS_PER_SYMBOL": "1",
+    "MAX_TRADES_PER_DAY": "20",
+    "MAX_CONSECUTIVE_LOSSES": "3",
+    "COOLDOWN_SECONDS": "900",
+    # Rungs against the trade's own target, never in fixed dollars.
+    "PROFIT_STAGES_PCT": "50:0,75:50",
+    "PROFIT_STAGES": "",
+    "BREAKEVEN_AT_MONEY": "0",
+    "TRAIL_ATR_MULT": "1.5",
+    "TRAIL_START_MONEY": "0",
+    "TP_MONEY": "0", "SL_MONEY": "0",
+    "MIN_TRADES_PER_HOUR": "0",
+    "MAX_SPREAD_RATIO": "0.25",
+    "MIN_REWARD_COST_RATIO": "1.5",
+}
+
 PRESETS["riskfirst"] = {
     # Capital preservation > frequency > profit target.
     # The 1,000/day ceiling is a cap, never a quota: the gates below decide
@@ -104,6 +138,14 @@ PRESETS["riskfirst"] = {
 }
 
 NOTES = {
+    "sweep": (
+        "Higher-timeframe trend, a sweep of the previous session's high or low,\n"
+        "  a structure break, and a stop at the point that invalidates the idea.\n"
+        "  Risk is 0.5% a trade, 2% a day, three positions, pause after three\n"
+        "  losses. Protection rungs are a share of each trade's own target, so\n"
+        "  they cannot cap the winners the way fixed dollar rungs did.\n"
+        "  Expect FEW trades — that is the design, not a fault. Measure it first:\n"
+        "    find_edge.py --days 60 --strategy liquidity_sweep"),
     "conservative": "A handful of trades a day. Slowest growth, smallest drawdowns.",
     "balanced": "The shipped default: a few trades a day per symbol.",
     "aggressive": (

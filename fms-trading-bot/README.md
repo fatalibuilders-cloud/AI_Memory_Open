@@ -557,6 +557,42 @@ backwards, a safety gate that failed open, an entry path that raised on
 every trade. None of them are hypothetical; each one already cost money
 once. Run this before pushing and after changing anything in `fmsbot/`.
 
+## Choosing and combining strategies
+
+Any searchable strategy can now be traded live, not just backtested:
+
+```env
+STRATEGY=liquidity_sweep               # one
+STRATEGY=ema_cross+liquidity_sweep     # both must agree
+STRATEGY=ema_cross,liquidity_sweep     # either may fire
+```
+
+Unset keeps the EMA crossover. A name that is not recognised is refused
+with the list of valid ones — a typo must never silently fall back to
+something else.
+
+Requiring agreement does not create an edge, and it is worth being clear
+about that: none of these has shown one against shuffled copies of its
+own data. What it does is cut the trade count sharply, and fewer trades
+means less spread paid while you find out. What it must not do is loosen
+the exits, so a combined signal takes the **widest** stop of its members —
+nobody's invalidation point ends up inside the stop — and the most
+conservative reward:risk of any of them.
+
+Changing strategy changes the evidence fingerprint, so the trade record
+starts again. Two strategies never share one record.
+
+### The preset
+
+```powershell
+.\.venv\Scripts\python.exe preset.py sweep
+```
+
+Sets the strategy, the timeframes, and the risk numbers together: 0.5%
+per trade, 2% daily, three positions, one per symbol, pause after three
+losses, rungs at 50%/75% of each trade's target, and the fixed-dollar
+rungs cleared. Expect **few** trades — that is the design.
+
 ## A rule-based setup: sweep, structure break, retest
 
 `liquidity_sweep` implements a discretionary-style plan as testable code:

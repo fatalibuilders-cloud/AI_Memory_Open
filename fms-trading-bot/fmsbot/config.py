@@ -275,6 +275,12 @@ class Settings:
     bb_std: float = 2.0
     donchian_period: int = 20
 
+    #: Which strategy to trade. Empty keeps the EMA crossover.
+    #:   STRATEGY=liquidity_sweep              one
+    #:   STRATEGY=ema_cross+liquidity_sweep    both must agree
+    #:   STRATEGY=ema_cross,liquidity_sweep    either may fire
+    strategy: str = ""
+
     # --- liquidity sweep / market-structure strategy ---------------------
     #: How many entry bars make one higher-timeframe bar for the trend
     #: filter. On M5 entries, 12 = 1H and 48 = 4H.
@@ -518,6 +524,7 @@ class Settings:
             bb_period=_i("BB_PERIOD", 20),
             bb_std=_f("BB_STD", 2.0),
             donchian_period=_i("DONCHIAN_PERIOD", 20),
+            strategy=_clean_value(os.environ.get("STRATEGY", "")),
             htf_ratio=_i("HTF_RATIO", 12),
             session_bars=_i("SESSION_BARS", 288),
             sweep_reject=_f("SWEEP_REJECT", 0.5),
