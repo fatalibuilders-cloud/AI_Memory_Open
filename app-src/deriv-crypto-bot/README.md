@@ -294,6 +294,77 @@ For reference: replaying the default settings over a synthetic random walk (a ma
 
 ---
 
+## Comparing strategies
+
+The bot ships nine rules, six real and three controls. Test them all against each other on the same data:
+
+```bash
+python -m deriv_bot.backtest --from-file btc.json --compare
+python -m deriv_bot.backtest --list-strategies
+python -m deriv_bot.backtest --from-file btc.json --strategy donchian
+```
+
+Pick one for the live bot with `STRATEGY=` in `.env`.
+
+| Strategy | What it does |
+|---|---|
+| `ema_cross` | EMA 9/21 crossover with RSI and ATR filters (default) |
+| `macd_cross` | MACD line crossing its signal line |
+| `donchian` | Breakout beyond the 20-candle range (Turtle-style) |
+| `trend_200` | Trade only with the 200-period trend |
+| `rsi_reversion` | Buy exits from oversold, sell exits from overbought |
+| `bollinger` | Fade closes outside the 2-sigma bands |
+| `always_call` | **CONTROL** — always up; the buy-and-hold benchmark |
+| `coin_flip` | **CONTROL** — random; the noise floor |
+| `never_trade` | **CONTROL** — no trades; cannot lose |
+
+### The controls are the point
+
+A strategy that cannot beat a coin flip is detecting nothing. One that cannot beat `always_call` is worse than just holding Bitcoin. One that cannot beat `never_trade` is worse than leaving your money alone. The comparison report says so in those words rather than crowning a winner.
+
+### What the comparison found here
+
+Run on 60 days of synthetic BTC-like 1-minute candles — in a market that **rose 139%** — with 5-minute contracts:
+
+```
+  Strategy         Trades    Win %   Net P&L    vs B/E
+  never_trade           0     0.0%     +0.00      --      <- won
+  ema_cross           500    49.2%    -44.90     -4.9
+  rsi_reversion      1647    49.8%   -130.00     -4.3
+  bollinger          3714    50.6%   -239.70     -3.5
+  macd_cross         4313    50.6%   -278.15     -3.5
+  donchian           5011    50.3%   -345.30     -3.7
+  always_call        8636    50.6%   -544.10     -3.4
+  coin_flip          8636    49.5%   -732.80     -4.6
+```
+
+Every rule lost. Not trading won. Even *always predicting up* lost money in a market that more than doubled, because over five minutes Bitcoin's drift is invisible against the noise — while the payout is charged on every single trade.
+
+That is synthetic data, so treat the exact figures as illustrative. The mechanism it demonstrates is not synthetic.
+
+### Contract length matters more than the indicator
+
+```bash
+python -m deriv_bot.backtest --from-file btc.json --strategy always_call --sweep-durations
+```
+
+Same data, same rule, only the contract length changing:
+
+| Duration | Win % | Net P&L |
+|---|---|---|
+| 5m | 50.8% | −974.81 |
+| 30m | 51.5% | −138.15 |
+| 1h | 51.6% | −66.30 |
+| 4h | 58.5% | **+29.50** |
+| 12h | 60.5% | **+14.20** |
+| 1 day | 64.4% | **+11.30** |
+
+A directional drift accumulates in proportion to time; noise grows only with its square root. So the same edge that is worthless over five minutes clears the payout hurdle comfortably over a day. **Switching from 5-minute to 4-hour contracts changed the result more than switching between any two strategies did.**
+
+The catch: that "edge" is just the market going up. A long contract in the wrong direction loses equally reliably, and fewer, larger bets means much higher variance. If your thesis is "Bitcoin rises", holding Bitcoin expresses it without capping your upside at 0.85x while leaving your downside at 1.0x.
+
+---
+
 ## Running it 24/7
 
 `python -m deriv_bot` in a terminal stops when you close the terminal. For genuinely continuous operation, use one of these.
@@ -351,6 +422,7 @@ Full list with comments in `.env.example`. The ones that matter most:
 | `MAX_OPEN_TRADES` | `2` | How many positions can be open at once |
 | `MAX_TRADES_PER_DAY` | `40` | Ceiling on trades opened per UTC day |
 | `SYMBOL_COOLDOWN` | `300` | Seconds before the same symbol can be traded again |
+| `STRATEGY` | `ema_cross` | Which rule to trade. See Comparing strategies |
 | `DERIV_SYMBOLS` | `BTC` | Bitcoin only. Blank = all open crypto. Accepts `BTC`, `BTC/USD`, or `cryBTCUSD` |
 | `TRADE_DURATION` / `_UNIT` | `5` / `m` | Contract length. Clamped to what Deriv allows for that symbol |
 
@@ -365,7 +437,7 @@ pip install pytest
 python -m pytest
 ```
 
-287 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
+360 tests covering the indicator maths, the crypto-only filter, every risk limit, state durability across restarts, full trading cycles against a fake Deriv API, the backtester's accounting, the preflight check (including a test that it never places a trade), and reconnection after network, proxy, and API failures. No network access or token needed; CI runs them on Python 3.10-3.13, and on Windows and macOS as well as Linux.
 
 ---
 
@@ -382,7 +454,8 @@ deriv_bot/
 ├── risk.py         Limits and position sizing
 ├── state.py        Durable daily counters and the trade journal
 ├── trader.py       The loop that ties it together
-├── backtest.py     Replays history through the same strategy and risk code
+├── strategies.py   The strategy library, including the honesty controls
+├── backtest.py     Replays history; --compare and --sweep-durations
 └── check.py        Preflight check — verifies setup, never trades
 ```
 

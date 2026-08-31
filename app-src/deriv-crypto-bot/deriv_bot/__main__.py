@@ -53,7 +53,11 @@ async def _run(config: Config) -> int:
         except (NotImplementedError, RuntimeError):  # pragma: no cover - non-POSIX
             pass
 
-    log.info("deriv-crypto-bot starting — cryptocurrency only, running continuously")
+    log.info(
+        "deriv-crypto-bot starting - strategy=%s, symbols=%s, running continuously",
+        config.strategy,
+        ",".join(config.symbols) or "all open crypto",
+    )
     log.info(
         "limits: stake=%.2f max_open=%d max_trades_per_day=%d daily_loss_limit=%.2f dry_run=%s",
         config.stake,

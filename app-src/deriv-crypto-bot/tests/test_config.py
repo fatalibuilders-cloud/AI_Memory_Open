@@ -104,3 +104,28 @@ class TestRedaction:
 
     def test_other_fields_survive(self):
         assert make_config(stake=3.0).redacted()["stake"] == 3.0
+
+
+class TestStrategySelection:
+    def test_defaults_to_the_ema_crossover(self, monkeypatch):
+        set_env(monkeypatch)
+        assert Config.from_env().strategy == "ema_cross"
+
+    @pytest.mark.parametrize("name", ["macd_cross", "donchian", "always_call", "never_trade"])
+    def test_any_registered_strategy_is_accepted(self, monkeypatch, name):
+        set_env(monkeypatch, STRATEGY=name)
+        assert Config.from_env().strategy == name
+
+    def test_an_unknown_strategy_lists_the_valid_ones(self, monkeypatch):
+        set_env(monkeypatch, STRATEGY="moon_phase")
+        with pytest.raises(ConfigError, match="ema_cross"):
+            Config.from_env()
+
+    def test_the_live_trader_uses_the_configured_strategy(self, tmp_path):
+        from deriv_bot.state import StateStore
+        from deriv_bot.strategies import REGISTRY
+        from deriv_bot.trader import Trader
+
+        config = make_config(strategy="donchian")
+        store = StateStore(str(tmp_path / "s.json"), str(tmp_path / "t.jsonl"))
+        assert Trader(config, store).decide is REGISTRY["donchian"]

@@ -87,6 +87,9 @@ class Config:
     max_symbols: int = 6
 
     # --- Strategy -------------------------------------------------------
+    # Name from strategies.REGISTRY. Run `python -m deriv_bot.backtest
+    # --list-strategies` to see them.
+    strategy: str = "ema_cross"
     candle_granularity: int = 60  # seconds per candle
     candle_count: int = 200
     ema_fast: int = 9
@@ -144,6 +147,15 @@ class Config:
             )
         if not 0 < self.max_stake_fraction <= 1:
             raise ConfigError("MAX_STAKE_FRACTION must be in (0, 1]")
+        # Imported lazily: strategies.py imports this module, so a top-level
+        # import here would be circular.
+        from .strategies import REGISTRY
+
+        if self.strategy not in REGISTRY:
+            raise ConfigError(
+                f"STRATEGY must be one of: {', '.join(sorted(REGISTRY))} "
+                f"(got {self.strategy!r})"
+            )
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -157,6 +169,7 @@ class Config:
             kill_switch_file=_str("KILL_SWITCH_FILE", "KILL_SWITCH"),
             symbols=_list("DERIV_SYMBOLS"),
             max_symbols=_int("MAX_SYMBOLS", 6),
+            strategy=_str("STRATEGY", "ema_cross"),
             candle_granularity=_int("CANDLE_GRANULARITY", 60),
             candle_count=_int("CANDLE_COUNT", 200),
             ema_fast=_int("EMA_FAST", 9),

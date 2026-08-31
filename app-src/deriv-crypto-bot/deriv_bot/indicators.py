@@ -122,3 +122,80 @@ def atr(candles: Sequence[Candle], period: int = 14) -> list[float | None]:
         prev = (prev * (period - 1) + true_ranges[i]) / period
         out[i] = prev
     return out
+
+
+def sma(values: Sequence[float], period: int) -> list[float | None]:
+    """Simple moving average."""
+    if period < 1:
+        raise ValueError("period must be >= 1")
+    out: list[float | None] = [None] * len(values)
+    if len(values) < period:
+        return out
+    running = sum(values[:period])
+    out[period - 1] = running / period
+    for i in range(period, len(values)):
+        running += values[i] - values[i - period]
+        out[i] = running / period
+    return out
+
+
+def stddev(values: Sequence[float], period: int) -> list[float | None]:
+    """Population standard deviation over a rolling window."""
+    if period < 1:
+        raise ValueError("period must be >= 1")
+    out: list[float | None] = [None] * len(values)
+    for i in range(period - 1, len(values)):
+        window = values[i - period + 1 : i + 1]
+        mean = sum(window) / period
+        out[i] = (sum((v - mean) ** 2 for v in window) / period) ** 0.5
+    return out
+
+
+def bollinger(
+    values: Sequence[float], period: int = 20, deviations: float = 2.0
+) -> tuple[list[float | None], list[float | None], list[float | None]]:
+    """Bollinger bands: (lower, middle, upper)."""
+    middle = sma(values, period)
+    spread = stddev(values, period)
+    lower: list[float | None] = [None] * len(values)
+    upper: list[float | None] = [None] * len(values)
+    for i, (mid, dev) in enumerate(zip(middle, spread)):
+        if mid is not None and dev is not None:
+            lower[i] = mid - deviations * dev
+            upper[i] = mid + deviations * dev
+    return lower, middle, upper
+
+
+def donchian(
+    candles: Sequence[Candle], period: int = 20
+) -> tuple[list[float | None], list[float | None]]:
+    """Donchian channel: (lowest low, highest high) over the prior `period`
+    candles, excluding the current one — the classic Turtle breakout rule."""
+    lows: list[float | None] = [None] * len(candles)
+    highs: list[float | None] = [None] * len(candles)
+    for i in range(period, len(candles)):
+        window = candles[i - period : i]
+        lows[i] = min(c.low for c in window)
+        highs[i] = max(c.high for c in window)
+    return lows, highs
+
+
+def macd(
+    values: Sequence[float], fast: int = 12, slow: int = 26, signal: int = 9
+) -> tuple[list[float | None], list[float | None]]:
+    """MACD line and its signal line."""
+    fast_line = ema(values, fast)
+    slow_line = ema(values, slow)
+    macd_line: list[float | None] = [
+        (f - s) if (f is not None and s is not None) else None
+        for f, s in zip(fast_line, slow_line)
+    ]
+
+    # The signal line is an EMA of the MACD line, which only exists after warm-up.
+    defined = [(i, v) for i, v in enumerate(macd_line) if v is not None]
+    signal_line: list[float | None] = [None] * len(values)
+    if len(defined) >= signal:
+        smoothed = ema([v for _, v in defined], signal)
+        for (index, _), value in zip(defined, smoothed):
+            signal_line[index] = value
+    return macd_line, signal_line

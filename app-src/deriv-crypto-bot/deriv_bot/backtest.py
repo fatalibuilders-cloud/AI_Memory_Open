@@ -44,7 +44,7 @@ from .indicators import Candle
 from .market import duration_seconds, parse_duration
 from .risk import RiskManager
 from .state import StateStore
-from .strategy import evaluate
+from .strategies import CONTROLS, DESCRIPTIONS, REGISTRY, get as get_strategy
 
 log = logging.getLogger(__name__)
 
@@ -72,6 +72,7 @@ class BacktestResult:
     candles: int
     starting_balance: float
     payout_ratio: float
+    strategy: str = "ema_cross"
     trades: list[SimulatedTrade] = field(default_factory=list)
     equity_curve: list[float] = field(default_factory=list)
     halted_days: int = 0
@@ -176,14 +177,17 @@ def simulate(
     *,
     starting_balance: float = 1000.0,
     payout_ratio: float = 0.85,
+    strategy: str = "ema_cross",
 ) -> BacktestResult:
-    """Replay `candles` through the live strategy and risk code."""
+    """Replay `candles` through the named strategy and the live risk code."""
     span = _candles_per_contract(config)
+    decide = get_strategy(strategy)
     result = BacktestResult(
         symbol=symbol,
         candles=len(candles),
         starting_balance=starting_balance,
         payout_ratio=payout_ratio,
+        strategy=strategy,
     )
 
     store = StateStore("", "", persist=False)
@@ -236,7 +240,7 @@ def simulate(
 
         # --- signal, over the same trailing window the live bot fetches ----
         window = candles[max(0, i + 1 - config.candle_count) : i + 1]
-        signal = evaluate(symbol, window, config)
+        signal = decide(symbol, window, config)
         if not signal.is_trade:
             continue
 
@@ -268,6 +272,198 @@ def simulate(
         store.record_open({})
 
     return result
+
+
+
+def compare(
+    symbol: str,
+    candles: list[Candle],
+    config: Config,
+    *,
+    starting_balance: float = 1000.0,
+    payout_ratio: float = 0.85,
+) -> list[BacktestResult]:
+    """Run every strategy over identical candles, best net P&L first."""
+    results = [
+        simulate(
+            symbol,
+            candles,
+            config,
+            starting_balance=starting_balance,
+            payout_ratio=payout_ratio,
+            strategy=name,
+        )
+        for name in REGISTRY
+    ]
+    return sorted(results, key=lambda r: r.total_pnl, reverse=True)
+
+
+def format_comparison(results: list[BacktestResult], config: Config) -> str:
+    """Rank the strategies, and say plainly what the ranking means."""
+    lines: list[str] = []
+    add = lines.append
+    first = results[0]
+
+    add("=" * 78)
+    add(f"  STRATEGY COMPARISON - {first.symbol}")
+    add("=" * 78)
+    add("")
+    add(f"  Candles        {first.candles:,} @ {config.candle_granularity}s")
+    if first.span_days:
+        add(f"  Period         {first.span_days:.1f} days")
+    add(f"  Contract       {config.trade_duration}{config.trade_duration_unit}")
+    add(f"  Payout         {first.payout_ratio:.3f}x stake on a win")
+    add(f"  Breakeven      {first.breakeven_win_rate:.1f}% win rate required")
+    add("")
+    add("  " + "-" * 74)
+    add("  %-15s %7s %8s %9s %9s %9s" % ("Strategy", "Trades", "Win %", "Net P&L", "Drawdown", "vs B/E"))
+    add("  " + "-" * 74)
+
+    for result in results:
+        margin = result.win_rate - result.breakeven_win_rate if result.trades else 0.0
+        marker = " *" if result.strategy in CONTROLS else "  "
+        add(
+            "  %-15s %7d %7.1f%% %+9.2f %9.2f %+8.1f%s"
+            % (
+                result.strategy,
+                len(result.trades),
+                result.win_rate,
+                result.total_pnl,
+                result.max_drawdown,
+                margin,
+                marker,
+            )
+        )
+    add("  " + "-" * 74)
+    add("  * = control, not a strategy")
+    add("")
+
+    # -- interpretation ----------------------------------------------------
+    add("-" * 78)
+    add("  WHAT THIS MEANS")
+    add("-" * 78)
+
+    controls = [r for r in results if r.strategy in CONTROLS]
+    real = [r for r in results if r.strategy not in CONTROLS]
+    best_real = max(real, key=lambda r: r.total_pnl) if real else None
+    best_control = max(controls, key=lambda r: r.total_pnl) if controls else None
+
+    if best_real is None or best_control is None:
+        add("  Not enough data to interpret.")
+    elif best_real.total_pnl <= best_control.total_pnl:
+        add(f"  No strategy beat the controls. The best control ({best_control.strategy})")
+        add(f"  returned {best_control.total_pnl:+.2f}; the best strategy ({best_real.strategy})")
+        add(f"  returned {best_real.total_pnl:+.2f}.")
+        add("")
+        add("  That means none of these rules detected anything on this data that")
+        add("  a coin flip, buying and holding, or simply not trading did not.")
+        add("  Tuning parameters will not fix this - the payout is the problem.")
+    elif best_real.total_pnl <= 0:
+        add(f"  Every strategy lost money. Best was {best_real.strategy} at")
+        add(f"  {best_real.total_pnl:+.2f}. There is nothing here to run with real funds.")
+    else:
+        margin = best_real.win_rate - best_real.breakeven_win_rate
+        add(f"  Best strategy: {best_real.strategy} ({best_real.total_pnl:+.2f}, ")
+        add(f"  {best_real.win_rate:.1f}% win rate, {margin:+.1f} points vs breakeven).")
+        add("")
+        if margin < 2.0:
+            add("  But that margin is within noise. A small change in real payouts,")
+            add("  or a different month, would erase it. Treat it as unproven.")
+        else:
+            add(f"  It also beat the best control ({best_control.strategy}, "
+                f"{best_control.total_pnl:+.2f}).")
+            add("  That is the minimum bar for the result to mean anything - but one")
+            add("  period is still not evidence. Re-run across several months.")
+
+    add("")
+    add("  Reminders that apply to every row above:")
+    add("    - The payout ratio is assumed, not measured. Run deriv_bot.check")
+    add("      to get the real one, then pass it with --payout-ratio.")
+    add("    - No spread, slippage, or intra-candle movement is modelled.")
+    add("      Every number above is therefore optimistic.")
+    add("    - Testing nine strategies on one dataset means the winner is partly")
+    add("      luck. The more rules you try, the more likely one looks good by")
+    add("      chance alone. Confirm any winner on data you did not choose it on.")
+    add("=" * 78)
+    return "\n".join(lines)
+
+
+
+def sweep_durations(
+    symbol: str,
+    candles: list[Candle],
+    config: Config,
+    durations: list[int],
+    *,
+    strategy: str = "ema_cross",
+    starting_balance: float = 1000.0,
+    payout_ratio: float = 0.85,
+) -> list[tuple[int, BacktestResult]]:
+    """Run one strategy at several contract lengths.
+
+    Contract length turns out to matter more than the choice of indicator. A
+    directional edge accumulates in proportion to time, while noise grows only
+    with its square root, so a real drift that is invisible over five minutes
+    can dominate over a day. This sweep makes that visible on your own data.
+    """
+    from dataclasses import replace
+
+    out: list[tuple[int, BacktestResult]] = []
+    for minutes in durations:
+        tuned = replace(config, trade_duration=minutes, trade_duration_unit="m")
+        try:
+            out.append(
+                (
+                    minutes,
+                    simulate(
+                        symbol,
+                        candles,
+                        tuned,
+                        starting_balance=starting_balance,
+                        payout_ratio=payout_ratio,
+                        strategy=strategy,
+                    ),
+                )
+            )
+        except ConfigError as exc:
+            log.warning("skipping %dm: %s", minutes, exc)
+    return out
+
+
+def format_sweep(rows: list[tuple[int, BacktestResult]], strategy: str) -> str:
+    lines: list[str] = []
+    add = lines.append
+    add("=" * 70)
+    add(f"  CONTRACT LENGTH SWEEP - {strategy}")
+    add("=" * 70)
+    add("")
+    add("  Same data, same rule. Only the contract length changes.")
+    add("")
+    add("  %-10s %8s %8s %11s %10s" % ("Duration", "Trades", "Win %", "Net P&L", "vs B/E"))
+    add("  " + "-" * 52)
+    for minutes, result in rows:
+        if minutes < 60:
+            label = f"{minutes}m"
+        elif minutes < 1440:
+            label = f"{minutes // 60}h"
+        else:
+            label = f"{minutes // 1440}d"
+        margin = result.win_rate - result.breakeven_win_rate if result.trades else 0.0
+        add(
+            "  %-10s %8d %7.1f%% %+11.2f %+9.1f"
+            % (label, len(result.trades), result.win_rate, result.total_pnl, margin)
+        )
+    add("  " + "-" * 52)
+    add("")
+    add("  Longer contracts usually score better on trending data: a directional")
+    add("  drift grows with time while noise grows only with its square root, so")
+    add("  the same edge clears the payout hurdle more easily given longer.")
+    add("")
+    add("  That cuts both ways. A long contract in the wrong direction loses just")
+    add("  as reliably, and fewer, larger bets means a lot more variance per")
+    add("  trade. This sweep shows what the data did, not what it will do.")
+    add("=" * 70)
+    return "\n".join(lines)
 
 
 def format_report(result: BacktestResult, config: Config) -> str:
@@ -419,6 +615,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--save-candles", help="write fetched candles to this file for reuse")
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    parser.add_argument(
+        "--strategy",
+        default="ema_cross",
+        choices=sorted(REGISTRY),
+        help="which strategy to test (default: ema_cross)",
+    )
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="test every strategy on the same data and rank them",
+    )
+    parser.add_argument(
+        "--list-strategies", action="store_true", help="list the strategies and exit"
+    )
+    parser.add_argument(
+        "--sweep-durations",
+        action="store_true",
+        help="test one strategy at 5m/15m/30m/1h/4h/12h/1d contract lengths",
+    )
     return parser
 
 
@@ -426,6 +641,7 @@ def _as_json(result: BacktestResult) -> str:
     return json.dumps(
         {
             "symbol": result.symbol,
+            "strategy": result.strategy,
             "candles": result.candles,
             "trades": len(result.trades),
             "wins": result.wins,
@@ -450,8 +666,19 @@ def _as_json(result: BacktestResult) -> str:
     )
 
 
+def _list_strategies() -> int:
+    print("\n  Available strategies:\n")
+    for name in REGISTRY:
+        mark = "*" if name in CONTROLS else " "
+        print(f"  {mark} {name:<15} {DESCRIPTIONS.get(name, '')}")
+    print("\n  * = control, not a strategy. Any real rule must beat these.\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.list_strategies:
+        return _list_strategies()
     logging.basicConfig(
         level=logging.INFO, format="%(levelname)-7s %(message)s", stream=sys.stderr
     )
@@ -496,12 +723,40 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
+        if args.sweep_durations:
+            rows = sweep_durations(
+                args.symbol,
+                candles,
+                config,
+                [5, 15, 30, 60, 240, 720, 1440],
+                strategy=args.strategy,
+                starting_balance=args.balance,
+                payout_ratio=args.payout_ratio,
+            )
+            print(format_sweep(rows, args.strategy))
+            return 0
+
+        if args.compare:
+            results = compare(
+                args.symbol,
+                candles,
+                config,
+                starting_balance=args.balance,
+                payout_ratio=args.payout_ratio,
+            )
+            if args.json:
+                print(json.dumps([json.loads(_as_json(r)) for r in results], indent=2))
+            else:
+                print(format_comparison(results, config))
+            return 0
+
         result = simulate(
             args.symbol,
             candles,
             config,
             starting_balance=args.balance,
             payout_ratio=args.payout_ratio,
+            strategy=args.strategy,
         )
     except ConfigError as exc:
         log.error("%s", exc)

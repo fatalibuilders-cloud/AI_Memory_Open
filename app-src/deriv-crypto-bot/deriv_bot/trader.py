@@ -26,7 +26,8 @@ from .indicators import Candle
 from .market import find_contract, resolve_duration, select_symbols
 from .risk import RiskManager
 from .state import StateStore
-from .strategy import Signal, evaluate
+from .strategies import get as get_strategy
+from .strategy import Signal
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class Trader:
         self.store = store
         self.api = DerivAPI(config)
         self.risk = RiskManager(config, store)
+        self.decide = get_strategy(config.strategy)
         self.open_trades: dict[int, OpenTrade] = {}
         self.currency: str = config.currency
         self._stopping = asyncio.Event()
@@ -174,7 +176,7 @@ class Trader:
             return
 
         candles = [Candle.from_api(entry) for entry in raw]
-        signal = evaluate(symbol, candles, self.config)
+        signal = self.decide(symbol, candles, self.config)
         if not signal.is_trade:
             log.debug("%s: %s", symbol, signal.reason)
             return

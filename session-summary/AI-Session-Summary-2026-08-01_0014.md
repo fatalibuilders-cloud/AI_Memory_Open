@@ -52,9 +52,22 @@
 - Verified end to end: given five symbols including three other coins and a forex pair, the trader fetched candles for, priced, and bought only `cryBTCUSD`.
 - Test count rose from 269 to 287.
 
+**Build — strategy library and comparison harness (owner request)**
+
+- Owner asked for the best strategy for maximum profit and minimal loss, referenced against TradingView and other platforms. **All external market-data sources are blocked from this sandbox** (TradingView, Binance, CoinGecko, Kraken, Coinbase, Yahoo, CryptoCompare all refused at the proxy), so no external reference data was consulted and none is claimed.
+- Instead built `deriv_bot/strategies.py`: six real strategies (EMA crossover, MACD, Donchian breakout, 200-period trend, RSI reversion, Bollinger reversion) and **three controls** — `always_call` (buy-and-hold analogue), `coin_flip` (noise floor), `never_trade` (cannot lose). Added SMA, stddev, Bollinger, Donchian and MACD to `indicators.py`.
+- Added `--compare` (rank every strategy on identical data), `--sweep-durations` (one strategy across seven contract lengths), `--strategy`, and `--list-strategies` to the backtester. `STRATEGY=` in `.env` selects the rule for the live bot.
+- **Finding:** on 60 days of BTC-like synthetic candles in a market that rose 139%, with 5-minute contracts, every strategy lost and `never_trade` won the table. `always_call` lost 544 despite the market more than doubling — over five minutes the drift is invisible against noise while the payout is charged on every trade.
+- **Finding:** contract length dominates the choice of indicator. Holding the rule fixed and varying only duration, `always_call` went from −974 at 5m to +29 at 4h and +11 at 1 day. Drift accumulates linearly with time; noise grows with its square root.
+- Test count rose from 287 to 360.
+
+**Incident — work lost to container recycling**
+
+- Mid-session the container was recycled and re-cloned from `main`, which had advanced with an unrelated merged PR. `app-src/deriv-crypto-bot/` disappeared and the local branch pointed at the wrong commit. All pushed work was intact on the remote and was restored with `git fetch origin claude/deriv-7h4xbl && git reset --hard origin/claude/deriv-7h4xbl`. Uncommitted in-turn work was rewritten.
+
 **Verification**
 
-- `python -m pytest` → 287 passed.
+- `python -m pytest` → 360 passed.
 - `setup.sh` executed end to end in a clean environment: venv created, dependencies installed, suite run, `.env` scaffolded. Re-run confirmed idempotent.
 - `python -m deriv_bot.check` executed against the blocked sandbox proxy and produced a clean, actionable NOT READY report with no traceback.
 - Confirmed `.env` and `.venv` are git-ignored and were never staged.
