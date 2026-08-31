@@ -170,6 +170,10 @@ class MT5Broker(Broker):
             raise BrokerError("account_info failed")
         return float(info.equity)
 
+    def account_currency(self) -> str:
+        info = self._require().account_info()
+        return str(getattr(info, "currency", "") or "") if info else ""
+
     def is_demo(self):
         """MT5 reports 0 = demo, 1 = contest, 2 = real."""
         info = self._require().account_info()

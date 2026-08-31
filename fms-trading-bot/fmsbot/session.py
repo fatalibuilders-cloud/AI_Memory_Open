@@ -44,6 +44,8 @@ class BrokerSession:
     evidence: Optional[Evidence] = None
     #: trade-rate control, and the diagnosis when the rate cannot be met
     pace: Optional[Pace] = None
+    #: the money-scale warning is worth saying once, not every loop
+    scale_checked: bool = False
     connected: bool = False
     last_bar: dict[str, int] = field(default_factory=dict)
     symbol_warned: dict[str, float] = field(default_factory=dict)

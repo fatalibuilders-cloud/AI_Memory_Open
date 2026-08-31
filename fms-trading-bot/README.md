@@ -544,6 +544,38 @@ symbols — the interval cannot help while every symbol is occupied.
 while you adjust the wrong setting is worse than one that tells you which
 gate is closed.
 
+## A hard cap on what one trade may lose
+
+A stop loss is the broker's promise, and promises fail: placed at the
+wrong distance, rejected and silently lost, or gapped straight through.
+
+```env
+MAX_LOSS_PER_TRADE=1.0
+```
+
+The bot then closes any position past that itself, without waiting for
+the stop, and says so. It is a backstop, not a replacement — between two
+polls the price can still move, so this is a ceiling on what the bot will
+tolerate, not a guarantee of the exact loss. It is per-symbol overridable
+and off by default.
+
+### Money settings are in the broker's units, not dollars
+
+This bit costs people real money. On an Exness **cent** account, balance,
+equity and every position's profit are reported in **cents**. A `0.10`
+break-even rung is then a tenth of a cent — cleared by every trade
+instantly, so the stop snaps to break-even the moment a position opens
+and the protection does nothing at all.
+
+The symptom is unmistakable once you know it: a position showing `+2000`
+triggering a stage meant for `+0.10`. The bot now watches for exactly
+that — a position two orders of magnitude past the top rung — and says so
+once, naming the account currency.
+
+If you are on a cent account, multiply every money setting by 100 or move
+to a standard account, then re-run `tune_symbols.py` to derive them from
+the account you are actually on.
+
 ## The bot keeps score on itself, and stops when it is losing
 
 This is the most important safety feature in the project, and it exists

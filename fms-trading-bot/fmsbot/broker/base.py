@@ -72,6 +72,15 @@ class Broker(ABC):
         """
         return 0.0
 
+    def account_currency(self) -> str:
+        """The currency the broker reports balance and profit in.
+
+        Not cosmetic. On an Exness "cent" account every money figure --
+        balance, equity, a position's profit -- is in cents, so a $0.10
+        setting means a tenth of a cent and fires on every trade.
+        """
+        return ""
+
     def is_demo(self) -> Optional[bool]:
         """True on a practice account, False on real money, None if unknown.
 

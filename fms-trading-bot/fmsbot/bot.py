@@ -525,6 +525,8 @@ class TradingBot:
         for ticket in vanished:
             session.stage_done.pop(ticket, None)
             session.peak_price.pop(ticket, None)
+        self._check_money_scale(session, positions)
+        positions = self._enforce_loss_cap(session, positions)
         self._protect_profits(session, positions)
         self._trail_stops(session, positions)
         if session.pace:
@@ -533,6 +535,85 @@ class TradingBot:
             if report:
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
+
+    def _enforce_loss_cap(self, session: BrokerSession, positions) -> list:
+        """Close anything losing more than the cap, without waiting.
+
+        A stop loss is the broker's promise, and it can fail: placed at the
+        wrong distance, rejected and silently lost, or gapped straight
+        through. This does not trust it. It is a backstop, not a
+        replacement -- between two polls the price can still run further,
+        so the number here is a ceiling on what the bot will tolerate, not
+        a guarantee of the exact loss.
+        """
+        cap = self.s.max_loss_per_trade
+        if cap <= 0:
+            return positions
+        survivors = []
+        for p in positions:
+            limit = self.s.for_symbol(p.symbol).max_loss_per_trade
+            if limit <= 0 or p.profit > -limit:
+                survivors.append(p)
+                continue
+            try:
+                realised = session.broker.close_position(p.ticket)
+            except BrokerError as exc:
+                log.error("[%s] %s #%s is at %.2f, past the %.2f cap, and would "
+                          "not close: %s", session.name, p.symbol, p.ticket,
+                          p.profit, limit, exc)
+                self.remote.broadcast(
+                    f"⚠️ [{session.name}] {p.symbol} #{p.ticket} is at "
+                    f"{p.profit:.2f}, past the {limit:.2f} loss cap, and the "
+                    f"broker refused to close it: {exc}")
+                survivors.append(p)
+                continue
+            log.warning("[%s] %s #%s closed at %.2f by the loss cap (%.2f)",
+                        session.name, p.symbol, p.ticket, realised, limit)
+            self.remote.broadcast(
+                f"🚨 [{session.name}] {p.symbol} #{p.ticket} closed at "
+                f"{realised:+.2f} — past the {limit:.2f} loss cap.\n"
+                f"The stop did not hold it. Check /diag.")
+        return survivors
+
+    def _check_money_scale(self, session: BrokerSession, positions) -> None:
+        """Warn when the money settings are the wrong size for the account.
+
+        Money settings are in whatever units the broker reports, and those
+        are not always dollars: on an Exness cent account balance, equity
+        and profit are all in cents, so a 0.10 rung means a tenth of a cent
+        and every trade clears it instantly. The symptom is a position
+        showing +2000 triggering a stage meant for +0.10, which is
+        protection in name only.
+        """
+        if session.scale_checked or not positions:
+            return
+        ladder = self.s.stages()
+        top = max((trigger for trigger, _ in ladder), default=0.0)
+        if top <= 0:
+            session.scale_checked = True
+            return
+        worst = max(abs(p.profit) for p in positions)
+        if worst < top * 100:
+            return
+        session.scale_checked = True
+        try:
+            currency = session.broker.account_currency()
+        except BrokerError:
+            currency = ""
+        log.warning("[%s] money settings look mis-scaled: a position is at "
+                    "%.2f %s while the top rung is %.2f",
+                    session.name, worst, currency, top)
+        self.remote.broadcast(
+            f"⚠️ [{session.name}] YOUR MONEY SETTINGS ARE THE WRONG SIZE.\n\n"
+            f"A position reached {worst:.2f} {currency} while the highest "
+            f"protection rung is {top:.2f}. Every trade clears that instantly, "
+            f"so the stop jumps to break-even at once and the protection is "
+            f"doing nothing.\n\n"
+            f"If this is an Exness CENT account, the broker reports cents, not "
+            f"dollars: your {top:.2f} rung is {top/100:.4f} of a dollar. "
+            f"Multiply every money setting by 100, or move to a standard "
+            f"account.\n\n"
+            f"Run tune_symbols.py to re-derive them from this account.")
 
     def _trail_stops(self, session: BrokerSession, positions) -> None:
         """Chandelier exit: follow the best price the trade has reached.
