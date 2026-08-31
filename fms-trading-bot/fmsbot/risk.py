@@ -159,6 +159,12 @@ class RiskManager:
             dd = (equity - st.start_balance) / st.start_balance * 100.0
             if dd <= -s.daily_loss_limit_pct:
                 return False, f"daily loss limit hit ({dd:+.2f}%)"
+            # A day's profit is only real once you stop trading it back.
+            gain = equity - st.start_balance
+            if s.daily_profit_target > 0 and gain >= s.daily_profit_target:
+                return False, (f"daily profit target reached "
+                               f"({gain:+.2f} of {s.daily_profit_target:.2f}) "
+                               f"— done for the day")
         last = st.last_entry.get(symbol, 0.0)
         wait = s.cooldown_seconds - (time.time() - last)
         if wait > 0:
@@ -200,6 +206,18 @@ class RiskManager:
                    + (f"/{s.max_consecutive_losses}" if s.max_consecutive_losses
                       else " (pause disabled)"))
         out.append(f"trades today: {st.trades}/{s.max_trades_per_day}")
+        if st.start_balance > 0 and (s.daily_profit_target > 0
+                                     or s.daily_profit_floor > 0):
+            gain = equity - st.start_balance
+            line = f"today: {gain:+.2f}"
+            if s.daily_profit_floor > 0:
+                line += f"  floor {s.daily_profit_floor:.0f}"
+                line += " ✓" if gain >= s.daily_profit_floor else ""
+            if s.daily_profit_target > 0:
+                line += f"  target {s.daily_profit_target:.0f}"
+                if gain >= s.daily_profit_target:
+                    line += "  ← REACHED, stopped for the day"
+            out.append(line)
 
         out.append(f"open positions: {open_total}/{s.max_open_positions}"
                    + ("  ← FULL" if open_total >= s.max_open_positions else ""))

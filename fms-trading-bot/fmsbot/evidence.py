@@ -45,6 +45,9 @@ class Evidence:
 
     fingerprint: str = ""
     pnls: list[float] = field(default_factory=list)
+    #: the same trades split by instrument, so a symbol that is losing can
+    #: be dropped without waiting for it to sink the whole account
+    by_symbol: dict[str, list[float]] = field(default_factory=dict)
     started: float = field(default_factory=time.time)
     #: Verdict already announced, so a halt is reported once, not every loop.
     announced: str = ""
@@ -80,6 +83,8 @@ class Evidence:
                      "about this one.")
             return ev
         ev.pnls = [float(x) for x in data.get("pnls", [])]
+        ev.by_symbol = {k: [float(x) for x in v]
+                        for k, v in (data.get("by_symbol") or {}).items()}
         ev.started = float(data.get("started", ev.started))
         ev.announced = str(data.get("announced", ""))
         return ev
@@ -91,6 +96,7 @@ class Evidence:
             self.path.write_text(json.dumps({
                 "fingerprint": self.fingerprint,
                 "pnls": self.pnls,
+                "by_symbol": self.by_symbol,
                 "started": self.started,
                 "announced": self.announced,
             }), encoding="utf-8")
@@ -99,12 +105,15 @@ class Evidence:
 
     def reset(self) -> None:
         self.pnls, self.started, self.announced = [], time.time(), ""
+        self.by_symbol = {}
         self.save()
 
     # -- recording -------------------------------------------------------
 
-    def record(self, pnl: float) -> None:
+    def record(self, pnl: float, symbol: str = "") -> None:
         self.pnls.append(float(pnl))
+        if symbol:
+            self.by_symbol.setdefault(symbol, []).append(float(pnl))
         self.save()
 
     # -- statistics ------------------------------------------------------
@@ -214,6 +223,35 @@ class Evidence:
             lines.append(f"\nPASSED — profitable by more than chance explains "
                          f"(p < {self.alpha}). That earns a demo, not confidence.")
         return "\n".join(lines)
+
+
+    # -- per instrument --------------------------------------------------
+
+    def symbol_verdict(self, symbol: str) -> str:
+        """The same test, applied to one instrument's trades.
+
+        An account can be losing overall because ONE symbol is losing,
+        which is what the live record showed: metals were 8% of the trades
+        and 77% of the losses. Halting everything there is too blunt and
+        waiting for the whole account to be convicted is too slow. This
+        drops the instrument and keeps the rest.
+        """
+        pnls = self.by_symbol.get(symbol, [])
+        if len(pnls) < self.min_trades:
+            return PROVING
+        clone = Evidence(pnls=list(pnls), min_trades=self.min_trades,
+                         alpha=self.alpha)
+        return clone.verdict()
+
+    def symbol_summary(self) -> list[tuple[str, int, float, float, str]]:
+        """(symbol, trades, net, profit factor, verdict), worst first."""
+        out = []
+        for symbol, pnls in self.by_symbol.items():
+            clone = Evidence(pnls=list(pnls), min_trades=self.min_trades,
+                             alpha=self.alpha)
+            out.append((symbol, clone.count, clone.net, clone.profit_factor,
+                        self.symbol_verdict(symbol)))
+        return sorted(out, key=lambda row: row[2])
 
 
 def fingerprint(settings, strategy_name: str) -> str:

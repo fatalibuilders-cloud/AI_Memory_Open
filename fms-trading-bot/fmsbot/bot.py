@@ -519,8 +519,12 @@ class TradingBot:
             if pause_msg:
                 self.remote.broadcast(f"⏸ [{session.name}] {pause_msg}")
             if session.evidence:
-                session.evidence.record(pnl)
+                symbol = next((q.symbol for q in positions if q.ticket == ticket),
+                              "")
+                session.evidence.record(pnl, symbol)
                 self._announce_verdict(session)
+                if symbol:
+                    self._retire_losing_symbol(session, symbol)
         session.known_tickets |= current
         # let go of state for positions that no longer exist
         for ticket in vanished:
@@ -782,6 +786,32 @@ class TradingBot:
                 f"{ev.explain()}\n\n"
                 f"This is permission to keep testing, not to add money.")
 
+    def _retire_losing_symbol(self, session: BrokerSession, symbol: str) -> None:
+        """Stop trading one instrument once its own record convicts it.
+
+        This is the only honest form of "getting better with time": the bot
+        cannot learn to win, but it can stop repeating what is measurably
+        losing. Reducing exposure is always the safe direction, so it needs
+        no approval; adding a symbol back is a decision for a person.
+        """
+        ev = session.evidence
+        if ev is None or symbol in session.disabled_symbols:
+            return
+        if ev.symbol_verdict(symbol) != evidence.FAILED:
+            return
+        pnls = ev.by_symbol.get(symbol, [])
+        net = sum(pnls)
+        session.disabled_symbols[symbol] = (
+            f"its own record: {len(pnls)} trades, net {net:+.2f}")
+        log.warning("[%s] retiring %s — %d trades, net %.2f",
+                    session.name, symbol, len(pnls), net)
+        self.remote.broadcast(
+            f"🚫 [{session.name}] {symbol} RETIRED.\n\n"
+            f"{len(pnls)} trades, net {net:+.2f} — losing by more than chance "
+            f"explains. The other symbols carry on.\n\n"
+            f"This is the bot narrowing to what works. /evidence shows every "
+            f"instrument; /enable {symbol} puts it back if you disagree.")
+
     def _evidence_blocks(self, session: BrokerSession) -> Optional[str]:
         """Why this account must not open a trade right now, if it must not.
 
@@ -1034,8 +1064,19 @@ class TradingBot:
             out = []
             for s in sessions:
                 out.append(f"— {s.name} —")
-                out.append(s.evidence.explain() if s.evidence
-                           else "  no record kept")
+                if not s.evidence:
+                    out.append("  no record kept")
+                    continue
+                out.append(s.evidence.explain())
+                rows = s.evidence.symbol_summary()
+                if rows:
+                    out.append("\nby instrument (worst first):")
+                    for symbol, n, net, pf, verdict in rows:
+                        mark = {"failed": " ← RETIRED",
+                                "passed": " ← earning"}.get(verdict, "")
+                        pf_text = "inf" if pf == float("inf") else f"{pf:.2f}"
+                        out.append(f"  {symbol:12} {n:4} trades  {net:+8.2f}  "
+                                   f"PF {pf_text}{mark}")
             return "\n".join(out)
 
         if command == "why":

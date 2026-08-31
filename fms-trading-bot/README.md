@@ -491,6 +491,38 @@ back down.
 Stop the bot before running it. Two processes cannot share one MT5
 terminal, and both would be moving the same stops.
 
+## Daily targets, and what the bot can learn
+
+```env
+DAILY_PROFIT_TARGET=1000     # stop opening trades once the day is this far ahead
+DAILY_PROFIT_FLOOR=100       # what a good day looks like — reported, never enforced
+```
+
+The **target is enforceable** and worth having: a day's profit is only
+real once you stop trading it back, so the bot stops opening positions
+for the day when it is reached.
+
+The **floor is not enforceable, and it is important to be clear why.** No
+setting can make the market pay $100. A minimum profit is a wish, not a
+gate — so it is reported against and nothing more. `/why` shows the day's
+figure against it.
+
+### Retiring what loses
+
+The bot cannot learn to win. It can stop repeating what is measurably
+losing, and that is the only honest form of getting better with time.
+
+Every closed trade is now recorded **per instrument**, and each
+instrument is tested against the same zero-edge null as the account as a
+whole. One that is losing by more than chance explains is retired: the
+others carry on. The live record is the argument — metals were 8% of the
+trades and 77% of the losses, so halting everything was too blunt and
+waiting for the whole account to be convicted was too slow.
+
+Retiring only ever reduces exposure, so it needs no approval. Putting a
+symbol back is a decision for a person: `/enable SYMBOL`. `/evidence` now
+lists every instrument, worst first.
+
 ## How often can a strategy actually trade?
 
 ```powershell

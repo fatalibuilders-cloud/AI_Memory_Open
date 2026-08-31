@@ -311,6 +311,14 @@ class Settings:
     #: units, without waiting for the stop. A backstop for a stop that was
     #: placed wrong, rejected, or gapped through. 0 disables it.
     max_loss_per_trade: float = 0.0
+    #: Stop opening trades for the day once the account is this far ahead,
+    #: in the broker's own money units. A day's profit is only real once
+    #: you stop trading it back. 0 disables the target.
+    daily_profit_target: float = 0.0
+    #: What a good day is meant to look like. Purely informational: no
+    #: setting can make the market pay, so this is reported against, never
+    #: enforced. The bot says at the end of each day whether it was met.
+    daily_profit_floor: float = 0.0
     max_consecutive_losses: int = 3
     #: Stop trading when the record shows the configuration losing beyond
     #: chance. The bot lost $46 over 139 trades while the evidence that it
@@ -535,6 +543,8 @@ class Settings:
             trail_atr_mult=_f("TRAIL_ATR_MULT", 0.0),
             trail_start_money=_f("TRAIL_START_MONEY", 0.0),
             max_loss_per_trade=_f("MAX_LOSS_PER_TRADE", 0.0),
+            daily_profit_target=_f("DAILY_PROFIT_TARGET", 0.0),
+            daily_profit_floor=_f("DAILY_PROFIT_FLOOR", 0.0),
             max_consecutive_losses=_i("MAX_CONSECUTIVE_LOSSES", 3),
             halt_on_failed_evidence=_b("HALT_ON_FAILED_EVIDENCE", True),
             live_requires_evidence=_b("LIVE_REQUIRES_EVIDENCE", True),
