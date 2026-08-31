@@ -17,6 +17,7 @@ from typing import Optional
 from .broker.base import BrokerError
 from . import evidence
 from .config import Settings
+from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
 from .strategy import EmaCrossStrategy
 from .telegram import TelegramRemote
@@ -505,7 +506,93 @@ class TradingBot:
                 session.evidence.record(pnl)
                 self._announce_verdict(session)
         session.known_tickets |= current
+        # let go of state for positions that no longer exist
+        for ticket in vanished:
+            session.stage_done.pop(ticket, None)
+            session.peak_price.pop(ticket, None)
         self._protect_profits(session, positions)
+        self._trail_stops(session, positions)
+
+    def _trail_stops(self, session: BrokerSession, positions) -> None:
+        """Chandelier exit: follow the best price the trade has reached.
+
+        The cash ladder locks a fixed amount and then stops helping, so a
+        move that runs far gives back everything above the last rung. This
+        keeps the stop a fixed volatility distance behind the trade's own
+        high-water mark.
+
+        Two properties matter and both are easy to get wrong. It measures
+        from the PEAK, not the current price, or the stop would follow the
+        trade back down. And it only ever tightens, so a stop can never be
+        moved further away from price to give a losing trade more room.
+        """
+        atr_cache: dict[str, float] = {}
+        for p in positions:
+            cfg = self.s.for_symbol(p.symbol)
+            if cfg.trail_atr_mult <= 0:
+                continue
+            if p.profit < cfg.trail_start_money:
+                continue
+
+            # The exit side: a long is closed at the bid, a short at the ask.
+            # Using the entry side would flatter every trade by one spread.
+            exit_side = "sell" if p.side == "buy" else "buy"
+            try:
+                price = session.broker.current_price(p.symbol, exit_side)
+                if p.symbol not in atr_cache:
+                    bars = session.broker.bars(p.symbol, cfg.timeframe,
+                                               cfg.atr_period + 2)
+                    value = atr([b.high for b in bars], [b.low for b in bars],
+                                [b.close for b in bars], cfg.atr_period)
+                    atr_cache[p.symbol] = value or 0.0
+                floor = session.broker.min_stop_distance(p.symbol)
+            except BrokerError as exc:
+                log.debug("[%s] cannot trail %s: %s", session.name, p.symbol, exc)
+                continue
+            value = atr_cache.get(p.symbol, 0.0)
+            if value <= 0 or price <= 0:
+                continue
+
+            peak = session.peak_price.get(p.ticket)
+            peak = price if peak is None else (max(peak, price) if p.side == "buy"
+                                               else min(peak, price))
+            session.peak_price[p.ticket] = peak
+
+            distance = value * cfg.trail_atr_mult
+            candidate = peak - distance if p.side == "buy" else peak + distance
+
+            # Brokers reject a stop sitting closer than their minimum (10011),
+            # so pull it back to the closest legal place rather than losing
+            # the update entirely.
+            if floor > 0:
+                if p.side == "buy":
+                    candidate = min(candidate, price - floor)
+                else:
+                    candidate = max(candidate, price + floor)
+
+            current = p.sl
+            if current and current > 0:
+                ratcheted = (max(current, candidate) if p.side == "buy"
+                             else min(current, candidate))
+            else:
+                ratcheted = candidate
+            if ratcheted == current:
+                continue
+            # Only act on a move worth a request. Without this the stop is
+            # nudged by a fraction of a tick every loop, which floods the
+            # trade server and gets throttled.
+            if current and abs(ratcheted - current) < distance * 0.1:
+                continue
+
+            try:
+                session.broker.modify_position(p.ticket, ratcheted, p.tp)
+            except BrokerError as exc:
+                log.debug("[%s] trailing stop move failed on %s: %s",
+                          session.name, p.symbol, exc)
+                continue
+            log.info("[%s] %s #%s at %+.2f — trailing stop to %.5f "
+                     "(%.1f ATR behind %.5f)", session.name, p.symbol, p.ticket,
+                     p.profit, ratcheted, cfg.trail_atr_mult, peak)
 
     def _announce_verdict(self, session: BrokerSession) -> None:
         """Say it once when the record reaches a verdict, not every loop."""

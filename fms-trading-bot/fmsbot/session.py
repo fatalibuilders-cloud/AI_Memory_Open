@@ -55,6 +55,10 @@ class BrokerSession:
     disabled_symbols: dict[str, str] = field(default_factory=dict)
     #: highest protection stage already applied per position (ticket -> index)
     stage_done: dict[int, int] = field(default_factory=dict)
+    #: best price each open position has reached, for the trailing stop
+    #: (ticket -> price). A trailing stop measured from the current price
+    #: would follow the trade back down; it has to follow the peak.
+    peak_price: dict[int, float] = field(default_factory=dict)
     #: rolling record of recent spreads per symbol, to spot abnormal widening
     spread_history: dict[str, list[float]] = field(default_factory=dict)
     #: signals awaiting confirmation, keyed by symbol

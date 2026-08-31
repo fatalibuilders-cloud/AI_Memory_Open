@@ -411,6 +411,47 @@ real trend built in it flags breakout, trend-following and momentum on
 Judge on profit factor. A win rate is chosen by where you put the stop —
 `winrate.py` will engineer any figure you name and show you what it costs.
 
+## Trailing stops (chandelier exit)
+
+The cash ladder (`PROFIT_STAGES`) locks a fixed amount and then stops
+helping: a move that runs far gives back everything above the last rung.
+A trailing stop keeps following.
+
+```env
+TRAIL_ATR_MULT=1.5        # trail 1.5 ATR behind the best price reached
+TRAIL_START_MONEY=0.10    # but only once the trade is $0.10 ahead
+```
+
+Off by default (`0`). Both settings can be overridden per symbol
+(`SYM_XAUUSDM_TRAIL_ATR_MULT=...`), since 1.5 ATR is a different amount of
+money on gold than on EURUSD.
+
+Two properties it must have, and both are easy to get wrong:
+
+* **It measures from the peak, not the current price.** Trailing off the
+  current price makes the stop follow the trade back down, which is not a
+  trailing stop at all.
+* **It only ever tightens.** A stop is never moved further from price, so
+  it can never give a losing trade more room.
+
+Two things the textbook version leaves out, which the live account would
+have hit immediately:
+
+* **The broker's minimum stop distance.** A trailing stop computed close
+  to price is rejected with retcode 10011 ("bad stops") and the update is
+  simply lost. It is pulled back to the closest legal place instead.
+* **The exit side.** A long closes at the bid, not the ask. Tracking the
+  peak on the entry side flatters every trade by one spread.
+
+It also refuses to send an update smaller than 10% of the trail distance,
+or the stop gets nudged a fraction of a tick every loop and the trade
+server throttles you.
+
+Turning trailing on changes what a trade *is*, so it changes the evidence
+fingerprint and the record starts scoring again from zero. That is
+deliberate — results from the old exits are not evidence about the new
+ones.
+
 ## The bot keeps score on itself, and stops when it is losing
 
 This is the most important safety feature in the project, and it exists

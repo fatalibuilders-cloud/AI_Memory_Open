@@ -52,7 +52,7 @@ OVERRIDABLE = (
     "max_spread_ratio", "min_reward_cost_ratio", "fixed_lot", "risk_pct",
     "breakeven_at_money", "breakeven_lock_money", "entry_confirm_money",
     "cooldown_seconds", "max_positions_per_symbol", "spread_spike_factor",
-    "max_slippage_ratio",
+    "max_slippage_ratio", "trail_atr_mult", "trail_start_money",
 )
 
 
@@ -273,6 +273,13 @@ class Settings:
     # Pause after this many losses in a row. The point is to stop while a
     # market regime is clearly against the strategy rather than keep paying
     # to find out. 0 disables.
+    #: Chandelier exit: trail the stop this many ATR behind the best price
+    #: the trade has reached. 0 disables it and leaves only the cash ladder.
+    trail_atr_mult: float = 0.0
+    #: Don't start trailing until the trade is this far ahead in cash. The
+    #: ladder handles the early part; trailing takes over once there is a
+    #: real profit to follow.
+    trail_start_money: float = 0.0
     max_consecutive_losses: int = 3
     #: Stop trading when the record shows the configuration losing beyond
     #: chance. The bot lost $46 over 139 trades while the evidence that it
@@ -470,6 +477,8 @@ class Settings:
             donchian_period=_i("DONCHIAN_PERIOD", 20),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
+            trail_atr_mult=_f("TRAIL_ATR_MULT", 0.0),
+            trail_start_money=_f("TRAIL_START_MONEY", 0.0),
             max_consecutive_losses=_i("MAX_CONSECUTIVE_LOSSES", 3),
             halt_on_failed_evidence=_b("HALT_ON_FAILED_EVIDENCE", True),
             live_requires_evidence=_b("LIVE_REQUIRES_EVIDENCE", True),
