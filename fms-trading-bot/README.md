@@ -422,7 +422,19 @@ TRAIL_ATR_MULT=1.5        # trail 1.5 ATR behind the best price reached
 TRAIL_START_MONEY=0.10    # but only once the trade is $0.10 ahead
 ```
 
-Off by default (`0`). Both settings can be overridden per symbol
+Off by default (`0`). Turn it on without hand-editing the file:
+
+```powershell
+.\Set-BotSetting.ps1 TRAIL_ATR_MULT=1.5 TRAIL_START_MONEY=0.10
+```
+
+That stops the bot, backs `.env` up, validates the result, restores the
+previous file if the new one is unusable, and restarts. Hand-editing
+`.env` has caused two outages here — an inline comment that crashed
+startup, and Notepad's byte-order mark blanking the first setting — so
+the setter quotes `#` values and writes without a mark.
+
+Both settings can be overridden per symbol
 (`SYM_XAUUSDM_TRAIL_ATR_MULT=...`), since 1.5 ATR is a different amount of
 money on gold than on EURUSD.
 
@@ -598,6 +610,7 @@ fms-trading-bot/
 ├── winrate.py             # engineer any win rate, and see its cost
 ├── tune_symbols.py        # per-instrument settings from real spreads
 ├── check_config.py        # validate .env before restarting
+├── Set-BotSetting.ps1     # change a setting safely, then restart
 ├── bridge.py              # the broker as JSON, for other languages
 ├── Trail-Stops.ps1        # ATR trailing stops from PowerShell
 └── fmsbot/
