@@ -491,6 +491,33 @@ back down.
 Stop the bot before running it. Two processes cannot share one MT5
 terminal, and both would be moving the same stops.
 
+## How often can a strategy actually trade?
+
+```powershell
+.\.venv\Scripts\python.exe throughput.py --signals --days 30
+```
+
+The interval, cooldown and caps decide how many trades the bot is
+*allowed* to take. This measures how many it is *offered* — the signals
+each strategy produces on your own bars, before any filter:
+
+```
+  strategy                  per day   per hour   vs 83/hour
+  trend_always                572.6      23.86   28.6% of it
+  momentum                    420.0      17.50   21.0% of it
+  breakout                     90.0       3.75    4.5% of it
+  liquidity_sweep               1.3       0.05    0.1% of it
+```
+
+A strategy that signals less often than the target **cannot reach it at
+any setting**. The interval controls how often the bot looks, not how
+often the market produces the pattern. Raising the caps on a selective
+strategy changes nothing except the log.
+
+This is the trade-off in one number: the sweep-and-structure setup is
+selective *by design*, which is what makes it worth taking and also why
+it will never produce 100 an hour.
+
 ## Trading more often
 
 Trade count is not a setting. It falls out of four things, three of which

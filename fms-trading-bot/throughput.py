@@ -53,6 +53,77 @@ def hold_bars(sl_mult: float, tp_mult: float) -> float:
     return max(sl_mult * tp_mult, 0.5)
 
 
+def measure_signals(settings, cfg, args) -> int:
+    """Count what each strategy ACTUALLY signals, per day, on real bars.
+
+    The interval, the cooldown and the caps decide how many trades the bot
+    is ALLOWED to take. This decides how many it is offered. A selective
+    setup -- a sweep of yesterday's high, a structure break, a retest --
+    happens a few times a day per symbol however the caps are set, and no
+    amount of configuration invents more of them.
+    """
+    import backtest as bt
+    from fmsbot.vecstrategy import VEC_STRATEGIES
+
+    print("=" * 78)
+    print(f"HOW OFTEN EACH STRATEGY ACTUALLY SIGNALS — {settings.timeframe}, "
+          f"{args.days} days")
+    print("=" * 78)
+
+    totals: dict[str, float] = {}
+    days_seen = 0.0
+    for symbol in cfg.symbols:
+        try:
+            bars, _, _ = bt.load_mt5(settings, symbol, settings.timeframe,
+                                     args.days)
+        except Exception as exc:
+            print(f"\n{symbol}: no data ({str(exc)[:50]})")
+            continue
+        if len(bars) < 500:
+            print(f"\n{symbol}: only {len(bars)} bars")
+            continue
+        span = max((bars[-1].time - bars[0].time) / 86400.0, 0.01)
+        days_seen = max(days_seen, span)
+        print(f"\n{symbol}  ({len(bars)} bars, {span:.0f} days)")
+        for name, cls in sorted(VEC_STRATEGIES.items()):
+            strategy = cls(settings)
+            try:
+                arrays = strategy.precompute(bars)
+            except Exception:
+                continue
+            start = max(strategy.warmup(), 2)
+            count = sum(1 for i in range(start, len(bars))
+                        if strategy.at(i, arrays) is not None)
+            per_day = count / span
+            totals[name] = totals.get(name, 0.0) + per_day
+            print(f"    {name:22} {count:6} signals  =  {per_day:8.1f}/day  "
+                  f"{per_day/24:7.2f}/hour")
+
+    if not totals:
+        print("\nNo data. Open MT5, log in, and try again.")
+        return 1
+
+    print("\n" + "=" * 78)
+    print(f"ACROSS ALL {len(cfg.symbols)} SYMBOLS")
+    print("=" * 78)
+    target_hour = args.target / args.hours
+    print(f"\n  {'strategy':22} {'per day':>10} {'per hour':>10}   "
+          f"vs {target_hour:.0f}/hour")
+    print("  " + "-" * 62)
+    for name, per_day in sorted(totals.items(), key=lambda kv: -kv[1]):
+        per_hour = per_day / 24.0
+        share = per_hour / target_hour * 100 if target_hour else 0
+        verdict = "reaches it" if per_hour >= target_hour else f"{share:.1f}% of it"
+        print(f"  {name:22} {per_day:10.1f} {per_hour:10.2f}   {verdict}")
+
+    print("\n  These are signals OFFERED, before any cap, cooldown or filter.")
+    print("  A strategy that signals less than the target cannot reach it at")
+    print("  any setting: the interval controls how often the bot looks, not")
+    print("  how often the market produces the pattern. Raising the caps on a")
+    print("  selective strategy changes nothing except the log.")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Solve for a trades-per-day target")
     p.add_argument("--target", type=int, default=2000, help="trades per day")
@@ -61,6 +132,10 @@ def main() -> int:
                    help="trading hours per day (forex ~24, metals ~23)")
     p.add_argument("--apply", action="store_true", help="write settings to .env")
     p.add_argument("--bars", type=int, default=300)
+    p.add_argument("--signals", action="store_true",
+                   help="measure how often each strategy actually signals")
+    p.add_argument("--days", type=int, default=30,
+                   help="history to measure signals over (with --signals)")
     args = p.parse_args()
 
     settings = Settings.load()
@@ -77,6 +152,8 @@ def main() -> int:
     broker = build_broker_from_config(cfg)
     broker.connect()
     try:
+        if args.signals:
+            return measure_signals(settings, cfg, args)
         lot = settings.fixed_lot or 0.01
         window = args.hours * 3600
 
