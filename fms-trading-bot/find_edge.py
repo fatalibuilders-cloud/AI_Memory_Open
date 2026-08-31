@@ -81,7 +81,7 @@ def binomial_at_least(k: int, n: int, p: float) -> float:
 
 
 def search(base: Settings, bars, point_value: float, spread: float,
-           balance: float, grids: dict) -> dict:
+           balance: float, grids: dict, label: str = "") -> dict:
     """Best in-sample config per strategy, scored out of sample."""
     import optimize as opt
 
@@ -89,6 +89,10 @@ def search(base: Settings, bars, point_value: float, spread: float,
     train, test = bars[:split], bars[split:]
     out = {}
     for name, grid in grids.items():
+        if label:
+            # This runs for minutes with nothing to show. Silence looks
+            # identical to a hang, and a hang is what people assume.
+            print(f"\r    {label}: {name:<20}", end="", flush=True)
         cls = VEC_STRATEGIES[name]
         best = None
         for params in opt.combos(grid):
@@ -162,6 +166,8 @@ def main() -> int:
           f">= {MIN_OOS_PF}")
     print(f"  and at least {MIN_OOS_TRADES} out-of-sample trades, and must then")
     print( "  beat what the same search finds in shuffled copies of the same bars.")
+    runs = combos_total * len(symbols) * (1 + args.null_runs)
+    print(f"  About {runs:,} simulations — a few minutes. Leave it running.")
     print("=" * 78)
 
     per_strategy: dict[str, list[str]] = {}
@@ -179,18 +185,21 @@ def main() -> int:
             continue
         tested_symbols.append(symbol)
         print(f"\n{symbol}  ({len(bars)} bars, spread {spread:g})")
-        results = search(base, bars, point_value, spread, args.balance, grids)
+        results = search(base, bars, point_value, spread, args.balance, grids,
+                         label="searching")
 
         # The same search on the same bars with their order destroyed. This
         # is the yardstick: anything the search can find in noise, it will
         # also find in the real series, and that part is not an edge.
         for seed in range(args.null_runs):
             fake = search(base, shuffled(bars, hash(symbol) % 10_000 + seed),
-                          point_value, spread, args.balance, grids)
+                          point_value, spread, args.balance, grids,
+                          label=f"calibrating {seed + 1}/{args.null_runs}")
             for name, (_, _, oos) in fake.items():
                 if survived(oos):
                     null_hits[name] = null_hits.get(name, 0) + 1
 
+        print("\r" + " " * 46 + "\r", end="")
         if not results:
             print("    no strategy produced enough trades to judge")
             continue
