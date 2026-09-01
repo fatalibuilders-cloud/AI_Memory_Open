@@ -213,6 +213,8 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 .shopitem .info { flex:1; text-align:left; }
 .shopitem .info b { display:block; font-size:14.5px; }
 .shopitem .info small { color:var(--ink-dim); font-size:12px; }
+.beastrow { display:flex; gap:8px; justify-content:center; font-size:25px; padding:8px 0 2px; }
+.beast { line-height:1; }
 .voices { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .voice { border-radius:13px; padding:9px 4px; background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.14); display:flex; flex-direction:column; align-items:center; gap:2px; }
@@ -290,6 +292,7 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
     <button class="btn ghost" id="btnRelax">🌤 &nbsp;Relax — no timer, no lives</button>
     <button class="btn ghost sm" id="btnShop">🛍 Shop</button>
     <div class="togs">
+      <button class="btn ghost sm" id="btnVoices">🔈 Sound check</button>
       <button class="btn ghost sm" id="btnHow">❓ How to play</button>
       <button class="btn ghost sm" id="btnMusic">🥁 Music</button>
       <button class="btn ghost sm" id="btnSound">🔊 SFX</button>
@@ -301,12 +304,24 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 <section id="map" class="screen">
   <div class="head">
     <button class="iconbtn" id="btnMapBack">←</button>
-    <h2>The Safari</h2>
+    <h2>The Tour of Africa</h2>
     <div class="chip">❤️ <b id="mLives">5</b></div>
     <div class="chip">🪙 <b id="mCoins">0</b></div>
   </div>
   <div class="beads"></div>
   <div class="stalls" id="stalls"></div>
+</section>
+
+<!-- ===================== CITIES OF ONE COUNTRY ===================== -->
+<section id="cities" class="screen">
+  <div class="head">
+    <button class="iconbtn" id="btnCityBack">←</button>
+    <h2 id="cityHead">Kenya</h2>
+    <div class="chip">❤️ <b id="cLives">5</b></div>
+  </div>
+  <div class="beads"></div>
+  <div class="beastrow" id="cityBeasts"></div>
+  <div class="stalls" id="cityList"></div>
 </section>
 
 <!-- ===================== DUEL LOBBY ===================== -->
@@ -449,6 +464,14 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
   </div>
 </div></div>
 
+<div class="ov" id="ovVoices"><div class="cardbox">
+  <h2>Sound check</h2>
+  <p class="sub">These are the animals of the country you are playing.</p>
+  <div class="status" id="soundState"><span class="dot"></span>Checking…</div>
+  <div id="voiceLegend" class="voices" style="margin-top:12px"></div>
+  <div class="col" style="margin-top:14px"><button class="btn ghost" id="voicesClose">Close</button></div>
+</div></div>
+
 <div class="ov" id="ovHow"><div class="cardbox" style="text-align:left">
   <h2 style="text-align:center">How to play</h2>
   <p class="sub" style="text-align:center">Spot three of the same animal and you're away.</p>
@@ -459,14 +482,13 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
     <li>Make an <b>L or T</b> shape for a stampede that clears everything around it.</li>
     <li>Reach the target before the moves run out.</li>
   </ol>
-  <p class="sub" style="text-align:center;margin:14px 0 6px">Tap an animal to hear it call</p>
-  <div id="voiceLegend" class="voices"></div>
   <div class="col" style="margin-top:14px"><button class="btn ghost" id="howClose">Got it</button></div>
 </div></div>
 
 <div id="ad"><h2>Ad playing…</h2><p style="color:#777">(simulated — real ad network goes here)</p><div class="bar"><i id="adBar"></i></div></div>
 <div id="toast">+50 🪙</div>
 
+<script src="atlas.js"></script>
 <script src="match3.js"></script>
 <script src="music.js"></script>
 <script src="multiplayer.js"></script>
@@ -475,7 +497,7 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 <script>
 'use strict';
 const M = window.Match3, MU = window.NairobiMusic, MP = window.NairobiMP;
-const SND = window.AnimalSounds, MONEY = window.NairobiMoney;
+const SND = window.AnimalSounds, MONEY = window.NairobiMoney, ATLAS = window.NairobiAtlas;
 const $ = (id) => document.getElementById(id);
 
 /* ==================================================================
@@ -500,15 +522,11 @@ const Monetization = {
   purchase(id, ok) { MONEY.purchase(id, ok, (why) => { if (why !== 'cancelled') toast('Payment not completed'); }); },
 };
 
-/* ---------------- animals ---------------- */
-const ANIMALS = [
-  { g:'🦁', sw:'Simba',       en:'Lion' },
-  { g:'🐘', sw:'Tembo',       en:'Elephant' },
-  { g:'🦓', sw:'Punda Milia', en:'Zebra' },
-  { g:'🦒', sw:'Twiga',       en:'Giraffe' },
-  { g:'🦏', sw:'Kifaru',      en:'Rhino' },
-  { g:'🐆', sw:'Chui',        en:'Leopard' },
-];
+/* ---------------- animals ----------------
+ * The six on the board change with the country. Colour slots keep their
+ * fixed hues, so the board stays readable wherever you are. */
+let ANIMALS = ATLAS.animalsFor(M.LEVELS[0]);
+function setAnimalsFor(level) { ANIMALS = ATLAS.animalsFor(level); }
 
 /* ---------------- persistence ---------------- */
 const KEY = 'nairobiWild.v1', MAX_LIVES = 5, LIFE_MS = 6e5;
@@ -542,13 +560,36 @@ function bumpStreak() {
 }
 const totalStars = () => Object.values(save.stars).reduce((a, b) => a + b, 0);
 
-/* ---------------- audio ---------------- */
+/* ---------------- audio ----------------
+ * ONE AudioContext for music, effects and animal calls. iOS makes only a
+ * single context audible, so splitting them leaves some of the game silent
+ * on a phone — which is exactly the bug this replaced.
+ */
 const music = new MU.Engine();
+const voices = new SND.AnimalVoices();
 let ac = null;
-function blip(f, dur = .07, type = 'sine', gain = .1) {
-  if (!save.sound) return;
+let audioReady = false;
+
+function ensureAudio() {
   try {
-    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (!ac) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return false;
+      ac = new Ctx();
+      music.useContext(ac);
+      voices.attach(ac, ac.destination);
+      // Dip the groove under each call, or the drums bury it.
+      voices.onPlay = (spec, dur) => music.duck(dur);
+    }
+    if (ac.state === 'suspended') ac.resume();
+    audioReady = ac.state === 'running';
+  } catch (e) { audioReady = false; }
+  return audioReady;
+}
+
+function blip(f, dur = .07, type = 'sine', gain = .1) {
+  if (!save.sound || !ensureAudio()) return;
+  try {
     const o = ac.createOscillator(), g = ac.createGain();
     o.type = type; o.frequency.value = f;
     g.gain.setValueAtTime(gain, ac.currentTime);
@@ -568,7 +609,6 @@ const sfx = {
 const buzz = (p) => { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
 
 /* When a herd matches, that animal calls — see sounds.js. */
-const voices = new SND.AnimalVoices();
 function callOf(phase, combo) {
   const colors = (phase.colors || []).filter((c) => c !== null && c !== undefined);
   if (colors.length === 0) return;
@@ -577,24 +617,21 @@ function callOf(phase, combo) {
   colors.forEach((c) => { tally[c] += 1; });
   let best = 0;
   for (let i = 1; i < tally.length; i += 1) if (tally[i] > tally[best]) best = i;
-  voices.play(best, { combo });
+  const animal = ANIMALS[best];
+  if (animal) voices.play(animal.voice, { combo });
 }
 
-/* Browsers require a gesture before any audio starts. */
-let audioArmed = false;
+/*
+ * Browsers block audio until a gesture, and a context can be suspended
+ * again later (backgrounding a tab, iOS). So arm on EVERY tap, not once.
+ */
 function armAudio() {
-  if (audioArmed) return;
-  audioArmed = true;
-  if (save.music) music.start();
-  // The voices share the music engine's context so everything mixes together.
-  try {
-    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-    voices.attach(music.ctx || ac, (music.ctx || ac).destination);
-    // Dip the groove under each call, or the drums bury it.
-    voices.onPlay = (spec, dur) => music.duck(dur);
-  } catch (e) {}
+  const ok = ensureAudio();
+  if (ok && save.music && !music.playing) music.start();
+  updateSoundBanner();
+  return ok;
 }
-document.addEventListener('pointerdown', armAudio, { once: true });
+document.addEventListener('pointerdown', armAudio);
 
 /* ---------------- ui helpers ---------------- */
 function show(id) {
@@ -608,6 +645,7 @@ function toast(msg) {
 function refreshChrome() {
   syncLives();
   $('hLives').textContent = save.lives; $('mLives').textContent = save.lives;
+  const cl = $('cLives'); if (cl) cl.textContent = save.lives;
   $('hCoins').textContent = save.coins; $('mCoins').textContent = save.coins;
   $('hStreak').textContent = save.streak; $('hStars').textContent = totalStars();
   $('hStarMax').textContent = M.LEVELS.length * 3;
@@ -621,23 +659,73 @@ function refreshChrome() {
 const starStr = (n) => '★★★'.slice(0, n) + '<span class="off">' + '★★★'.slice(n) + '</span>';
 const myNick = () => (save.nick || 'Mwindaji').slice(0, 16);
 
-/* ---------------- level map ---------------- */
+/* ---------------- the tour: countries, then their cities ---------------- */
+let openCountry = null;   // entry from M.COUNTRY_INDEX
+
+const countryStars = (c) => {
+  let s = 0;
+  for (let n = c.firstLevel; n <= c.lastLevel; n += 1) s += save.stars[n] || 0;
+  return s;
+};
+
 function renderMap() {
   const wrap = $('stalls'); wrap.innerHTML = '';
-  M.LEVELS.forEach((lv) => {
-    const stars = save.stars[lv.n] || 0, locked = lv.n > save.unlocked;
+  M.COUNTRY_INDEX.forEach((c) => {
+    const locked = c.firstLevel > save.unlocked;
+    const stars = countryStars(c);
+    const max = c.cityCount * 3;
+    const done = [];
+    for (let n = c.firstLevel; n <= c.lastLevel; n += 1) if (save.stars[n]) done.push(n);
     const b = document.createElement('button');
     b.className = 'stall' + (stars > 0 ? ' done' : '');
     if (locked) b.disabled = true;
-    const goal = (lv.collect || []).length
-      ? lv.collect.map((g) => ANIMALS[g.c].g + '×' + g.n).join('  ')
-      : lv.target.toLocaleString() + ' pts';
-    b.innerHTML = `<span class="num">${locked ? '🔒' : lv.n}</span>
-      <span class="txt"><b>${lv.flag || ''} ${lv.blurb}</b><small>${lv.country || ''} · ${goal} · ${lv.moves} moves</small></span>
-      <span class="stars">${starStr(stars)}</span>`;
-    b.onclick = () => openStart(lv);
+    const beasts = c.animals.map((k) => (ATLAS.ANIMALS[k] || {}).g || '').join('');
+    b.innerHTML = `<span class="num">${locked ? '🔒' : c.flag}</span>
+      <span class="txt"><b></b><small></small></span>
+      <span class="stars">${stars}/${max}★</span>`;
+    b.querySelector('b').textContent = c.name;
+    b.querySelector('small').textContent =
+      beasts + '  ·  ' + done.length + '/' + c.cityCount + ' cities';
+    b.onclick = () => { openCountry = c; renderCities(); show('cities'); };
     wrap.appendChild(b);
   });
+}
+
+function renderCities() {
+  const c = openCountry;
+  if (!c) return;
+  $('cityHead').textContent = c.flag + ' ' + c.name;
+  const wrap = $('cityList'); wrap.innerHTML = '';
+  // The country's own six animals, so you know what you are hunting for.
+  $('cityBeasts').innerHTML = '';
+  c.animals.forEach((k) => {
+    const a = ATLAS.ANIMALS[k]; if (!a) return;
+    const s = document.createElement('span');
+    s.className = 'beast';
+    s.textContent = a.g;
+    s.title = a.en;
+    $('cityBeasts').appendChild(s);
+  });
+
+  for (let n = c.firstLevel; n <= c.lastLevel; n += 1) {
+    const lv = M.LEVELS[n - 1];
+    const stars = save.stars[lv.n] || 0, locked = lv.n > save.unlocked;
+    const animals = ATLAS.animalsFor(lv);
+    const goal = (lv.collect || []).length
+      ? lv.collect.map((g) => animals[g.c].g + '×' + g.n).join('  ')
+      : lv.target.toLocaleString() + ' pts';
+    const b = document.createElement('button');
+    b.className = 'stall' + (stars > 0 ? ' done' : '');
+    if (locked) b.disabled = true;
+    b.innerHTML = `<span class="num">${locked ? '🔒' : (lv.cityIndex + 1)}</span>
+      <span class="txt"><b></b><small></small></span>
+      <span class="stars">${starStr(stars)}</span>`;
+    b.querySelector('b').textContent = lv.city;
+    b.querySelector('small').textContent =
+      'Stage ' + lv.n + ' · ' + goal + ' · ' + lv.moves + ' moves';
+    b.onclick = () => openStart(lv);
+    wrap.appendChild(b);
+  }
 }
 
 /* ---------------- runtime ---------------- */
@@ -650,13 +738,16 @@ const isDuel = () => mode === 'duel';
 function openStart(lv) {
   syncLives();
   if (save.lives <= 0) { $('livesSub').textContent = livesText(); $('ovLives').classList.add('active'); return; }
-  $('stGlyph').textContent = lv.flag || ((lv.collect && lv.collect.length) ? ANIMALS[lv.collect[0].c].g : '🎯');
-  $('stTitle').textContent = lv.blurb;
-  $('stBlurb').textContent = lv.country ? ('Stage ' + lv.n + ' · ' + lv.country) : ('Stage ' + lv.n);
+  const beasts = ATLAS.animalsFor(lv);
+  $('stGlyph').textContent = lv.flag || '🎯';
+  $('stTitle').textContent = lv.city || lv.blurb;
+  $('stBlurb').textContent = lv.country
+    ? (lv.country + ' · city ' + (lv.cityIndex + 1) + ' of ' + M.COUNTRY_INDEX[lv.countryIndex].cityCount)
+    : ('Stage ' + lv.n);
   $('stGoals').innerHTML =
     `<div class="chip" style="justify-content:center">🎯 ${lv.target.toLocaleString()} points</div>` +
     (lv.collect || []).map((g) =>
-      `<div class="chip" style="justify-content:center">${ANIMALS[g.c].g} ${g.n} ${ANIMALS[g.c].sw}</div>`).join('') +
+      `<div class="chip" style="justify-content:center">${beasts[g.c].g} ${g.n} ${beasts[g.c].en}</div>`).join('') +
     `<div class="chip" style="justify-content:center">👣 ${lv.moves} moves</div>`;
   $('ovStart').classList.add('active');
   $('stGo').onclick = () => { $('ovStart').classList.remove('active'); startLevel(lv); };
@@ -665,6 +756,7 @@ function openStart(lv) {
 function startLevel(lv) {
   mode = 'campaign';
   duel = null;
+  setAnimalsFor(lv);                 // this country's six
   S = M.newGame(lv, (Math.random() * 1e9) | 0);
   S.levelRef = lv;
   save.lives -= 1;
@@ -675,6 +767,7 @@ function startLevel(lv) {
 
 function startRelax() {
   mode = 'relax'; duel = null;
+  setAnimalsFor(openCountry ? M.LEVELS[openCountry.firstLevel - 1] : M.LEVELS[0]);
   S = M.newGame({ ...M.LEVELS[0], n: 0, blurb: 'Relax', target: 999999999, collect: [], moves: 9999 },
     (Math.random() * 1e9) | 0);
   S.levelRef = S.level;
@@ -964,11 +1057,23 @@ function endLevel() {
   };
   $('endNext').onclick = () => {
     $('ovEnd').classList.remove('active');
-    const nx = M.LEVELS.find((l) => l.n === lv.n + 1);
-    if (nx) openStart(nx);
+    const nx = M.LEVELS[lv.n];          // levels are 1-based by .n
+    if (!nx) { renderMap(); show('map'); return; }
+    if (nx.countryIndex !== lv.countryIndex) {
+      // A new country means a new set of animals — show it off.
+      openCountry = M.COUNTRY_INDEX[nx.countryIndex];
+      toast('New country: ' + nx.flag + ' ' + nx.country);
+      renderCities(); show('cities');
+      return;
+    }
+    openStart(nx);
   };
   $('endRetry').onclick = () => { $('ovEnd').classList.remove('active'); openStart(lv); };
-  $('endHome').onclick = () => { $('ovEnd').classList.remove('active'); renderMap(); show('map'); refreshChrome(); };
+  $('endHome').onclick = () => {
+    $('ovEnd').classList.remove('active');
+    if (openCountry) { renderCities(); show('cities'); } else { renderMap(); show('map'); }
+    refreshChrome();
+  };
   $('ovEnd').classList.add('active');
 }
 
@@ -1319,27 +1424,51 @@ $('btnRelax').onclick = () => { armAudio(); sfx.tap(); startRelax(); };
 $('btnDuel').onclick = () => { armAudio(); sfx.tap(); openLobby(); };
 $('btnShop').onclick = () => { refreshChrome(); renderShop(); $('ovShop').classList.add('active'); };
 $('shClose').onclick = () => $('ovShop').classList.remove('active');
-const CALL_NAMES = ['roar', 'trumpet', 'bark', 'hum', 'snort', 'rasp'];
+/*
+ * Sound check. A player who cannot hear a feature concludes it is broken,
+ * so this says plainly whether audio is running and lets every call be
+ * auditioned on demand.
+ */
+function updateSoundBanner() {
+  const el = $('soundState');
+  if (!el) return;
+  if (!ac) { el.textContent = 'Tap any animal below to start the sound.'; el.className = 'status'; return; }
+  if (ac.state !== 'running') {
+    el.innerHTML = '<span class="dot"></span>Sound is blocked by the browser — tap an animal to allow it.';
+    el.className = 'status';
+    return;
+  }
+  el.innerHTML = '<span class="dot"></span>Sound is on'
+    + (save.sound ? '' : ' — but effects are muted, turn SFX on');
+  el.className = 'status live';
+}
+
 function renderVoiceLegend() {
   const wrap = $('voiceLegend');
-  if (wrap.childElementCount) return;
+  wrap.innerHTML = '';
   ANIMALS.forEach((a, i) => {
     const b = document.createElement('button');
     b.className = 'voice';
-    b.innerHTML = `<span class="g">${a.g}</span><span class="n"></span><span class="c"></span>`;
-    b.querySelector('.n').textContent = a.sw;
-    b.querySelector('.c').textContent = CALL_NAMES[i];
+    b.innerHTML = '<span class="g"></span><span class="n"></span><span class="c"></span>';
+    b.querySelector('.g').textContent = a.g;
+    b.querySelector('.n').textContent = a.en;
+    b.querySelector('.c').textContent = SND.voiceFor(a.voice).label;
     b.onclick = () => {
       armAudio();
-      const spoke = voices.play(i, { combo: 1 });
-      if (!spoke) { toast('Turn SFX on to hear the calls'); return; }
+      if (!save.sound) { save.sound = true; persist(); refreshChrome(); }
+      const spoke = voices.play(a.voice, { combo: 1 });
+      updateSoundBanner();
+      if (!spoke) { toast('Sound is blocked — tap again'); return; }
       b.classList.add('calling');
       setTimeout(() => b.classList.remove('calling'), 900);
     };
     wrap.appendChild(b);
   });
+  updateSoundBanner();
 }
 $('btnHow').onclick = () => { renderVoiceLegend(); $('ovHow').classList.add('active'); };
+$('btnVoices').onclick = () => { armAudio(); renderVoiceLegend(); $('ovVoices').classList.add('active'); };
+$('voicesClose').onclick = () => $('ovVoices').classList.remove('active');
 $('howClose').onclick = () => $('ovHow').classList.remove('active');
 $('btnSound').onclick = () => { save.sound = !save.sound; persist(); refreshChrome(); sfx.tap(); };
 $('btnMusic').onclick = () => {
@@ -1347,11 +1476,13 @@ $('btnMusic').onclick = () => {
   if (save.music) { audioArmed = true; music.start(); } else music.stop();
 };
 $('btnMapBack').onclick = () => { show('home'); refreshChrome(); };
+$('btnCityBack').onclick = () => { renderMap(); show('map'); refreshChrome(); };
 $('btnLobbyBack').onclick = () => { if (net.ready) net.leaveDuel(); show('home'); refreshChrome(); };
 $('btnGameBack').onclick = () => {
   clearTimeout(hintTimer);
   if (isDuel()) { if (net.ready) net.leaveDuel(); duel = null; mode = 'campaign'; show('home'); }
   else if (mode === 'relax') show('home');
+  else if (openCountry) { renderCities(); show('cities'); }
   else { renderMap(); show('map'); }
   music.setEnergy(0);
   refreshChrome();

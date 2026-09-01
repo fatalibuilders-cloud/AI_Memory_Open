@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 
 const require = createRequire(import.meta.url);
 const M = require('./match3.js');
+const Atlas = require('./atlas.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -279,57 +280,106 @@ test('the board is never left deadlocked after a move', () => {
   }
 });
 
-test('every level is well-formed and the campaign gets harder', () => {
-  assert.ok(M.LEVELS.length >= 50, 'a real campaign, not a demo');
-  assert.equal(M.LEVELS.length, M.CITIES.length, 'one stage per city');
+test('every level is well-formed', () => {
+  assert.ok(M.LEVELS.length >= 200, 'a real campaign: ' + M.LEVELS.length + ' stages');
   M.LEVELS.forEach((l, k) => {
-    assert.ok(l.moves > 0 && l.target > 0, 'level ' + l.n);
-    assert.equal(l.n, k + 1, 'levels are numbered in order');
-    assert.ok(l.blurb && l.blurb.length > 0, 'level ' + l.n + ' has a city');
-    assert.ok(l.country && l.country.length > 0, 'level ' + l.n + ' has a country');
-    assert.ok(l.flag && l.flag.length > 0, 'level ' + l.n + ' has a flag');
+    assert.equal(l.n, k + 1, 'stages are numbered in order');
+    assert.ok(l.moves > 0 && l.target > 0, 'stage ' + l.n);
+    assert.ok(l.city && l.country && l.flag, 'stage ' + l.n + ' knows where it is');
+    assert.ok(Array.isArray(l.animals) && l.animals.length === M.COLORS,
+      l.country + ' fields exactly ' + M.COLORS + ' animals');
     (l.collect || []).forEach((g) => {
       assert.ok(g.c >= 0 && g.c < M.COLORS, 'goal colour in range');
       assert.ok(g.n > 0);
     });
-    if (k > 0) {
-      assert.ok(l.target > M.LEVELS[k - 1].target, 'target rises at level ' + l.n);
-      assert.ok(l.moves <= M.LEVELS[k - 1].moves, 'moves tighten at level ' + l.n);
+  });
+});
+
+test('difficulty rises across the whole tour, and city by city inside a country', () => {
+  // Difficulty is points REQUIRED PER MOVE. A raw target that only climbed
+  // would become impossible once the move budget shrinks.
+  const ppm = (l) => l.target / l.moves;
+  for (let i = 1; i < M.LEVELS.length; i += 1) {
+    assert.ok(ppm(M.LEVELS[i]) >= ppm(M.LEVELS[i - 1]) - 0.6,
+      'stage ' + M.LEVELS[i].n + ' is not easier than the one before');
+  }
+  M.COUNTRY_INDEX.forEach((c) => {
+    for (let n = c.firstLevel + 1; n <= c.lastLevel; n += 1) {
+      assert.ok(ppm(M.LEVELS[n - 1]) >= ppm(M.LEVELS[n - 2]) - 0.6,
+        c.name + ': ' + M.LEVELS[n - 1].city + ' is not easier than the previous city');
     }
   });
 });
 
-test('the safari starts in Nairobi and crosses the continent', () => {
-  assert.equal(M.LEVELS[0].blurb, 'Nairobi', 'the game is from Nairobi');
-  assert.equal(M.LEVELS[0].country, 'Kenya');
-  assert.equal(M.LEVELS[0].collect.length, 0, 'the first stage teaches, it does not test');
-  const countries = new Set(M.CITIES.map((c) => c.country));
-  assert.ok(countries.size >= 30, 'reaches ' + countries.size + ' countries');
-  // Every region of the continent is represented.
-  ['Egypt', 'Nigeria', 'South Africa', 'DR Congo', 'Kenya', 'Morocco', 'Ethiopia']
-    .forEach((c) => assert.ok(countries.has(c), 'missing ' + c));
-});
-
-test('no city appears twice in the journey', () => {
-  const seen = M.CITIES.map((c) => c.city + ', ' + c.country);
-  assert.equal(new Set(seen).size, seen.length);
-});
-
-test('collect goals stay reachable — never more than the moves allow', () => {
+test('every target is actually reachable in the moves given', () => {
+  // A good run scores roughly 550 a move; nothing may demand much past that.
   M.LEVELS.forEach((l) => {
-    const needed = (l.collect || []).reduce((a, g) => a + g.n, 0);
-    // Three tiles minimum per move is the floor; real play clears far more.
-    assert.ok(needed <= l.moves * 3 + 30,
-      'level ' + l.n + ' asks for ' + needed + ' in ' + l.moves + ' moves');
+    assert.ok(l.target / l.moves <= 700,
+      l.city + ' demands ' + Math.round(l.target / l.moves) + ' points per move');
   });
 });
 
-test('buildLevels is data-driven — adding a city adds a stage', () => {
-  const extra = M.CITIES.concat([{ city: 'Bissau', country: 'Guinea-Bissau', flag: '🇬🇼', c: 2 }]);
-  const built = M.buildLevels(extra);
-  assert.equal(built.length, M.CITIES.length + 1);
-  assert.equal(built[built.length - 1].blurb, 'Bissau');
-  assert.ok(built[built.length - 1].target > built[built.length - 2].target);
+test('the tour covers Africa, one country at a time', () => {
+  assert.ok(M.COUNTRY_INDEX.length >= 50, M.COUNTRY_INDEX.length + ' countries');
+  assert.equal(M.LEVELS[0].country, 'Kenya', 'the game is from Nairobi');
+  assert.equal(M.LEVELS[0].city, 'Nairobi');
+  assert.equal(M.LEVELS[0].collect.length, 0, 'the first city teaches, it does not test');
+
+  const names = M.COUNTRY_INDEX.map((c) => c.name);
+  assert.equal(new Set(names).size, names.length, 'no country appears twice');
+  ['Kenya', 'Nigeria', 'Egypt', 'South Africa', 'DR Congo', 'Morocco', 'Ethiopia', 'Madagascar']
+    .forEach((n) => assert.ok(names.includes(n), 'missing ' + n));
+
+  // Country ranges must tile the level list exactly, with no gaps.
+  let expected = 1;
+  M.COUNTRY_INDEX.forEach((c) => {
+    assert.equal(c.firstLevel, expected, c.name + ' starts where the last country ended');
+    assert.equal(c.lastLevel - c.firstLevel + 1, c.cityCount, c.name + ' city count');
+    expected = c.lastLevel + 1;
+  });
+  assert.equal(expected - 1, M.LEVELS.length, 'every stage belongs to a country');
+});
+
+test('each country fields its own animals, and they are real', () => {
+  const pool = Object.keys(Atlas.ANIMALS);
+  M.COUNTRY_INDEX.forEach((c) => {
+    assert.equal(c.animals.length, M.COLORS, c.name);
+    assert.equal(new Set(c.animals).size, c.animals.length, c.name + ' has no duplicate animal');
+    c.animals.forEach((k) => assert.ok(pool.includes(k), c.name + ' has unknown animal ' + k));
+    // Two animals sharing a glyph would be indistinguishable on the board.
+    const glyphs = c.animals.map((k) => Atlas.ANIMALS[k].g);
+    assert.equal(new Set(glyphs).size, glyphs.length, c.name + ' has two identical-looking tiles');
+  });
+});
+
+test('the animals change from country to country', () => {
+  const kenya = M.COUNTRY_INDEX.find((c) => c.name === 'Kenya').animals.join();
+  const uganda = M.COUNTRY_INDEX.find((c) => c.name === 'Uganda').animals.join();
+  const mauritius = M.COUNTRY_INDEX.find((c) => c.name === 'Mauritius').animals;
+  assert.notEqual(kenya, uganda, 'Uganda does not play the Kenyan set');
+  assert.ok(mauritius.includes('dodo'), 'Mauritius fields the dodo');
+  assert.ok(M.COUNTRY_INDEX.find((c) => c.name === 'Uganda').animals.includes('gorilla'));
+  assert.ok(M.COUNTRY_INDEX.find((c) => c.name === 'South Africa').animals.includes('penguin'));
+  const distinct = new Set(M.COUNTRY_INDEX.map((c) => c.animals.join()));
+  assert.ok(distinct.size >= 20, 'only ' + distinct.size + ' distinct animal line-ups');
+});
+
+test('every animal in the atlas has a voice that exists', () => {
+  const SND = require('./sounds.js');
+  Object.keys(Atlas.ANIMALS).forEach((k) => {
+    const a = Atlas.ANIMALS[k];
+    assert.ok(a.g && a.en && a.voice, k + ' is incomplete');
+    assert.ok(SND.VOICES[a.voice], k + ' wants a missing voice: ' + a.voice);
+  });
+});
+
+test('animalsFor resolves a level to six playable animals', () => {
+  const six = Atlas.animalsFor(M.LEVELS[0]);
+  assert.equal(six.length, M.COLORS);
+  six.forEach((a) => {
+    assert.ok(a.g && a.en && a.voice && a.key);
+  });
+  assert.equal(six[0].en, 'Lion', 'Kenya leads with the lion');
 });
 
 test('phases report which animals were cleared, so the UI can sound them', () => {

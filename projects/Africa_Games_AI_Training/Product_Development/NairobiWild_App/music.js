@@ -205,6 +205,21 @@
     }
   };
 
+  /*
+   * Share one AudioContext with the rest of the game. iOS makes only ONE
+   * context audible, so music, sound effects and animal calls must all
+   * live on the same one or some of them are silent on a phone.
+   */
+  Engine.prototype.useContext = function (ctx) {
+    if (!ctx) return false;
+    this.ctx = ctx;
+    this.master = ctx.createGain();
+    this.master.gain.value = this.volume;
+    this.master.connect(ctx.destination);
+    this.noise = makeNoiseBuffer(ctx);
+    return true;
+  };
+
   /* Must be called from a user gesture — browsers block audio otherwise. */
   Engine.prototype.start = function () {
     if (this.playing) return;

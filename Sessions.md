@@ -30,6 +30,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--nairobi-wild-multiplayer-music.md` | 2026-08-30 | nairobi-wild, wildlife, multiplayer, online duels, afro music, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--animal-calls-african-cities-revenue.md` | 2026-08-30 | animal sounds, african cities, levels, revenue, monetization, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--animal-voices-actually-audible.md` | 2026-08-30 | animal voices, audio, bugfix, verification, games |
+| `projects/Africa_Games_AI_Training/session-summary/2026-08-30--country-tour-and-audio-root-cause.md` | 2026-08-30 | africa tour, countries, animals, audio bugfix, games |
 
 ---
 

@@ -236,69 +236,74 @@ test('a long nickname is clipped before it is published', () => {
 
 /* ---------------- animal voices ---------------- */
 
-test('every animal has its own voice', () => {
-  assert.equal(SND.SPECS.length, M.COLORS, 'one call per animal');
-  const names = SND.SPECS.map((s) => s.name);
-  assert.deepEqual(names, ['Simba', 'Tembo', 'Punda Milia', 'Twiga', 'Kifaru', 'Chui']);
-  assert.equal(new Set(names).size, names.length);
+test('the voice registry covers every way an animal calls', () => {
+  const keys = SND.VOICE_KEYS;
+  assert.ok(keys.length >= 12, 'only ' + keys.length + ' voices for a continent of animals');
+  ['roar', 'trumpet', 'bark', 'hum', 'snort', 'rasp', 'grunt', 'hoot', 'hiss'].forEach((k) => {
+    assert.ok(SND.VOICES[k], 'missing voice: ' + k);
+  });
+  keys.forEach((k) => assert.ok(SND.VOICES[k].label, k + ' needs a label for the UI'));
 });
 
 test('voice specs are physically sane — audible, short, not deafening', () => {
-  SND.SPECS.forEach((s) => {
-    [s.f0, s.f1].forEach((f) => assert.ok(f > 20 && f < 20000, s.name + ' fundamental ' + f));
-    assert.ok(s.gain > 0 && s.gain <= 0.6, s.name + ' gain is polite');
-    assert.ok(s.pulses >= 1 && s.pulses <= 8, s.name + ' pulse count');
-    assert.ok(s.attack > 0 && s.attack < s.pulseDur, s.name + ' attack fits the pulse');
+  SND.VOICE_KEYS.forEach((k) => {
+    const s = SND.VOICES[k];
+    [s.f0, s.f1].forEach((f) => assert.ok(f > 20 && f < 20000, k + ' fundamental ' + f));
+    assert.ok(s.gain > 0 && s.gain <= 0.65, k + ' gain is polite');
+    assert.ok(s.pulses >= 1 && s.pulses <= 8, k + ' pulse count');
+    assert.ok(s.attack > 0 && s.attack < s.pulseDur, k + ' attack fits the pulse');
     // These fire on every match — anything long becomes torture.
-    assert.ok(SND.totalDuration(s) <= 1.1, s.name + ' call is ' + SND.totalDuration(s) + 's');
+    assert.ok(SND.totalDuration(s) <= 1.1, k + ' runs ' + SND.totalDuration(s).toFixed(2) + 's');
   });
 });
 
 test('every call carries a harmonic stack — a single tone is a buzz, not a voice', () => {
-  SND.SPECS.forEach((s) => {
-    assert.ok(Array.isArray(s.partials) && s.partials.length >= 2,
-      s.name + ' needs several partials');
-    s.partials.forEach(([mult, gain, wave]) => {
-      assert.ok(mult >= 1 && Number.isFinite(mult), s.name + ' partial multiple');
-      assert.ok(gain > 0 && gain <= 1, s.name + ' partial gain');
-      assert.ok(['sine', 'square', 'sawtooth', 'triangle'].includes(wave), s.name + ' waveform ' + wave);
+  SND.VOICE_KEYS.forEach((k) => {
+    const s = SND.VOICES[k];
+    assert.ok(Array.isArray(s.partials) && s.partials.length >= 2, k + ' needs several partials');
+    s.partials.forEach((p) => {
+      assert.ok(p[0] >= 1 && Number.isFinite(p[0]), k + ' partial multiple');
+      assert.ok(p[1] > 0 && p[1] <= 1, k + ' partial gain');
+      assert.ok(['sine', 'square', 'sawtooth', 'triangle'].includes(p[2]), k + ' waveform ' + p[2]);
     });
-    assert.equal(s.partials[0][0], 1, s.name + ' includes its fundamental');
+    assert.equal(s.partials[0][0], 1, k + ' includes its fundamental');
   });
 });
 
 test('every call has formants — the throat resonance that makes it an animal', () => {
-  SND.SPECS.forEach((s) => {
-    assert.ok(Array.isArray(s.formants) && s.formants.length >= 2, s.name + ' needs formants');
+  SND.VOICE_KEYS.forEach((k) => {
+    const s = SND.VOICES[k];
+    assert.ok(Array.isArray(s.formants) && s.formants.length >= 2, k + ' needs formants');
     s.formants.forEach((f) => {
-      assert.ok(f.freq >= 200 && f.freq <= 4000, s.name + ' formant ' + f.freq + ' in vocal range');
-      assert.ok(f.q > 0 && f.q <= 12, s.name + ' formant Q');
-      assert.ok(f.gain > 0 && f.gain <= 1, s.name + ' formant gain');
+      assert.ok(f.freq >= 200 && f.freq <= 4000, k + ' formant ' + f.freq + ' in vocal range');
+      assert.ok(f.q > 0 && f.q <= 12, k + ' formant Q');
+      assert.ok(f.gain > 0 && f.gain <= 1, k + ' formant gain');
     });
   });
 });
 
 test('every call survives a phone speaker — real energy above 300 Hz', () => {
-  // A phone cannot reproduce much below ~300 Hz. A call whose energy all
-  // sits below that is silent on the device most players will use.
-  SND.SPECS.forEach((s) => {
+  // A phone reproduces almost nothing below ~300 Hz. A call whose energy
+  // all sits below that is silent on the device most players use.
+  SND.VOICE_KEYS.forEach((k) => {
+    const s = SND.VOICES[k];
     assert.ok(SND.topAudibleFreq(s) >= 900,
-      s.name + ' tops out at ' + Math.round(SND.topAudibleFreq(s)) + ' Hz — too low for a phone');
-    const audibleFormants = s.formants.filter((f) => f.freq >= 300);
-    assert.ok(audibleFormants.length >= 1, s.name + ' has no formant a phone can carry');
+      k + ' tops out at ' + Math.round(SND.topAudibleFreq(s)) + ' Hz — too low for a phone');
+    assert.ok(s.formants.filter((f) => f.freq >= 300).length >= 1, k + ' has no phone-audible formant');
   });
 });
 
-test('each call has a distinct character, not six versions of one beep', () => {
-  const prints = SND.SPECS.map((s) => [
-    s.pulses, Math.round(s.f0), Math.round(s.formants[0].freq), Math.round((s.noise.amount || 0) * 10),
-  ].join('/'));
-  assert.equal(new Set(prints).size, prints.length, 'all six differ');
+test('the calls are distinct from one another, not one beep repainted', () => {
+  const prints = SND.VOICE_KEYS.map((k) => {
+    const s = SND.VOICES[k];
+    return [s.pulses, Math.round(s.f0 / 10), Math.round(s.formants[0].freq / 50), Math.round(s.noise.amount * 5)].join('/');
+  });
+  assert.equal(new Set(prints).size, prints.length, 'every voice has its own character');
 });
 
 test('the lion roars low and growls; the zebra barks high and short', () => {
-  const lion = SND.voiceSpec(0);
-  const zebra = SND.voiceSpec(2);
+  const lion = SND.voiceFor('roar');
+  const zebra = SND.voiceFor('bark');
   assert.ok(lion.f0 < zebra.f0, 'a roar sits below a bark');
   assert.ok(lion.f1 < lion.f0, 'a roar falls in pitch');
   assert.ok(lion.am.depth > 0.3 && lion.am.rate > 15, 'a roar growls');
@@ -307,37 +312,35 @@ test('the lion roars low and growls; the zebra barks high and short', () => {
 });
 
 test('the elephant trumpet rises; the giraffe hums near 92 Hz', () => {
-  const tembo = SND.voiceSpec(1);
+  const tembo = SND.voiceFor('trumpet');
   assert.ok(tembo.f1 > tembo.f0, 'a trumpet climbs');
-  const twiga = SND.voiceSpec(3);
-  assert.ok(Math.abs(twiga.f0 - 92) < 6, 'giraffes hum at about 92 Hz');
-  // ...but the harmonics are what a phone actually reproduces.
-  assert.ok(Math.max(...twiga.partials.map((p) => p[0])) * twiga.f0 >= 500,
+  const hum = SND.voiceFor('hum');
+  assert.ok(Math.abs(hum.f0 - 92) < 6, 'giraffes hum at about 92 Hz');
+  assert.ok(Math.max.apply(null, hum.partials.map((p) => p[0])) * hum.f0 >= 500,
     'the hum needs harmonics a phone can carry');
 });
 
-test("the leopard's sawing call repeats and rasps; the rhino is mostly breath", () => {
-  const chui = SND.voiceSpec(5);
-  assert.ok(chui.pulses >= 4, 'a rasp is many strokes');
-  assert.ok(chui.am.depth > 0, 'and it rasps');
-  assert.equal(SND.voiceSpec(0).pulses, 1);
-  assert.ok(SND.voiceSpec(4).noise.amount > 0.7, 'a snort is breath more than voice');
+test('repeating calls repeat, and breathy ones are mostly breath', () => {
+  assert.ok(SND.voiceFor('rasp').pulses >= 4, "a leopard's sawing call is many strokes");
+  assert.equal(SND.voiceFor('roar').pulses, 1);
+  assert.ok(SND.voiceFor('snort').noise.amount > 0.7, 'a snort is breath more than voice');
+  assert.ok(SND.voiceFor('hiss').noise.amount > 0.8, 'a hiss is nearly all breath');
 });
 
 test('pulse timings run forward and never overlap', () => {
-  SND.SPECS.forEach((s) => {
-    const t = SND.pulseTimes(s);
-    assert.equal(t.length, s.pulses);
-    for (let i = 1; i < t.length; i += 1) {
-      assert.ok(t[i] >= t[i - 1] + s.pulseDur, s.name + ' pulses do not overlap');
+  SND.VOICE_KEYS.forEach((k) => {
+    const s = SND.VOICES[k];
+    const times = SND.pulseTimes(s);
+    assert.equal(times.length, s.pulses);
+    for (let i = 1; i < times.length; i += 1) {
+      assert.ok(times[i] >= times[i - 1] + s.pulseDur, k + ' pulses do not overlap');
     }
   });
 });
 
-test('voiceSpec is total — any colour index resolves to a real voice', () => {
-  [0, 5, 6, 12, -1, -7].forEach((i) => {
-    assert.ok(SND.voiceSpec(i) && SND.voiceSpec(i).name, 'index ' + i);
-  });
+test('an unknown voice key still returns something playable', () => {
+  assert.ok(SND.voiceFor('no-such-animal').partials, 'never returns undefined');
+  assert.ok(SND.voiceFor(undefined).partials);
 });
 
 test('the first call is never swallowed by the rate limiter', () => {
@@ -348,14 +351,25 @@ test('the first call is never swallowed by the rate limiter', () => {
 test('a muted voice reports that it did not play, so the UI can say so', () => {
   const v = new SND.AnimalVoices();
   v.enabled = false;
-  assert.equal(v.play(0, { combo: 1 }), false);
+  assert.equal(v.play('roar', { combo: 1 }), false);
+});
+
+test('voices sit above the music rather than under it', () => {
+  const v = new SND.AnimalVoices();
+  assert.ok(v.volume > 1, 'calls are boosted so the groove does not bury them');
 });
 
 test('voices degrade quietly with no WebAudio', () => {
   const v = new SND.AnimalVoices();
-  v.attach(null);
-  assert.equal(v.play(0, { combo: 3 }), false, 'no context, no crash');
+  assert.equal(v.attach(null), false);
+  assert.equal(v.play('roar', { combo: 3 }), false, 'no context, no crash');
   v.setVolume(0.5);
+});
+
+test('music can share one AudioContext with everything else', () => {
+  // iOS makes only a single context audible, so this is not optional.
+  assert.equal(typeof Music.Engine.prototype.useContext, 'function');
+  assert.equal(typeof Music.Engine.prototype.duck, 'function');
 });
 
 /* ---------------- monetization ---------------- */

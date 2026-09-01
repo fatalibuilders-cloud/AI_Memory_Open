@@ -1,83 +1,77 @@
-# Nairobi Wild — Architecture (v0.3)
+# Nairobi Wild — Architecture (v0.4)
 
 ## What it is
-A match-3 puzzle game made in and set in **Nairobi**. Swap adjacent animals, match three or more, chase a target inside a move limit. The mechanics are the genre standard (Candy Crush shape); the identity is Kenyan — the animals, the places, the music, the ornament.
+A match-3 puzzle game made in **Nairobi** and played across the whole of Africa. Swap adjacent animals, match three or more, chase a target inside a move limit. The mechanic is the genre standard (Candy Crush shape); the identity is the content — the countries, their animals, the music, the ornament.
 
 ## Design philosophy
-1. **Familiar mechanic, local world.** The match-3 loop needs no teaching. What makes it *ours* is the content: the Big Five and friends as tiles that call out when you match them, a journey across 51 African cities from Nairobi to Cape Town, Swahili in the copy, Maasai beadwork as the app's one ornament, and Benga in the speakers.
-2. **Data-light or die.** ~123 KB total, no external requests, **no image or audio assets at all** — every tile is emoji on a CSS gradient, the skyline is inline SVG, and all music and sound is synthesised at runtime. That is what keeps the install trivial on a Kenyan prepaid data bundle.
-3. **Offline is the default, online is the bonus.** Solo, Relax, pass-and-play and challenge links all work with no network whatsoever. Live online duelling lights up when it can, and its absence never degrades the rest.
+1. **Familiar mechanic, local world.** The match-3 loop needs no teaching. What makes it *ours* is a tour of all 54 African countries, each fielding its own animals, which call out when you match them, over a Benga groove, with Maasai beadwork as the app's one ornament.
+2. **Data-light or die.** ~153 KB total, no external requests, **no image or audio assets at all** — tiles are emoji on CSS gradients, the skyline is inline SVG, and every note of music and every animal call is synthesised at runtime. That is what keeps the install trivial on a prepaid data bundle.
+3. **Offline is the default, online is the bonus.** Solo, Relax, pass-and-play and challenge links work with no network whatsoever. Live online duelling lights up when it can and never degrades the rest.
 4. **Engine/UI separation.** All rules are pure functions on plain state; the UI plays back engine-produced phases and never re-derives rules.
-5. **One seam per external concern.** `monetization.js` for money, `multiplayer.js` for opponents, `sounds.js`/`music.js` for audio. None of it is scattered through game code.
+5. **One seam per external concern.** `monetization.js` for money, `multiplayer.js` for opponents, `sounds.js`/`music.js` for audio, `atlas.js` for content. None of it is scattered through game code.
 
 ## Files
 | File | Role |
 |---|---|
-| `match3.js` | Engine: board generation, match detection, specials, cascades, gravity/refill, deadlock reshuffle, boosters, the city table and generated campaign, duel config |
+| `atlas.js` | The content: the animal pool, all 54 countries with their cities and their own six animals, and the generated campaign |
+| `match3.js` | Engine: board generation, match detection, specials, cascades, gravity/refill, deadlock reshuffle, boosters, duel config |
 | `music.js` | Generative Benga soundtrack + pure, testable pattern builders |
-| `sounds.js` | Animal voices — one synthesised call per species |
-| `multiplayer.js` | Challenge-link codec, the `room`-backed online adapter, and the production realtime seam |
+| `sounds.js` | Animal voices — a registry of call archetypes |
+| `multiplayer.js` | Challenge-link codec, the `room`-backed online adapter, the production realtime seam |
 | `monetization.js` | Product catalogue, provider selection, AdMob / Play Billing / mobile-money checkout, revenue events |
 | `index.html` | All screens, animation, input, economy, persistence, lobby, duel flow |
-| `match3.test.mjs` | 28 tests — engine rules and the campaign |
-| `extras.test.mjs` | 39 tests — music, animal voices, multiplayer, monetization |
+| `match3.test.mjs` | 31 tests — engine rules and the campaign |
+| `extras.test.mjs` | 47 tests — music, animal voices, multiplayer, monetization |
 
-## The animals
-Colour index → animal, with the Swahili name the UI shows:
+## The campaign: a tour of Africa, country by country
+**54 countries, 246 stages.** Pick a country, play its major cities in order, finish it and the next country unlocks. The tour opens in Nairobi — where the game is made — then works outward through East Africa, the Horn, Southern, Central, West, North Africa and the islands.
 
-| # | Animal | Swahili | Tile hue |
-|---|---|---|---|
-| 0 | Lion | Simba | amber |
-| 1 | Elephant | Tembo | blue |
-| 2 | Zebra | Punda Milia | cream |
-| 3 | Giraffe | Twiga | orange |
-| 4 | Rhino | Kifaru | violet |
-| 5 | Leopard | Chui | green |
+**Every country fields its own six animals**, the creatures it is actually known for. Kenya plays the Big Five plus a giraffe; Uganda swaps in gorillas and hippos; Namibia brings the oryx and a Cape fur seal; Madagascar plays lemurs and chameleons; **Mauritius fields the dodo**. That is what stops 246 stages of one mechanic feeling like a single long level — a test asserts at least 20 distinct line-ups.
 
-Six distinct hues **and** six distinct silhouettes, so the board stays readable for colour-blind players — colour alone is never the only signal.
+The board keeps **six colour slots with fixed hues**, and a country maps its animals onto them. Colour identity therefore never depends on which animals are in play, so the board stays readable for colour-blind players anywhere on the map. A test rejects any country whose six animals share a glyph, since two identical-looking tiles would be unplayable.
 
-### Animal voices
-Matching a herd sounds **that animal**, not a beep. `sounds.js` splits into a pure data spec per species and a renderer that turns it into WebAudio nodes, so the calls are unit-testable.
+### Difficulty: points per move, not raw target
+Difficulty is **points required per move**, rising from 190 (against the ~550 a decent player scores) to 620, which needs real cascades. Because it is a function of the global stage number, **every city is harder than the one before it — inside a country and across the whole tour.**
+
+The first cut of this curve escalated the raw target instead, and ended up demanding **132,000 points in 13 moves** — arithmetically impossible, because late stages have *fewer* moves. Targets now span 4,750–9,190, and a test rejects anything above 700 points per move.
+
+## Animal voices
+Matching a herd sounds **that animal**, not a beep. Voices are keyed by **archetype** — `roar`, `trumpet`, `grunt`, `hoot`, `hiss` and 14 more — rather than by species, because the six animals change with the country and many species share a manner of calling (a warthog snorts much like a rhino). `atlas.js` maps each animal to an archetype, and a test rejects any animal pointing at a voice that does not exist.
 
 Two things make a synthesised call sound like an animal rather than a buzz, and both are in every voice:
 
-1. **A harmonic stack.** Real calls are rich, so each voice sums several partials (multiples of the fundamental) rather than using one oscillator.
-2. **Formants.** An animal's throat resonates at fixed frequencies regardless of pitch. A parallel bank of narrow band-passes reproduces that, and it is what gives a roar its body.
+1. **A harmonic stack** — several partials, so the ear hears a voice rather than a test tone.
+2. **Formants** — a parallel bank of narrow band-passes standing in for the throat, which resonates at fixed frequencies whatever the pitch. This is what gives a roar its body.
 
-| Animal | Call | How it is built |
+| Archetype | Who uses it | How it is built |
 |---|---|---|
-| Simba | roar | 4 partials sweeping 200→75 Hz, formants at 420/900/1850 Hz, and a 28 Hz amplitude growl |
-| Tembo | trumpet | brass-like stack climbing 380→800 Hz, formants at 1150/2100 Hz |
-| Punda Milia | double bark | two short sharp pulses — a zebra barks, it does not whinny |
-| Twiga | hum | the real 92 Hz night hum, voiced with 7 partials so a phone can carry it |
-| Kifaru | snort | a double puff, 85% breath |
-| Chui | sawing call | five rasping strokes with a 45 Hz rasp |
+| roar | lion | 4 partials sweeping 200→75 Hz, formants at 420/900/1850 Hz, a 28 Hz growl |
+| trumpet | elephant | brass-like stack climbing 380→800 Hz |
+| grunt | hippo | three deep honking pulses |
+| hoot | gorilla, chimp | a rising pant-hoot |
+| bark | zebra, wild dog | two short sharp pulses — a zebra barks, it does not whinny |
+| hum | giraffe | the real 92 Hz night hum, voiced with 7 partials so a phone can carry it |
+| rasp | leopard | five sawing strokes |
+| *plus* snort, bellow, whoop, hiss, chatter, bleat, honk, screech, squawk, bray, yelp, splash | rhino, buffalo, hyena, crocodile, monkey, antelope, flamingo, eagle, parrot, penguin, fennec fox, turtle | 19 archetypes in all |
 
-**Phone speakers set the design.** A phone reproduces almost nothing below ~300 Hz, so a "correct" 55 Hz lion roar is *silent* on the device most players use. Every voice therefore carries its character in partials and formants inside roughly 300–3000 Hz while keeping the fundamental honest. Measured by rendering each call offline and high-passing at 300 Hz, the share of energy a phone can actually reproduce is:
+**Phone speakers set the design.** A phone reproduces almost nothing below ~300 Hz, so a zoologically "correct" 55 Hz lion roar is *silent* on the device most players use. Every voice keeps an honest fundamental but carries its character inside roughly 300–3000 Hz. Measured by rendering each call in an `OfflineAudioContext` and high-passing at 300 Hz, the share of energy a phone can reproduce rose from **28–59%** to **59–94%**.
 
-| | Simba | Tembo | Punda Milia | Twiga | Kifaru | Chui |
-|---|---|---|---|---|---|---|
-| before | 55% | 79% | 82% | 28% | 37% | 59% |
-| **after** | **76%** | **94%** | **92%** | **59%** | **78%** | **81%** |
+### One AudioContext for everything
+Music, sound effects and animal calls share a **single** AudioContext. iOS makes only one context audible, so the earlier arrangement — music on one, effects on another — left part of the game silent on a phone. Audio is re-armed on **every** tap rather than once, because a context can be suspended again later (backgrounding a tab, iOS).
 
-Calls are short (≤1.1 s), rate-limited to one per 70 ms, and rise in pitch as a cascade builds. **The music ducks to 30% under each call** — without that the Benga groove sits on top of the calls and buries them. A tappable legend in *How to play* lets any player hear all six on demand.
+Calls are ≤1.1 s, rate-limited to one per 70 ms, mixed above the music, and rise in pitch as a cascade builds; **the music ducks to 30% under each call**. A **Sound check** panel on the home screen states plainly whether audio is running and plays any call on demand — because a player who cannot hear a feature reasonably concludes it is missing.
 
-### The campaign — one journey across Africa
-The 51 stages are **generated from a city table** (`CITIES`), so adding a city is one line and the difficulty curve stays consistent by construction. The route runs Nairobi → East Africa → the Horn → North Africa → West Africa → Central Africa → Southern Africa, ending in Cape Town, covering 40+ countries. Each stage carries its city, country and flag, and asks for the animal assigned to that place.
+### How to verify audio honestly
+Counting audio nodes created during a match proves nothing: the soundtrack creates oscillators and noise buffers continuously, so the count rises either way. That mistake once had a broken feature reported as working. The methods that do work:
+
+1. Run with **music off**, so any node created during a match must be a voice.
+2. **Render each call in an `OfflineAudioContext`** and measure its energy, including after a 300 Hz high-pass.
+3. Launch the browser **without** `--autoplay-policy=no-user-gesture-required`, or the test is not reproducing a real browser.
 
 ## Music: why it is synthesised
-There is not one audio file in the build — not for the music, and not for the animals. A licensed music bed would add megabytes to a game whose entire pitch is a tiny install, and would need clearing in every launch market. Instead `music.js` sequences a **Benga**-flavoured groove — the fast, guitar-led Nairobi dance style — from oscillators and filtered noise:
+There is not one audio file in the build. A licensed bed would add megabytes to a game whose pitch is a tiny install, and would need clearing in every launch market. `music.js` sequences a **Benga**-flavoured groove — the fast, guitar-led Nairobi dance style — from oscillators and filtered noise: four-on-the-floor kick, kayamba 16ths, backbeat clap, pentatonic bass, the plucked nyatiti/guitar riff that shifts a scale degree each bar, and a sparse marimba that appears only at high energy.
 
-- **kick** four-on-the-floor with a syncopated push
-- **shaker** kayamba-style 16ths, off-beat accents
-- **clap** backbeat on 2 and 4
-- **bass** pentatonic root movement, short and round
-- **riff** the Benga guitar/nyatiti line — plucked 8ths that shift a scale degree each bar, so four bars read as a phrase rather than a loop
-- **marimba** sparse answering phrases, layered in only at high energy
-
-Everything sits in F minor pentatonic, so layers never clash. Scheduling uses the standard WebAudio lookahead pattern (a 25 ms timer queues notes 120 ms ahead against the audio clock), so timing does not drift with the main thread. Cascades of 3+ call `flourish()`, which lifts the arrangement for three seconds.
-
-Music and SFX are separate toggles. Audio starts only on a user gesture, because browsers block it otherwise.
+Everything sits in F minor pentatonic, so layers never clash. Scheduling uses the standard WebAudio lookahead pattern (a 25 ms timer queues notes 120 ms ahead against the audio clock), so timing never drifts. Cascades of 3+ call `flourish()`.
 
 ## Multiplayer
 
@@ -85,52 +79,47 @@ Music and SFX are separate toggles. Audio starts only on a user gesture, because
 - **Pass and play** — two players, one phone, the same board in turn.
 - **Challenge links** — you play a board, then share a link carrying the seed and your score (`#d=<seed>.<score>.<base64 nick>`). Your friend plays **the identical board** and the app compares. Zero infrastructure, and the share is the growth loop.
 
-Both rely on the engine being deterministic: `newGame(level, seed)` reproduces a board exactly, which is asserted by a test.
+Both rely on the engine being deterministic: `newGame(level, seed)` reproduces a board exactly, asserted by a test.
 
 ### Online, live
-The published page declares the **`room`** capability, which gives every open copy of the page a shared presence channel. No server of ours is involved.
-
-The whole lobby-and-duel handshake runs on **presence only** — never events — because presence is settable by any viewer while event topics are admin-only by default:
+The published page declares the **`room`** capability, giving every open copy a shared presence channel. No server of ours is involved. The whole lobby-and-duel handshake runs on **presence only** — never events — because presence is settable by any viewer while event topics are admin-only by default:
 
 1. Host sets `{st:'host', seed}`.
-2. Guest sees the host and sets `{st:'join', seed:<host seed>, vs:<host peer>}`.
-3. Host sees a guest pointing at it, locks on to the **first** one, sets `{st:'duel', vs:<guest peer>}`.
+2. Guest sees the host and sets `{st:'join', seed, vs:<host peer>}`.
+3. Host locks on to the **first** guest pointing at it, sets `{st:'duel', vs:<guest peer>}`.
 4. Guest sees the host point back → both start on the same seed.
-5. Through the round each player publishes `{score, moves, done}`; each renders the other's live.
+5. Each publishes `{score, moves, done}` through the round; each renders the other's live.
 
-Handled: a guest who is not chosen falls back to the lobby; a 12-second join timeout; an opponent who leaves mid-duel forfeits; stale peers and non-viewer (agent) peers are filtered out.
+Handled: unchosen joiners fall back; a 12-second join timeout; an opponent who leaves forfeits; stale and non-viewer peers filtered out. A **15-second heartbeat** keeps a player who pauses to think from being judged stale — without it, sitting still for 45 seconds told your opponent you had quit.
 
-**Untrusted input.** Everything in a peer's presence is written by another person's page. Peer values are coerced and clamped on read (`Number(...) || 0`, nickname sliced to 16 chars) and peer-supplied text goes to the DOM via `textContent`, never `innerHTML`.
+**Untrusted input.** Everything in a peer's presence is written by another person's page: values are coerced and clamped on read, nicknames sliced to 16 characters, and peer text reaches the DOM via `textContent`, never `innerHTML`.
 
-**Fairness caveat.** Scores are client-reported. That is fine for playing with friends, and is **not** cheat-proof. A ranked or leaderboard mode needs an authoritative server — which the deterministic engine makes straightforward: the server replays a submitted move list and recomputes the score.
+**Fairness caveat.** Scores are client-reported — fine between friends, **not** cheat-proof. Ranked play needs an authoritative server, which the deterministic engine makes straightforward: replay the move list and recompute.
 
 ### Production path
-For the standalone Android build there is no `room`, so implement `RealtimeAdapter` in `multiplayer.js` against a WebSocket service with the same method surface as `RoomAdapter` (`set`, `peers`, `openHosts`, `opponent`, `onChange`). Nothing in the UI changes. Offline modes need no server ever.
+The standalone Android build has no `room`, so implement `RealtimeAdapter` in `multiplayer.js` against a WebSocket service with the same method surface as `RoomAdapter`. Nothing in the UI changes. Offline modes need no server ever.
 
 ## Money (`monetization.js`)
-The entire money layer is one module with four entry points — `rewardedAd`, `purchase`, `products`, `onEvent`. Game code never touches an SDK, a price or a network.
+One module, four entry points — `rewardedAd`, `purchase`, `products`, `onEvent`. Game code never touches an SDK, a price or a network.
 
-**Provider selection is automatic and capability-checked** (a pure, tested function): Play Billing via the Digital Goods API when running as a TWA, a mobile-money checkout when a public key is configured, an AdMob bridge when one is present, and otherwise **simulated** — where every flow completes without charging anyone, so play-testing is never blocked by missing accounts.
+**Provider selection is automatic and capability-checked**: Play Billing via the Digital Goods API in a TWA, mobile-money checkout when a public key is configured, an AdMob bridge when present, otherwise **simulated** — every flow completes without charging anyone, so play-testing is never blocked by missing accounts.
 
-- **Ads:** four named rewarded placements (`continue`, `double`, `lives`, `shop`). The placement name is reported on every revenue event, because "which moment earned this" is the number worth having.
-- **IAP:** a single catalogue drives the shop, including local-currency display (KES by default) and a tip jar.
-- **Shipped config is inert on purpose:** empty IDs, `testMode: true`, no key in the repo. A test asserts `isLive().any === false` so no one can accidentally commit live credentials.
+- **Ads:** four named rewarded placements (`continue`, `double`, `lives`, `shop`), reported on every revenue event, because "which moment earned this" is the number worth having.
+- **IAP:** a single catalogue drives the shop, with local-currency display (KES) and a tip jar.
+- **Shipped config is inert on purpose:** empty IDs, `testMode: true`, no key in the repo. A test asserts `isLive().any === false`.
 
-`Finance/revenue-activation.md` is the checklist for switching it on: which accounts to open, in what order, the fees, and where the money lands.
+`Finance/revenue-activation.md` is the checklist for switching it on.
 
 ## Economy & persistence (`localStorage` key `nairobiWild.v1`)
 `coins, lives, lifeAt, stars{}, unlocked, sound, music, streak, lastDay, hammers, shuffles, nick`.
 
 - **Lives:** 5 max, one per campaign attempt, refunded on a win, one regenerating per 10 minutes on a wall clock. Refill via rewarded ad or 100 coins. **Duels never cost a life** — multiplayer should be encouraged, not taxed.
-- **Coins:** from stars (25/45/70), duel results (60/30/10) and a daily streak bonus.
-- No accounts, no server, no PII. The only identity is a nickname the player types, kept on their own device.
+- No accounts, no server, no PII. The only identity is a nickname kept on the player's own device.
 
 ## Verification status (2026-08-30)
-- `node match3.test.mjs` → **28/28**; `node extras.test.mjs` → **39/39**.
-- Browser: shop renders 8 catalogue items with KES pricing and the honest "Demo mode" notice; a simulated purchase grants coins; and on a match the page creates both oscillator **and noise-buffer** nodes — the signature of a synthesised animal call rather than a beep.
-- Playwright, 412×880, both the source tree and the bundled single file:
-  - **Offline solo:** level map (15 Kenyan locations) → 3 real matches → board stayed 64/64 filled.
-  - **No-room degradation:** lobby correctly reports online unavailable, disables hosting, and still offers both offline duels.
-  - **Pass and play:** VS panel shown, 20 moves, opponent labelled Player 2.
-  - **Live online duel, two browser pages:** A hosts → B sees "Wanjiru" in the lobby → B joins → **both land in the duel on an identical board with correct opponent names** → A plays and **B's screen shows A's score rise 0 → 720 live**.
-  - Zero console errors throughout.
+- `node match3.test.mjs` → **31/31**; `node extras.test.mjs` → **47/47**.
+- Playwright at 412×880, source tree **and** bundled single file, under **real browser autoplay rules**:
+  - 54 countries listed, Kenya first with its six animals; 6 Kenyan cities; stage intro reads "Nairobi · Kenya · city 1 of 6".
+  - A match creates **exactly one** AudioContext, in state `running`, and `voices.play()` returns true for a real archetype.
+  - Sound check reports "Sound is on" and lists Lion:roar … Leopard:sawing call.
+  - Offline degradation, pass-and-play, and a two-page live online duel with live opponent scoring all still pass.
