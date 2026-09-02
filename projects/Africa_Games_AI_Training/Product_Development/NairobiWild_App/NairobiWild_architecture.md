@@ -1,4 +1,4 @@
-# Nairobi Wild — Architecture (v0.4)
+# Nairobi Wild — Architecture (v0.4.1)
 
 ## What it is
 A match-3 puzzle game made in **Nairobi** and played across the whole of Africa. Swap adjacent animals, match three or more, chase a target inside a move limit. The mechanic is the genre standard (Candy Crush shape); the identity is the content — the countries, their animals, the music, the ornament.
@@ -61,12 +61,20 @@ Music, sound effects and animal calls share a **single** AudioContext. iOS makes
 
 Calls are ≤1.1 s, rate-limited to one per 70 ms, mixed above the music, and rise in pitch as a cascade builds; **the music ducks to 30% under each call**. A **Sound check** panel on the home screen states plainly whether audio is running and plays any call on demand — because a player who cannot hear a feature reasonably concludes it is missing.
 
+### UI sounds must never be tonal
+The game once "sounded like beeps" because it *was* beeping: a 560 Hz sine on every tile tap and a 190 Hz sawtooth on every rejected swap. At dozens per minute those were the loudest thing in the game and the animal calls were lost among them.
+
+Taps and errors are now **filtered noise** — a 20 ms high-passed click, a 140 ms low-passed thud — which reads as touch feedback without competing with a voice. A special piece gets a rising noise whoosh *layered under* the call, never instead of it. Only rare reward moments (level win, coin) stay tonal. **The animals are the sound of this game.**
+
+No call may run shorter than **0.4 s**, asserted by test: several were 0.18 s per pulse, and a snort that brief reads as a blip rather than an animal.
+
 ### How to verify audio honestly
 Counting audio nodes created during a match proves nothing: the soundtrack creates oscillators and noise buffers continuously, so the count rises either way. That mistake once had a broken feature reported as working. The methods that do work:
 
 1. Run with **music off**, so any node created during a match must be a voice.
 2. **Render each call in an `OfflineAudioContext`** and measure its energy, including after a 300 Hz high-pass.
 3. Launch the browser **without** `--autoplay-policy=no-user-gesture-required`, or the test is not reproducing a real browser.
+4. Best of all, **log every oscillator and noise source a match creates** — waveform, frequencies, duration. "Did something play?" is the wrong question; "what exactly played?" found the beeps in a single run.
 
 ## Music: why it is synthesised
 There is not one audio file in the build. A licensed bed would add megabytes to a game whose pitch is a tiny install, and would need clearing in every launch market. `music.js` sequences a **Benga**-flavoured groove — the fast, guitar-led Nairobi dance style — from oscillators and filtered noise: four-on-the-floor kick, kayamba 16ths, backbeat clap, pentatonic bass, the plucked nyatiti/guitar riff that shifts a scale degree each bar, and a sparse marimba that appears only at high energy.

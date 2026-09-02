@@ -52,7 +52,7 @@
       am: { rate: 0, depth: 0 },
     },
     bark: { // zebra, wild dog, baboon
-      label: 'bark', gain: 0.52, pulses: 2, pulseDur: 0.14, gap: 0.09, attack: 0.004,
+      label: 'bark', gain: 0.52, pulses: 2, pulseDur: 0.2, gap: 0.12, attack: 0.004,
       f0: 520, f1: 200,
       partials: [[1, 1.0, 'sawtooth'], [2, 0.5, 'square']],
       formants: [{ freq: 720, q: 4, gain: 1.0 }, { freq: 1600, q: 6, gain: 0.55 }],
@@ -68,7 +68,7 @@
       am: { rate: 7, depth: 0.22 },
     },
     snort: { // rhino, warthog
-      label: 'snort', gain: 0.56, pulses: 2, pulseDur: 0.16, gap: 0.06, attack: 0.006,
+      label: 'snort', gain: 0.56, pulses: 2, pulseDur: 0.22, gap: 0.1, attack: 0.006,
       f0: 170, f1: 95,
       partials: [[1, 0.8, 'sawtooth'], [2, 0.45, 'sawtooth'], [3, 0.2, 'triangle']],
       formants: [{ freq: 430, q: 3, gain: 1.0 }, { freq: 980, q: 4, gain: 0.65 }],
@@ -132,7 +132,7 @@
       am: { rate: 9, depth: 0.2 },
     },
     bleat: { // antelope, gazelle, goat, camel
-      label: 'bleat', gain: 0.48, pulses: 2, pulseDur: 0.2, gap: 0.07, attack: 0.015,
+      label: 'bleat', gain: 0.48, pulses: 2, pulseDur: 0.23, gap: 0.09, attack: 0.015,
       f0: 380, f1: 300,
       partials: [[1, 1.0, 'sawtooth'], [2, 0.55, 'triangle'], [3, 0.25, 'sine']],
       formants: [{ freq: 900, q: 5, gain: 1.0 }, { freq: 1800, q: 6, gain: 0.45 }],
@@ -140,7 +140,7 @@
       am: { rate: 22, depth: 0.35 },
     },
     honk: { // flamingo, crane, pelican
-      label: 'honk', gain: 0.46, pulses: 2, pulseDur: 0.17, gap: 0.08, attack: 0.012,
+      label: 'honk', gain: 0.46, pulses: 2, pulseDur: 0.22, gap: 0.1, attack: 0.012,
       f0: 460, f1: 380,
       partials: [[1, 1.0, 'sawtooth'], [2, 0.6, 'square'], [3, 0.28, 'sawtooth']],
       formants: [{ freq: 1000, q: 5, gain: 1.0 }, { freq: 2000, q: 6, gain: 0.5 }],
@@ -156,7 +156,7 @@
       am: { rate: 0, depth: 0 },
     },
     squawk: { // parrot
-      label: 'squawk', gain: 0.44, pulses: 2, pulseDur: 0.15, gap: 0.07, attack: 0.005,
+      label: 'squawk', gain: 0.44, pulses: 2, pulseDur: 0.2, gap: 0.1, attack: 0.005,
       f0: 900, f1: 600,
       partials: [[1, 1.0, 'square'], [2, 0.5, 'sawtooth'], [3, 0.2, 'sawtooth']],
       formants: [{ freq: 1500, q: 5, gain: 1.0 }, { freq: 2800, q: 6, gain: 0.5 }],
@@ -172,7 +172,7 @@
       am: { rate: 20, depth: 0.4 },
     },
     yelp: { // fennec fox, jackal
-      label: 'yelp', gain: 0.44, pulses: 3, pulseDur: 0.1, gap: 0.055, attack: 0.005,
+      label: 'yelp', gain: 0.44, pulses: 3, pulseDur: 0.13, gap: 0.07, attack: 0.005,
       f0: 700, f1: 420,
       partials: [[1, 1.0, 'sawtooth'], [2, 0.45, 'triangle']],
       formants: [{ freq: 1200, q: 5, gain: 1.0 }, { freq: 2300, q: 6, gain: 0.45 }],
@@ -180,7 +180,7 @@
       am: { rate: 0, depth: 0 },
     },
     splash: { // fish, turtle, dolphin — a watery flip, mostly noise
-      label: 'splash', gain: 0.42, pulses: 1, pulseDur: 0.3, gap: 0, attack: 0.004,
+      label: 'splash', gain: 0.42, pulses: 1, pulseDur: 0.45, gap: 0, attack: 0.004,
       f0: 500, f1: 260,
       partials: [[1, 0.35, 'sine'], [2, 0.2, 'triangle']],
       formants: [{ freq: 1400, q: 2.5, gain: 1.0 }, { freq: 2600, q: 3, gain: 0.5 }],

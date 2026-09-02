@@ -257,6 +257,14 @@ test('voice specs are physically sane — audible, short, not deafening', () => 
   });
 });
 
+test('no call is so short it reads as a blip rather than an animal', () => {
+  // A 0.18s puff among UI clicks is why the game once "sounded like beeps".
+  SND.VOICE_KEYS.forEach((k) => {
+    const d = SND.totalDuration(SND.VOICES[k]);
+    assert.ok(d >= 0.4, k + ' lasts only ' + d.toFixed(2) + 's — too short to register');
+  });
+});
+
 test('every call carries a harmonic stack — a single tone is a buzz, not a voice', () => {
   SND.VOICE_KEYS.forEach((k) => {
     const s = SND.VOICES[k];

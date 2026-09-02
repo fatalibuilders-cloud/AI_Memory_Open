@@ -597,14 +597,44 @@ function blip(f, dur = .07, type = 'sine', gain = .1) {
     o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
   } catch (e) {}
 }
+/*
+ * UI sounds are deliberately NOT tonal. The old set used a 560 Hz sine on
+ * every tile tap and a 190 Hz sawtooth on every rejected swap; played
+ * dozens of times a minute they were the loudest thing in the game and
+ * drowned the animals out — the game sounded like beeps. Taps and errors
+ * are now filtered noise (a click, a thud), which reads as touch feedback
+ * without competing with a voice. The animals are the game's sound.
+ */
+function noiseHit(opts) {
+  if (!save.sound || !ensureAudio() || !voices.noise) return;
+  const o = opts || {};
+  const dur = o.dur || 0.06;
+  try {
+    const t = ac.currentTime;
+    const src = ac.createBufferSource();
+    src.buffer = voices.noise;
+    const f = ac.createBiquadFilter();
+    f.type = o.type || 'bandpass';
+    f.frequency.setValueAtTime(o.freq || 1200, t);
+    if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+    f.Q.value = o.q || 1;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(o.gain || 0.1, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(ac.destination);
+    src.start(t); src.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+
 const sfx = {
-  match:(c)=>blip(420 + c*90,.09,'triangle',.11),
-  special:()=>{blip(700,.1,'square',.09);setTimeout(()=>blip(1050,.13,'square',.09),80);},
-  bad:()=>blip(190,.11,'sawtooth',.07),
-  win:()=>[523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>blip(f,.2,'triangle',.13),i*120)),
-  lose:()=>[420,350,280].forEach((f,i)=>setTimeout(()=>blip(f,.22,'sine',.11),i*170)),
-  tap:()=>blip(560,.04,'sine',.07),
-  coin:()=>{blip(900,.07,'square',.08);setTimeout(()=>blip(1300,.1,'square',.08),60);},
+  // A rising whoosh when a special is made — no square-wave beeps.
+  special: () => noiseHit({ dur: 0.4, freq: 700, to: 3200, q: 0.7, gain: 0.13 }),
+  bad: () => noiseHit({ dur: 0.14, freq: 260, q: 0.8, gain: 0.16, type: 'lowpass' }),
+  tap: () => noiseHit({ dur: 0.02, freq: 2800, q: 0.6, gain: 0.05, type: 'highpass' }),
+  // Reward moments stay musical — they are rare and they should feel good.
+  win: () => [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => blip(f, .2, 'triangle', .13), i * 120)),
+  lose: () => [420, 350, 280].forEach((f, i) => setTimeout(() => blip(f, .22, 'sine', .11), i * 170)),
+  coin: () => { blip(900, .07, 'square', .08); setTimeout(() => blip(1300, .1, 'square', .08), 60); },
 };
 const buzz = (p) => { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
 
@@ -895,8 +925,8 @@ function playPhases(phases, next, done) {
     }
     const el = $('board'), cols = new Set();
     p.cleared.forEach((i) => { const d = el.children[i]; if (d) d.classList.add('pop'); cols.add(i % S.cols); });
-    callOf(p, p.combo);
-    if (p.created.length > 0) sfx.special();
+    callOf(p, p.combo);                       // the animal always speaks
+    if (p.created.length > 0) sfx.special();  // a whoosh layered under it
     buzz(p.combo > 1 ? 28 : 16);
     comboBanner(p.combo);
     if (p.cleared.length) floatScore(p.cleared[0], '+' + p.gained.toLocaleString());

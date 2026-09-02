@@ -29,6 +29,7 @@
 
 | Item | Date | Notes |
 |---|---|---|
+| Nairobi Wild v0.4.1 — removed the UI beeps that were drowning the animals; lengthened short calls to ≥0.4 s | 2026-08-30 | 79/79 tests; every sound a match makes is now logged and verified |
 | Nairobi Wild v0.4 — tour of all 54 countries with per-country animals, 19 voice archetypes, single shared AudioContext, Sound check panel | 2026-08-30 | 78/78 tests; verified under real browser autoplay rules |
 | Nairobi Wild v0.3.1 — animal calls rebuilt (harmonics + formants), music ducking, voice legend, presence heartbeat | 2026-08-30 | 73/73 tests; calls measured by offline render, not by node counting |
 | Nairobi Wild v0.3 — animal calls, 51 African city stages, production monetization module | 2026-08-30 | 67/67 tests; shop and purchase verified in-browser |

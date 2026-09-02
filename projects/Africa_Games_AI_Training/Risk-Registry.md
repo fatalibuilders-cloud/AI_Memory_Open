@@ -31,4 +31,5 @@
 | 25 | **NW** — Animal-to-country assignments are editorial and a local player may disagree ("that is not our animal") | Medium | Low | Every set is plausible and named; the atlas is one data row per country, so corrections from playtesters are trivial to apply | content, authenticity |
 | 26 | **NW** — Some countries share very similar animal line-ups, weakening the sense of travel | Medium | Low | 20+ distinct line-ups asserted by test; widen the pool if playtesters report sameness | content, variety |
 | 27 | **NW** — Audio remains the most-reported and least-verifiable area; device muting, silent switches and browser policy all present as "no sound" | Medium | Medium | One shared context, re-arm on every tap, and a Sound check panel that reports the real state; beyond that only device testing settles it | audio, support, ux |
+| 28 | **NW** — UI feedback can out-shout the animals again if new sounds are added carelessly | Medium | Medium | UI sounds are filtered noise by convention, calls are ≥0.4 s and mixed above the music; keep tonal oscillators for rare reward moments only | sound, mixing, regression |
 
