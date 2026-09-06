@@ -1,0 +1,27 @@
+NAIROBI WILD — SOUND PACK CREDITS
+=================================
+
+Every audio file shipped in this folder MUST be listed below before the
+game is published. Missing attribution on a CC-BY file is a licence
+breach; unlicensed audio is a takedown and, for a paid or ad-supported
+app, a legal exposure.
+
+Format — one line per file:
+
+  <path>  |  <source>  |  <author>  |  <licence>  |  <url>
+
+Example (replace with real entries):
+
+  01_LION/roar_01.ogg | Freesound | someauthor | CC0 1.0 | https://freesound.org/s/XXXXXX/
+  18_SAVANNA_AMBIENCE/savanna_loop.ogg | own recording | <your name> | © <year> <studio>, all rights reserved | —
+
+CHECKLIST BEFORE SHIPPING
+  [ ] Every file in this pack appears above.
+  [ ] Every CC-BY file is credited in the app's in-game credits screen.
+  [ ] Every commercial-pack licence permits use in a PAID or AD-SUPPORTED app.
+  [ ] No audio taken from YouTube, film, television or another game.
+  [ ] Recordings you made yourself are marked as owned, with the date.
+
+FILES
+-----
+(none yet — the game is using synthesised calls for every animal)

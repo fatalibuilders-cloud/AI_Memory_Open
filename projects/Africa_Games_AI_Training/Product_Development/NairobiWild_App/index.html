@@ -493,11 +493,13 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 <script src="music.js"></script>
 <script src="multiplayer.js"></script>
 <script src="sounds.js"></script>
+<script src="sfxpack.js"></script>
 <script src="monetization.js"></script>
 <script>
 'use strict';
 const M = window.Match3, MU = window.NairobiMusic, MP = window.NairobiMP;
 const SND = window.AnimalSounds, MONEY = window.NairobiMoney, ATLAS = window.NairobiAtlas;
+const SFX = window.NairobiSFX;
 const $ = (id) => document.getElementById(id);
 
 /* ==================================================================
@@ -567,6 +569,15 @@ const totalStars = () => Object.values(save.stars).reduce((a, b) => a + b, 0);
  */
 const music = new MU.Engine();
 const voices = new SND.AnimalVoices();
+/* Recorded calls when the sound pack is installed; synthesis otherwise. */
+const pack = new SFX.SoundPack();
+/*
+ * The recorded pack is off unless the build says it shipped one. Set
+ * window.NAIROBI_WILD_SFX_PACK = true in the packaged app (before this
+ * script) and drop African_Wildlife_SFX/ beside index.html. Without it
+ * the game makes zero audio requests and synthesises every call.
+ */
+if (window.NAIROBI_WILD_SFX_PACK === true) SFX.configure({ enabled: true });
 let ac = null;
 let audioReady = false;
 
@@ -578,6 +589,7 @@ function ensureAudio() {
       ac = new Ctx();
       music.useContext(ac);
       voices.attach(ac, ac.destination);
+      pack.attach(ac, ac.destination);
       // Dip the groove under each call, or the drums bury it.
       voices.onPlay = (spec, dur) => music.duck(dur);
     }
@@ -648,7 +660,11 @@ function callOf(phase, combo) {
   let best = 0;
   for (let i = 1; i < tally.length; i += 1) if (tally[i] > tally[best]) best = i;
   const animal = ANIMALS[best];
-  if (animal) voices.play(animal.voice, { combo });
+  if (!animal) return;
+  // A recorded call if the pack has one loaded, else the synthesised voice.
+  // Either way the music ducks, so the animal is heard over the groove.
+  if (pack.play(animal.key, { combo })) music.duck(0.6);
+  else voices.play(animal.voice, { combo });
 }
 
 /*
@@ -815,6 +831,10 @@ function beginBoard(hint) {
   $('bHammer').classList.remove('armed');
   $('ovEnd').classList.remove('active'); $('ovDuelEnd').classList.remove('active');
   refreshChrome(); buildBoard(); renderBoard(S.board); renderHud();
+  // Pull down this country's recordings in the background if a pack is
+  // installed. Never on the menus — nobody should pay for data they may
+  // not use.
+  try { pack.preload(ANIMALS.map((a) => a.key)); } catch (e) {}
   $('hintline').textContent = hint || '';
   show('game');
   music.setEnergy(1);
@@ -1468,8 +1488,10 @@ function updateSoundBanner() {
     el.className = 'status';
     return;
   }
+  const recorded = ANIMALS.filter((a) => pack.ready(a.key)).length;
   el.innerHTML = '<span class="dot"></span>Sound is on'
-    + (save.sound ? '' : ' — but effects are muted, turn SFX on');
+    + (save.sound ? '' : ' — but effects are muted, turn SFX on')
+    + (recorded ? ' · ' + recorded + ' recorded call' + (recorded === 1 ? '' : 's') + ' (●)' : '');
   el.className = 'status live';
 }
 
@@ -1482,11 +1504,12 @@ function renderVoiceLegend() {
     b.innerHTML = '<span class="g"></span><span class="n"></span><span class="c"></span>';
     b.querySelector('.g').textContent = a.g;
     b.querySelector('.n').textContent = a.en;
-    b.querySelector('.c').textContent = SND.voiceFor(a.voice).label;
+    b.querySelector('.c').textContent = SND.voiceFor(a.voice).label
+      + (pack.ready(a.key) ? ' ●' : '');
     b.onclick = () => {
       armAudio();
       if (!save.sound) { save.sound = true; persist(); refreshChrome(); }
-      const spoke = voices.play(a.voice, { combo: 1 });
+      const spoke = pack.play(a.key, { combo: 1 }) || voices.play(a.voice, { combo: 1 });
       updateSoundBanner();
       if (!spoke) { toast('Sound is blocked — tap again'); return; }
       b.classList.add('calling');

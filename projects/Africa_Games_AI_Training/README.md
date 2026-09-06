@@ -6,7 +6,7 @@
 
 | App | What it is | Status |
 |---|---|---|
-| **Nairobi Wild** ⭐ *flagship* | Match-3 puzzle in the Candy Crush mould, made in Nairobi. A tour of **all 54 African countries**, each with its own animals that call out when matched, a synthesised Benga soundtrack, offline solo play and **live online duels**. | ✅ Playable v0.4, 78/78 tests |
+| **Nairobi Wild** ⭐ *flagship* | Match-3 puzzle in the Candy Crush mould, made in Nairobi. A tour of **all 54 African countries**, each with its own animals that call out when matched, a synthesised Benga soundtrack, offline solo play and **live online duels**. Optional recorded sound pack drops in on top. | ✅ Playable v0.5, 88/88 tests |
 | **Oware Legends** | The pan-African mancala strategy game (Ayo/Awalé/Warri/Adji) vs an AI or pass-and-play. | ✅ Playable v0.1, 13/13 tests |
 
 **Why both:** Nairobi Wild is the mass-market growth engine — the genre with the largest proven audience and the clearest monetization. Oware Legends is the credibility and retention play: a deep, culturally-owned strategy game that keeps players who tire of match-3. Together they give a studio a funnel (Nairobi Wild acquires) and a moat (Oware retains).

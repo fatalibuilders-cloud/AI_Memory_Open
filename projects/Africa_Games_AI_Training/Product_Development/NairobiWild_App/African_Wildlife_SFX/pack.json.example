@@ -1,0 +1,23 @@
+{
+  "_comment": "Rename to pack.json once real files are in place. The game makes exactly ONE request for this file; if it is absent the pack is treated as not installed and nothing else is ever fetched. List only variants you actually shipped.",
+  "version": 1,
+  "dirPrefixes": ["Android/optimized_OGG/", ""],
+  "formats": ["ogg", "m4a"],
+  "animals": {
+    "lion": ["roar_01", "roar_02", "growl"],
+    "elephant": ["trumpet_01", "trumpet_02", "rumble"],
+    "zebra": ["bark_01", "bark_02"],
+    "giraffe": ["hum"],
+    "leopard": ["saw_01", "saw_02"],
+    "hippo": ["grunt_01", "grunt_02"],
+    "gorilla": ["hoot_01", "hoot_02"],
+    "hyena": ["whoop_01", "laugh"],
+    "crocodile": ["hiss", "growl"],
+    "buffalo": ["bellow_01", "snort"],
+    "monkey": ["chatter_01", "screech"],
+    "warthog": ["snort_01", "grunt"],
+    "snake": ["hiss_01"],
+    "eagle": ["eagle_01", "screech"],
+    "parrot": ["parrot_01", "squawk"]
+  }
+}

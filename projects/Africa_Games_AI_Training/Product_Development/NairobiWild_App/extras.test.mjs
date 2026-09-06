@@ -12,6 +12,8 @@ const MP = require('./multiplayer.js');
 const M = require('./match3.js');
 const SND = require('./sounds.js');
 const MON = require('./monetization.js');
+const SFX = require('./sfxpack.js');
+const Atlas = require('./atlas.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -472,6 +474,94 @@ test('a rewarded ad grants its reward and records the placement', () => {
   assert.equal(rewarded, true);
   assert.equal(seen[0].placement, 'continue', 'placement is reported for revenue analysis');
   assert.ok(seen.some((e) => e.type === 'ad_rewarded'));
+});
+
+/* ---------------- recorded sound pack ---------------- */
+
+test('the pack manifest matches the documented folder layout', () => {
+  const dirs = Object.keys(SFX.MANIFEST).map((k) => SFX.MANIFEST[k].dir);
+  ['01_LION', '02_ELEPHANT', '03_HYENA', '04_HIPPO', '05_CROCODILE', '06_LEOPARD',
+   '08_GORILLA', '09_BUFFALO', '10_ZEBRA', '11_GIRAFFE', '12_MONKEY_BABOON',
+   '13_WARTHOG', '14_SNAKE', '15_EAGLE_BIRDS'].forEach((d) => {
+    assert.ok(dirs.includes(d), 'manifest is missing ' + d);
+  });
+  Object.keys(SFX.MANIFEST).forEach((k) => {
+    const e = SFX.MANIFEST[k];
+    assert.ok(/^\d\d_[A-Z_]+$/.test(e.dir), k + ' has an odd folder name: ' + e.dir);
+    assert.ok(e.variants.length >= 3, k + ' needs several variants so calls do not repeat');
+    assert.equal(new Set(e.variants).size, e.variants.length, k + ' has duplicate variants');
+  });
+});
+
+test('the lion and elephant variants are exactly the ones specified', () => {
+  assert.deepEqual(SFX.MANIFEST.lion.variants,
+    ['roar_01', 'roar_02', 'growl', 'snarl', 'distant_roar']);
+  assert.deepEqual(SFX.MANIFEST.elephant.variants,
+    ['trumpet_01', 'trumpet_02', 'rumble', 'angry', 'herd']);
+});
+
+test('every animal in the pack is a real animal in the atlas', () => {
+  Object.keys(SFX.MANIFEST).forEach((k) => {
+    assert.ok(Atlas.ANIMALS[k] || k === 'cheetah', k + ' is not in the atlas');
+  });
+});
+
+test('every atlas animal is covered — by a recording or by synthesis', () => {
+  // This is the safety property: a partial pack must never leave an animal mute.
+  const SND2 = require('./sounds.js');
+  Object.keys(Atlas.ANIMALS).forEach((k) => {
+    const a = Atlas.ANIMALS[k];
+    const covered = SFX.hasPackEntry(k) || !!SND2.VOICES[a.voice];
+    assert.ok(covered, k + ' has neither a recording nor a voice');
+  });
+});
+
+test('coverage reports which of a country\'s animals are recorded', () => {
+  const kenya = Atlas.COUNTRIES.find((c) => c.name === 'Kenya').animals;
+  const cov = SFX.coverage(kenya);
+  assert.equal(cov.recorded.length + cov.synthesised.length, kenya.length);
+  assert.ok(cov.recorded.includes('lion'), 'the pack covers lions');
+  assert.ok(cov.synthesised.includes('rhino'), 'rhino has no folder, so it synthesises');
+});
+
+test('candidate URLs prefer the mobile-optimised folder and try each format', () => {
+  const urls = SFX.candidateUrls('01_LION', 'roar_01');
+  assert.ok(urls[0].indexOf('Android/optimized_OGG/') !== -1, 'small files first: ' + urls[0]);
+  assert.ok(urls[0].endsWith('.ogg'), 'ogg first');
+  assert.ok(urls.some((u) => u.endsWith('.m4a')), 'm4a for older iOS');
+  assert.ok(urls.some((u) => u.indexOf('optimized') === -1), 'falls back to the originals');
+  urls.forEach((u) => assert.ok(u.indexOf('African_Wildlife_SFX/01_LION/roar_01.') !== -1 ||
+    u.indexOf('optimized_OGG/01_LION/roar_01.') !== -1, 'well-formed: ' + u));
+});
+
+test('setting no basePath disables the pack entirely', () => {
+  const saved = SFX.CONFIG.basePath;
+  SFX.configure({ basePath: '' });
+  assert.deepEqual(SFX.candidateUrls('01_LION', 'roar_01'), []);
+  SFX.configure({ basePath: saved });
+  assert.ok(SFX.candidateUrls('01_LION', 'roar_01').length > 0, 'restored');
+});
+
+test('with no pack installed the game degrades quietly to synthesis', () => {
+  // Node has no WebAudio and no files: every call must report "not played"
+  // so the caller falls back, and nothing may throw.
+  const sp = new SFX.SoundPack();
+  assert.equal(sp.attach(null), false);
+  assert.equal(sp.play('lion', { combo: 2 }), false, 'no context, no recording');
+  assert.equal(sp.ready('lion'), false);
+  assert.equal(sp.play('rhino', {}), false, 'an animal with no folder never claims a recording');
+  sp.stopAmbience();
+});
+
+test('ambience is chosen by region, and every region maps somewhere', () => {
+  const regions = new Set(Atlas.COUNTRIES.map((c) => c.region));
+  regions.forEach((r) => {
+    const key = SFX.REGION_AMBIENCE[r];
+    assert.ok(key, 'no ambience mapped for ' + r);
+    assert.ok(SFX.AMBIENCE[key], r + ' maps to unknown ambience ' + key);
+  });
+  assert.equal(SFX.REGION_AMBIENCE['Central Africa'], 'jungle');
+  assert.equal(SFX.REGION_AMBIENCE['Indian Ocean'], 'water');
 });
 
 console.log('\n' + passed + ' tests passed' + (process.exitCode ? ' (with failures)' : ''));

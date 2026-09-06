@@ -1,6 +1,6 @@
 # Next Steps — Africa Games
 
-**Last Updated:** 2026-08-30
+**Last Updated:** 2026-09-06
 
 ## High Priority
 
@@ -12,23 +12,26 @@
 
 ## Medium Priority
 
-6. **`RealtimeAdapter` for the standalone app** — the Android build has no artifact `room`, so online duels need a WebSocket service implementing the same interface as `RoomAdapter` (see `NairobiWild_architecture.md`). Offline duels need nothing.
-7. **A privacy policy** — mandatory the moment ads ship, because AdMob collects an advertising ID. Short and honest, since the game stores nothing on a server.
-8. **Blockers and new goal types** — snares to cut, waterholes to fill, an animal to escort down the board. With 246 stages the content shortage is solved; variety of *goal* is now the gap.
-9. **Localize** — Swahili first (the UI already uses Swahili animal names and interjections), then English, French, Amharic.
-10. **Analytics** — the revenue-event hook already fires with placement names; wire it to a real analytics SDK so ad revenue can be attributed to the moment that earned it, and pair it with D1/D7 retention before any paid acquisition.
+6. **Source the recorded sound pack** (optional, but it is the surest fix for "does that sound like a lion?"). The loader is built and tested: drop `African_Wildlife_SFX/` beside `index.html`, add `pack.json`, set `window.NAIROBI_WILD_SFX_PACK = true` in the packaged build. See `Product_Development/NairobiWild_App/African_Wildlife_SFX/README.md`. **Budget under 3 MB** and fill in `LICENSE/credits.txt` before shipping — CC-BY needs attribution, and many "free" packs bar ad-supported apps. Recording at a Nairobi conservancy is the cleanest option and a marketing story.
+
+7. **`RealtimeAdapter` for the standalone app** — the Android build has no artifact `room`, so online duels need a WebSocket service implementing the same interface as `RoomAdapter` (see `NairobiWild_architecture.md`). Offline duels need nothing.
+8. **A privacy policy** — mandatory the moment ads ship, because AdMob collects an advertising ID. Short and honest, since the game stores nothing on a server.
+9. **Blockers and new goal types** — snares to cut, waterholes to fill, an animal to escort down the board. With 246 stages the content shortage is solved; variety of *goal* is now the gap.
+10. **Localize** — Swahili first (the UI already uses Swahili animal names and interjections), then English, French, Amharic.
+11. **Analytics** — the revenue-event hook already fires with placement names; wire it to a real analytics SDK so ad revenue can be attributed to the moment that earned it, and pair it with D1/D7 retention before any paid acquisition.
 
 ## Low Priority
 
-11. **Ranked duels / leaderboards** — blocked on an authoritative server, because scores are client-reported today (decision #19). The deterministic engine makes verification straightforward: replay the move list server-side.
-12. Music variety — a second groove (Gengetone-flavoured) and a calmer Relax-mode arrangement.
-13. Online play for Oware Legends.
-14. KaiOS/feature-phone build.
+12. **Ranked duels / leaderboards** — blocked on an authoritative server, because scores are client-reported today (decision #19). The deterministic engine makes verification straightforward: replay the move list server-side.
+13. Music variety — a second groove (Gengetone-flavoured) and a calmer Relax-mode arrangement.
+14. Online play for Oware Legends.
+15. KaiOS/feature-phone build.
 
 ## Recently Completed
 
 | Item | Date | Notes |
 |---|---|---|
+| Nairobi Wild v0.5 — optional recorded sound-pack loader with synthesis fallback, manifest, ambience beds and licensing scaffold | 2026-09-06 | 88/88 tests; zero audio requests when no pack is installed |
 | Nairobi Wild v0.4.1 — removed the UI beeps that were drowning the animals; lengthened short calls to ≥0.4 s | 2026-08-30 | 79/79 tests; every sound a match makes is now logged and verified |
 | Nairobi Wild v0.4 — tour of all 54 countries with per-country animals, 19 voice archetypes, single shared AudioContext, Sound check panel | 2026-08-30 | 78/78 tests; verified under real browser autoplay rules |
 | Nairobi Wild v0.3.1 — animal calls rebuilt (harmonics + formants), music ducking, voice legend, presence heartbeat | 2026-08-30 | 73/73 tests; calls measured by offline render, not by node counting |

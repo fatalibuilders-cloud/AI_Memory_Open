@@ -32,6 +32,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--animal-voices-actually-audible.md` | 2026-08-30 | animal voices, audio, bugfix, verification, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--country-tour-and-audio-root-cause.md` | 2026-08-30 | africa tour, countries, animals, audio bugfix, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--the-beeps-were-the-ui.md` | 2026-08-30 | beeps, ui sounds, animal calls, audio diagnosis, games |
+| `projects/Africa_Games_AI_Training/session-summary/2026-09-06--recorded-sound-pack-loader.md` | 2026-09-06 | sound pack, recordings, licensing, audio, games |
 
 ---
 

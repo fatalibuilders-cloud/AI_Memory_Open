@@ -1,4 +1,4 @@
-# Nairobi Wild — Architecture (v0.4.1)
+# Nairobi Wild — Architecture (v0.5)
 
 ## What it is
 A match-3 puzzle game made in **Nairobi** and played across the whole of Africa. Swap adjacent animals, match three or more, chase a target inside a move limit. The mechanic is the genre standard (Candy Crush shape); the identity is the content — the countries, their animals, the music, the ornament.
@@ -16,12 +16,13 @@ A match-3 puzzle game made in **Nairobi** and played across the whole of Africa.
 | `atlas.js` | The content: the animal pool, all 54 countries with their cities and their own six animals, and the generated campaign |
 | `match3.js` | Engine: board generation, match detection, specials, cascades, gravity/refill, deadlock reshuffle, boosters, duel config |
 | `music.js` | Generative Benga soundtrack + pure, testable pattern builders |
-| `sounds.js` | Animal voices — a registry of call archetypes |
+| `sounds.js` | Animal voices — a registry of synthesised call archetypes |
+| `sfxpack.js` | Optional recorded sound pack: manifest, lazy loader, ambience beds |
 | `multiplayer.js` | Challenge-link codec, the `room`-backed online adapter, the production realtime seam |
 | `monetization.js` | Product catalogue, provider selection, AdMob / Play Billing / mobile-money checkout, revenue events |
 | `index.html` | All screens, animation, input, economy, persistence, lobby, duel flow |
 | `match3.test.mjs` | 31 tests — engine rules and the campaign |
-| `extras.test.mjs` | 47 tests — music, animal voices, multiplayer, monetization |
+| `extras.test.mjs` | 57 tests — music, animal voices, sound pack, multiplayer, monetization |
 
 ## The campaign: a tour of Africa, country by country
 **54 countries, 246 stages.** Pick a country, play its major cities in order, finish it and the next country unlocks. The tour opens in Nairobi — where the game is made — then works outward through East Africa, the Horn, Southern, Central, West, North Africa and the islands.
@@ -67,6 +68,32 @@ The game once "sounded like beeps" because it *was* beeping: a 560 Hz sine on ev
 Taps and errors are now **filtered noise** — a 20 ms high-passed click, a 140 ms low-passed thud — which reads as touch feedback without competing with a voice. A special piece gets a rising noise whoosh *layered under* the call, never instead of it. Only rare reward moments (level win, coin) stay tonal. **The animals are the sound of this game.**
 
 No call may run shorter than **0.4 s**, asserted by test: several were 0.18 s per pulse, and a snort that brief reads as a blip rather than an animal.
+
+### Optional recorded sound pack
+Synthesis is the default and always will be — it is what keeps the install at ~150 KB with no assets. But real recordings can take over, **animal by animal**, by dropping a pack beside `index.html`:
+
+```
+African_Wildlife_SFX/
+  01_LION/roar_01.ogg roar_02.ogg growl.ogg snarl.ogg distant_roar.ogg
+  02_ELEPHANT/ … 20_RAIN_THUNDER/
+  Android/optimized_OGG/     ← checked first
+  pack.json                  ← declares what is actually present
+  LICENSE/credits.txt
+```
+
+**Off unless the build says otherwise.** Whether a pack shipped is a build-time fact, so `sfxpack.js` is disabled by default and the packaged app opts in with `window.NAIROBI_WILD_SFX_PACK = true`. The first cut instead *guessed* — trying every animal × variant × folder × format and reading the failures — which fired 60+ requests, filled the console with errors and would have cost a player real data. Now: **one** request for `pack.json`, which lists exactly what exists; if it is absent the pack is treated as not installed and nothing else is ever fetched.
+
+Behaviour once enabled:
+- On entering a stage, that country's six animals are fetched **in the background**, never on the menus.
+- A match plays a random variant, never the same one twice running, pitched up as a cascade builds.
+- Anything missing, un-decoded or failed falls back to the **synthesised** voice. Play is never blocked. Half a pack is fine.
+- Sound check marks recorded calls with a ● so coverage is visible at a glance.
+
+**Coverage is partial by design.** The layout covers 15 of the 32 atlas animals; rhino, camel, dodo, penguin and the rest always synthesise unless folders are added and registered in `MANIFEST`. A test asserts every atlas animal has *either* a recording *or* a voice, so no animal can ever be mute.
+
+**The artifact preview cannot load a pack** — that sandbox blocks media fetches — so the preview is always synthesised. Packs work in the TWA/APK build and on any normal web host.
+
+**Licensing is the owner's call and is not optional.** `LICENSE/credits.txt` ships as a checklist: source, author, licence and link for every file, with explicit warnings about CC-BY attribution, "free for personal use" packs that bar ad-supported apps, and never lifting audio from video. Recording at a local conservancy is the cleanest option and a marketing story besides.
 
 ### How to verify audio honestly
 Counting audio nodes created during a match proves nothing: the soundtrack creates oscillators and noise buffers continuously, so the count rises either way. That mistake once had a broken feature reported as working. The methods that do work:
@@ -125,7 +152,7 @@ One module, four entry points — `rewardedAd`, `purchase`, `products`, `onEvent
 - No accounts, no server, no PII. The only identity is a nickname kept on the player's own device.
 
 ## Verification status (2026-08-30)
-- `node match3.test.mjs` → **31/31**; `node extras.test.mjs` → **47/47**.
+- `node match3.test.mjs` → **31/31**; `node extras.test.mjs` → **57/57**.
 - Playwright at 412×880, source tree **and** bundled single file, under **real browser autoplay rules**:
   - 54 countries listed, Kenya first with its six animals; 6 Kenyan cities; stage intro reads "Nairobi · Kenya · city 1 of 6".
   - A match creates **exactly one** AudioContext, in state `running`, and `voices.play()` returns true for a real archetype.
