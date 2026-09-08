@@ -319,6 +319,13 @@ class Settings:
     #: setting can make the market pay, so this is reported against, never
     #: enforced. The bot says at the end of each day whether it was met.
     daily_profit_floor: float = 0.0
+    #: Re-examine the settings while a loss-streak pause runs. Re-measured
+    #: exits are applied; anything that could increase risk is only
+    #: recommended.
+    review_on_pause: bool = True
+    #: How much history the review replays. Three months of M1 is a lot of
+    #: bars but only one configuration, so it stays quick.
+    review_days: int = 90
     max_consecutive_losses: int = 3
     #: Stop trading when the record shows the configuration losing beyond
     #: chance. The bot lost $46 over 139 trades while the evidence that it
@@ -545,6 +552,8 @@ class Settings:
             max_loss_per_trade=_f("MAX_LOSS_PER_TRADE", 0.0),
             daily_profit_target=_f("DAILY_PROFIT_TARGET", 0.0),
             daily_profit_floor=_f("DAILY_PROFIT_FLOOR", 0.0),
+            review_on_pause=_b("REVIEW_ON_PAUSE", True),
+            review_days=_i("REVIEW_DAYS", 90),
             max_consecutive_losses=_i("MAX_CONSECUTIVE_LOSSES", 3),
             halt_on_failed_evidence=_b("HALT_ON_FAILED_EVIDENCE", True),
             live_requires_evidence=_b("LIVE_REQUIRES_EVIDENCE", True),

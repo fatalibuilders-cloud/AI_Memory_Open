@@ -15,7 +15,7 @@ from dataclasses import replace
 from typing import Optional
 
 from .broker.base import BrokerError
-from . import evidence
+from . import evidence, review
 from .config import Settings
 from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
@@ -550,6 +550,7 @@ class TradingBot:
             pause_msg = session.risk.record_result(pnl)
             if pause_msg:
                 self.remote.broadcast(f"⏸ [{session.name}] {pause_msg}")
+                self._start_review(session)
             if session.evidence:
                 symbol = next((q.symbol for q in positions if q.ticket == ticket),
                               "")
@@ -562,6 +563,7 @@ class TradingBot:
         for ticket in vanished:
             session.stage_done.pop(ticket, None)
             session.peak_price.pop(ticket, None)
+        self._announce_pause_end(session)
         self._check_money_scale(session, positions)
         positions = self._enforce_loss_cap(session, positions)
         self._protect_profits(session, positions)
@@ -572,6 +574,52 @@ class TradingBot:
             if report:
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
+
+    def _start_review(self, session: BrokerSession) -> None:
+        """Spend the pause re-examining the settings, off the trading loop.
+
+        On a background thread: three months of bars per symbol is seconds
+        of work, but it is seconds the poll loop should not spend, and
+        existing positions still need their stops watched.
+        """
+        if not self.s.review_on_pause or session.reviewing:
+            return
+        session.reviewing = True
+
+        def work() -> None:
+            try:
+                balance = session.broker.balance()
+                rows, applied = review.run_review(
+                    self.s, session.broker, session.active_symbols(),
+                    strategy_name(self.strategy), self.s.review_days, balance)
+                if applied:
+                    # Measurement only: re-derived exits are safe to apply,
+                    # and they take effect on the next signal.
+                    for key, over in applied.items():
+                        self.s.symbol_overrides.setdefault(key, {}).update(over)
+                    log.info("[%s] review re-measured %d symbol(s)",
+                             session.name, len(applied))
+                self.remote.broadcast(
+                    f"[{session.name}]\n" + review.format_review(
+                        rows, self.s.review_days, self.s.timeframe, applied))
+            except Exception as exc:
+                log.warning("[%s] review failed: %s", session.name, exc)
+            finally:
+                session.reviewing = False
+
+        threading.Thread(target=work, name="review", daemon=True).start()
+
+    def _announce_pause_end(self, session: BrokerSession) -> None:
+        """Say when entries resume, so silence is never mistaken for a fault."""
+        st = session.risk.stats
+        if st.paused_until and st.paused_until <= time.time():
+            if not session.pause_announced:
+                return
+            session.pause_announced = False
+            self.remote.broadcast(
+                f"▶️ [{session.name}] pause over — entries resume.")
+        elif st.paused_until > time.time():
+            session.pause_announced = True
 
     def _risk_exceeds_limit(self, session: BrokerSession, cfg, symbol: str,
                             volume: float, sl_distance: float,

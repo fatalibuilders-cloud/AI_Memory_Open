@@ -82,8 +82,12 @@ def make_bot(s, broker, symbols, **session_kw):
     session = BrokerSession(name="test", cfg=s.broker_configs()[0],
                             broker=broker, risk=RiskManager(s),
                             symbols=list(symbols), **session_kw)
+    from fmsbot.live import build_strategy
+
     bot = object.__new__(botmod.TradingBot)
     bot.s = s
+    # The real bot always has one; code that reads it must be exercised.
+    bot.strategy = build_strategy(s)
     bot._trade_lock = threading.Lock()
     bot.remote = type("R", (), {"broadcast": lambda self, m: messages.append(m)})()
     return bot, session, messages

@@ -721,6 +721,41 @@ It overrides `PROFIT_STAGES` when set.
 The bot also now notices the failure directly: if the last rung's lock is
 under 20% of the target, it says so once and shows the fix.
 
+## The bot reviews itself while it is paused
+
+A pause after consecutive losses is dead time. `REVIEW_ON_PAUSE` spends it
+re-examining the settings, on a background thread so stops keep being
+watched:
+
+```env
+REVIEW_ON_PAUSE=true
+REVIEW_DAYS=90          # three months at the entry timeframe
+LOSS_PAUSE_MINUTES=10
+```
+
+Three things happen, and the boundary between them is the whole design:
+
+* **Re-measures** each instrument's spread, volatility and minimum stop
+  and re-derives the exits. Measurement, not fitting — there is no way for
+  it to talk itself into a bad answer — so it is **applied automatically**
+  and takes effect on the next signal. This is what clears "stop too tight
+  for the spread" without anyone noticing it was broken.
+* **Re-tests** the *current* configuration over the window and reports
+  what it would have done. One configuration, not a search.
+* **Recommends** everything else. Dropping a symbol or changing
+  parameters is a decision for a person.
+
+It deliberately does **not** search for better parameters and adopt the
+winner. That is how noise becomes a strategy, and `find_edge.py` exists to
+do it properly, with a null to beat. The report says so every time.
+
+Symbols are still only retired on **real** results (`/evidence`), never on
+a backtest.
+
+The end of a pause is now announced too. A pause at 19:12 followed by
+silence until a restart at 20:19 looks exactly like a fault, even when the
+pause was the 15 minutes it said.
+
 ## Size must match the stop the order is actually sent with
 
 On a $99,146 account set to 0.5% risk (~$496 a trade), two positions

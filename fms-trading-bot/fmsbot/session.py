@@ -48,6 +48,10 @@ class BrokerSession:
     scale_checked: bool = False
     #: likewise the warning that the ladder is capping every winner
     ladder_warned: bool = False
+    #: a review is running on a background thread
+    reviewing: bool = False
+    #: a pause was announced, so its ending is worth announcing too
+    pause_announced: bool = False
     connected: bool = False
     last_bar: dict[str, int] = field(default_factory=dict)
     symbol_warned: dict[str, float] = field(default_factory=dict)
