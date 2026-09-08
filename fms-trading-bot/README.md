@@ -721,6 +721,33 @@ It overrides `PROFIT_STAGES` when set.
 The bot also now notices the failure directly: if the last rung's lock is
 under 20% of the target, it says so once and shows the fix.
 
+## Size must match the stop the order is actually sent with
+
+On a $99,146 account set to 0.5% risk (~$496 a trade), two positions
+closed at **exactly -3000.00 each, one minute apart** — six times the
+intended risk, and together three times the 2% daily limit.
+
+The cause was an ordering bug. Size was computed from the strategy's stop
+distance; the stop was then widened to the broker's minimum, and the size
+was never recomputed. A stop widened 6x loses 6x. The arithmetic
+reproduces the loss almost exactly: a $496 allowance over a 0.0010 stop
+is 4.96 lots, and 4.96 lots over the widened 0.0060 stop risks $2,974.
+
+Two things now stand between that and an order:
+
+* **The size is recomputed** whenever the stop moves after sizing —
+  whether a cash target replaced it or the broker minimum widened it.
+* **A final check before the order is sent** measures what the trade
+  actually risks — stop distance times what a price unit is worth at that
+  size — against the per-trade allowance, `MAX_LOSS_PER_TRADE`, and the
+  daily budget. It trusts none of the arithmetic above it. A trade that
+  cannot be sized small enough to obey them is **refused**, because the
+  smallest lot a broker accepts is not always small enough, and taking it
+  anyway is how a 0.5% setting loses 3%.
+
+No single trade may risk more than the whole daily loss limit either, or
+that limit is decorative.
+
 ## A hard cap on what one trade may lose
 
 A stop loss is the broker's promise, and promises fail: placed at the

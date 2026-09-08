@@ -389,6 +389,38 @@ class TradingBot:
                         session.pace.record_block(reason)
                     return
 
+        # The stop has moved since the size was chosen: cash targets may have
+        # replaced it, and the broker minimum may have widened it. Size was
+        # computed against the ORIGINAL distance, so leaving it alone risks
+        # money in proportion to how far the stop travelled. A stop widened
+        # 6x loses 6x the intended amount, which is exactly what happened
+        # live: two positions closed at -3000.00 each against a 0.5% risk
+        # setting worth ~496.
+        if cfg.fixed_lot <= 0 and sl_distance > 0:
+            try:
+                resized = broker.volume_for_risk(symbol, sl_distance, risk_amount)
+            except BrokerError:
+                resized = volume
+            if resized != volume:
+                log.info("[%s] %s resized %.4f -> %.4f: the stop moved from "
+                         "%.5f to %.5f after sizing", session.name, symbol,
+                         volume, resized, signal.sl_distance, sl_distance)
+                volume = resized
+
+        # Whatever the sizing path, refuse to send an order that risks more
+        # than it is allowed to. This is the last line before real money and
+        # it does not trust any of the arithmetic above it.
+        blocked = self._risk_exceeds_limit(session, cfg, symbol, volume,
+                                           sl_distance, risk_amount, balance)
+        if blocked:
+            log.error("[%s] %s REFUSED: %s", session.name, symbol, blocked)
+            session.last_block = f"{symbol} refused — {blocked}"
+            if session.pace:
+                session.pace.record_block(blocked)
+            self.remote.broadcast(
+                f"🛑 [{session.name}] {symbol} order refused — {blocked}")
+            return
+
         signal = replace(signal, sl_distance=sl_distance, tp_distance=tp_distance)
 
         if signal.side == "buy":
@@ -540,6 +572,48 @@ class TradingBot:
             if report:
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
+
+    def _risk_exceeds_limit(self, session: BrokerSession, cfg, symbol: str,
+                            volume: float, sl_distance: float,
+                            risk_amount: float, balance: float) -> Optional[str]:
+        """Why this order must not be sent, if it must not.
+
+        Everything above computes what the risk SHOULD be. This measures
+        what it actually is -- the stop distance times what a price unit is
+        worth at this size -- and compares it against the limits. A trade
+        that cannot be sized small enough to obey them is refused outright:
+        the smallest lot a broker accepts is not always small enough, and
+        taking the trade anyway is how a 0.5% setting loses 3%.
+        """
+        try:
+            per_price = session.broker.value_per_price(symbol, volume)
+        except BrokerError:
+            return None                      # cannot price it; other gates apply
+        if per_price <= 0 or sl_distance <= 0:
+            return None
+        actual = sl_distance * per_price
+
+        allowed = risk_amount if cfg.fixed_lot <= 0 else 0.0
+        if allowed > 0 and actual > allowed * 1.1:
+            return (f"it would risk {actual:.2f}, over the {allowed:.2f} that "
+                    f"{cfg.risk_pct}% allows, and {volume} is the smallest "
+                    f"size the broker takes")
+
+        # The per-trade cap is an absolute ceiling, whichever sizing is used.
+        cap = cfg.max_loss_per_trade
+        if cap > 0 and actual > cap:
+            return (f"it would risk {actual:.2f}, over the {cap:.2f} "
+                    f"MAX_LOSS_PER_TRADE cap")
+
+        # And no single trade may be able to spend the whole day's loss
+        # budget, or the daily limit is decorative.
+        if balance > 0 and cfg.daily_loss_limit_pct > 0:
+            budget = balance * cfg.daily_loss_limit_pct / 100.0
+            if actual > budget:
+                return (f"it would risk {actual:.2f}, more than the "
+                        f"{budget:.2f} the {cfg.daily_loss_limit_pct}% daily "
+                        f"limit allows to be lost in a whole day")
+        return None
 
     def _ladder_for(self, session: BrokerSession, cfg, p) -> list:
         """This position's protection rungs, in cash.
