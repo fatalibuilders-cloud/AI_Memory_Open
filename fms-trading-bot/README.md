@@ -660,6 +660,39 @@ per trade, 2% daily, three positions, one per symbol, pause after three
 losses, rungs at 50%/75% of each trade's target, and the fixed-dollar
 rungs cleared. Expect **few** trades — that is the design.
 
+## The price-action pattern set
+
+Four setups from the candlestick literature, each written so the one test
+that defines it is explicit and covered:
+
+| strategy | the pattern | the test that defines it |
+|---|---|---|
+| `pin_bar` | rejection wick at the 21 MA, with trend | the **level** — a wick in open space is just a wick |
+| `engulfing` | body swallows the previous body, at a level | Nison's three: clear trend, first body engulfed, opposite colours |
+| `inside_bar_breakout` | inside bar, then a close **beyond** the mother bar with the trend | continuation |
+| `inside_bar_fakeout` | inside bar, break of the mother bar, close **back inside** | failed break — the opposite trade |
+
+The last two are the same three bars and opposite trades, separated only
+by where the final bar closes. Taking the wrong one is how the inside bar
+earns its reputation for losing money, so a test asserts a continuation
+never reads as a fakeout.
+
+Stops go where the reading fails — beyond the pin's wick, beyond the
+engulfing bar's extreme, on the far side of the mother bar — never at a
+fixed distance. Targets are `RR_TARGET` times that risk.
+
+Measured on 30 days of M5 with realistic bar shapes: pin bar 10.7/day,
+engulfing 16.0, inside-bar breakout 14.2, fakeout 15.8. All are
+searchable:
+
+```powershell
+.\.venv\Scripts\python.exe find_edge.py --days 60 --strategy engulfing
+```
+
+**None of them has been measured for edge yet.** The book asserts win
+rates (65%, 70%, "you will always be profitable"); `find_edge.py` is what
+decides whether any of that holds on your broker's data after costs.
+
 ## A rule-based setup: sweep, structure break, retest
 
 `liquidity_sweep` implements a discretionary-style plan as testable code:

@@ -297,6 +297,19 @@ class Settings:
     #: Risk-to-reward on the swing-based stop.
     rr_target: float = 2.0
 
+    # --- pin bar / inside bar false breakout -----------------------------
+    #: The moving average that acts as the level in a trending market. 21
+    #: is the figure the price-action literature uses.
+    pin_ma_period: int = 21
+    #: The rejection wick must be at least this share of the bar's range.
+    pin_wick_ratio: float = 0.66
+    #: ...and the body at most this share, or it is a directional bar with
+    #: a tail rather than a rejection.
+    pin_body_max: float = 0.33
+    #: How close the bar must come to the level, in ATR. A pin bar in open
+    #: space is just a bar with a wick.
+    pin_level_atr: float = 0.5
+
     # --- Safety controls --------------------------------------------------
     # Pause after this many losses in a row. The point is to stop while a
     # market regime is clearly against the strategy rather than keep paying
@@ -551,6 +564,10 @@ class Settings:
             sweep_reject=_f("SWEEP_REJECT", 0.5),
             structure_window=_i("STRUCTURE_WINDOW", 12),
             rr_target=_f("RR_TARGET", 2.0),
+            pin_ma_period=_i("PIN_MA_PERIOD", 21),
+            pin_wick_ratio=_f("PIN_WICK_RATIO", 0.66),
+            pin_body_max=_f("PIN_BODY_MAX", 0.33),
+            pin_level_atr=_f("PIN_LEVEL_ATR", 0.5),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
             trail_atr_mult=_f("TRAIL_ATR_MULT", 0.0),

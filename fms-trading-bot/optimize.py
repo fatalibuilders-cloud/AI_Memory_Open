@@ -88,6 +88,26 @@ GRIDS = {
         "structure_window": [8, 12, 20],
         "rr_target": [2.0, 3.0],
     },
+    "pin_bar": {
+        "pin_ma_period": [21, 50],
+        "pin_wick_ratio": [0.6, 0.66, 0.75],
+        "pin_body_max": [0.3, 0.4],
+        "pin_level_atr": [0.3, 0.5, 1.0],
+        "rr_target": [2.0, 3.0],
+    },
+    "inside_bar_fakeout": {
+        "atr_period": [14, 21],
+        "rr_target": [2.0, 3.0],
+    },
+    "engulfing": {
+        "pin_ma_period": [21, 50],
+        "pin_level_atr": [0.3, 0.5, 1.0],
+        "rr_target": [2.0, 3.0],
+    },
+    "inside_bar_breakout": {
+        "pin_ma_period": [21, 50],
+        "rr_target": [2.0, 3.0],
+    },
     "bollinger_breakout": {
         "bb_period": [14, 20, 30],
         "bb_std": [1.5, 2.0, 2.5],

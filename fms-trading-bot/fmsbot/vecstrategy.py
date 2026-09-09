@@ -407,8 +407,260 @@ class LiquiditySweep(VecStrategy):
                          f"{side} after sweep, {self.s.rr_target:.1f}R")
 
 
+
+
+class PinBar(VecStrategy):
+    """Rejection at the moving average, traded with the trend.
+
+    The price-action reading: in a trend, price pulls back to the 21
+    moving average, the side in control rejects it, and the bar closes
+    having given back most of its own range. The long wick is the
+    rejection; the small body is what makes it a rejection rather than a
+    directional bar that happens to have a tail.
+
+    Three conditions, all measured on the closed bar:
+
+      * **Shape.** The wick on the rejected side is at least
+        `pin_wick_ratio` of the bar's range and the body at most
+        `pin_body_max` of it.
+      * **Level.** The bar must reach the moving average -- within
+        `pin_level_atr` ATR of it. A pin bar in open space is just a bar
+        with a wick, and that is the difference between this and noise.
+      * **Trend.** Only with the moving average's slope. A rejection
+        against the trend is somebody else's trade.
+
+    The stop goes beyond the wick's tip, which is the price that says the
+    rejection failed, and the target is `rr_target` times that distance.
+    """
+    name = "pin_bar"
+
+    def warmup(self) -> int:
+        return max(self.s.pin_ma_period + 3, self.s.atr_period + 2)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        return {
+            "open": [b.open for b in bars],
+            "high": [b.high for b in bars],
+            "low": [b.low for b in bars],
+            "close": closes,
+            "ma": ema_full(closes, self.s.pin_ma_period),
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        ma, prev_ma, v = a["ma"][i], a["ma"][i - 2], a["atr"][i]
+        if None in (ma, prev_ma, v) or v <= 0:
+            return None
+        high, low = a["high"][i], a["low"][i]
+        opened, close = a["open"][i], a["close"][i]
+        span = high - low
+        if span <= 0:
+            return None
+        body = abs(close - opened)
+        if body > span * self.s.pin_body_max:
+            return None
+
+        upper = high - max(opened, close)
+        lower = min(opened, close) - low
+        near = abs(ma - close) <= v * self.s.pin_level_atr or (low <= ma <= high)
+        if not near:
+            return None
+
+        rising = ma > prev_ma
+        if upper >= span * self.s.pin_wick_ratio and not rising:
+            # sellers rejected the move up to the average, in a downtrend
+            risk = high - close + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("sell", risk, risk * self.s.rr_target,
+                             f"pin rejection at the {self.s.pin_ma_period} MA")
+        if lower >= span * self.s.pin_wick_ratio and rising:
+            risk = close - low + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("buy", risk, risk * self.s.rr_target,
+                             f"pin rejection at the {self.s.pin_ma_period} MA")
+        return None
+
+
+class InsideBarFakeout(VecStrategy):
+    """The inside bar false breakout: a stop run that fails.
+
+    Three bars. A mother bar, an inside bar contained within it, then a
+    bar that breaks out of the mother's range and closes back inside it.
+    The break takes the stops resting beyond the mother bar; the close
+    back inside says the move had nothing behind it, so the trade is the
+    other way.
+
+    The distinguishing test is the close, and it is the whole pattern: a
+    bar that breaks the mother's high and CLOSES above it is a breakout,
+    and trading that as a reversal is how the pattern loses money. The
+    stop goes beyond the false break's extreme.
+    """
+    name = "inside_bar_fakeout"
+
+    def warmup(self) -> int:
+        return max(self.s.atr_period + 4, 6)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        return {
+            "high": [b.high for b in bars],
+            "low": [b.low for b in bars],
+            "close": closes,
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        v = a["atr"][i]
+        if v is None or v <= 0 or i < 3:
+            return None
+        mh, ml = a["high"][i - 2], a["low"][i - 2]       # mother bar
+        ih, il = a["high"][i - 1], a["low"][i - 1]       # inside bar
+        if not (ih < mh and il > ml):
+            return None                                  # not an inside bar
+        if mh - ml <= 0:
+            return None
+
+        high, low, close = a["high"][i], a["low"][i], a["close"][i]
+        if high > mh and ml <= close <= mh:
+            # broke the mother's high and closed back inside it
+            risk = high - close + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("sell", risk, risk * self.s.rr_target,
+                             "inside bar false breakout, upside")
+        if low < ml and ml <= close <= mh:
+            risk = close - low + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("buy", risk, risk * self.s.rr_target,
+                             "inside bar false breakout, downside")
+        return None
+
+
+
+
+class EngulfingBar(VecStrategy):
+    """A bar whose body swallows the one before it, at a level, with trend.
+
+    The reading: the previous bar's participants are all offside at once.
+    A bullish engulfing opens at or below the prior close and closes at or
+    above the prior open, so everyone who sold that bar is now underwater.
+
+    As with the pin bar, the level is what separates this from noise --
+    engulfing bodies happen constantly in open space. The stop goes beyond
+    the engulfing bar's own extreme, which is where the reading fails.
+    """
+    name = "engulfing"
+
+    def warmup(self) -> int:
+        return max(self.s.pin_ma_period + 3, self.s.atr_period + 2)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        return {
+            "open": [b.open for b in bars],
+            "high": [b.high for b in bars],
+            "low": [b.low for b in bars],
+            "close": closes,
+            "ma": ema_full(closes, self.s.pin_ma_period),
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        ma, prev_ma, v = a["ma"][i], a["ma"][i - 2], a["atr"][i]
+        if None in (ma, prev_ma, v) or v <= 0:
+            return None
+        o, c = a["open"][i], a["close"][i]
+        po, pc = a["open"][i - 1], a["close"][i - 1]
+        high, low = a["high"][i], a["low"][i]
+        if abs(c - o) <= abs(pc - po):
+            return None                      # not engulfing the prior body
+        near = abs(ma - c) <= v * self.s.pin_level_atr or (low <= ma <= high)
+        if not near:
+            return None
+        rising = ma > prev_ma
+
+        if c > o and pc < po and o <= pc and c >= po and rising:
+            risk = c - low + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("buy", risk, risk * self.s.rr_target,
+                             "bullish engulfing at the level")
+        if c < o and pc > po and o >= pc and c <= po and not rising:
+            risk = high - c + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("sell", risk, risk * self.s.rr_target,
+                             "bearish engulfing at the level")
+        return None
+
+
+class InsideBarBreakout(VecStrategy):
+    """The inside bar as a continuation: a pause, then the trend resumes.
+
+    A mother bar, an inside bar showing the market hesitating, then a
+    close beyond the mother bar in the direction the trend was already
+    going. The stop goes on the far side of the mother bar, which is what
+    the pattern says should not be revisited.
+
+    This is the OPPOSITE trade to `inside_bar_fakeout`, and the difference
+    is entirely in where the bar closes: beyond the mother bar is a
+    continuation, back inside it is a failed break. Both are real; taking
+    the wrong one is how the inside bar earns its reputation for losing
+    money.
+    """
+    name = "inside_bar_breakout"
+
+    def warmup(self) -> int:
+        return max(self.s.pin_ma_period + 4, self.s.atr_period + 4, 6)
+
+    def precompute(self, bars):
+        closes = [b.close for b in bars]
+        return {
+            "high": [b.high for b in bars],
+            "low": [b.low for b in bars],
+            "close": closes,
+            "ma": ema_full(closes, self.s.pin_ma_period),
+            "atr": atr_full([b.high for b in bars], [b.low for b in bars],
+                            closes, self.s.atr_period),
+        }
+
+    def at(self, i, a):
+        ma, prev_ma, v = a["ma"][i], a["ma"][i - 2], a["atr"][i]
+        if None in (ma, prev_ma, v) or v <= 0 or i < 3:
+            return None
+        mh, ml = a["high"][i - 2], a["low"][i - 2]
+        ih, il = a["high"][i - 1], a["low"][i - 1]
+        if not (ih < mh and il > ml) or mh - ml <= 0:
+            return None
+        close = a["close"][i]
+        rising = ma > prev_ma
+
+        if close > mh and rising:
+            risk = close - ml + v * 0.1          # stop below the mother bar
+            if risk <= 0:
+                return None
+            return VecSignal("buy", risk, risk * self.s.rr_target,
+                             "inside bar breakout with the trend")
+        if close < ml and not rising:
+            risk = mh - close + v * 0.1
+            if risk <= 0:
+                return None
+            return VecSignal("sell", risk, risk * self.s.rr_target,
+                             "inside bar breakdown with the trend")
+        return None
+
+
 VEC_STRATEGIES: dict[str, type[VecStrategy]] = {
     cls.name: cls for cls in (EmaCross, MeanReversion, Breakout, TrendAlways,
                               InvertedEmaCross, RsiReversion, Momentum,
-                              BollingerBreakout, LiquiditySweep)
+                              BollingerBreakout, LiquiditySweep, PinBar,
+                              InsideBarFakeout, EngulfingBar,
+                              InsideBarBreakout)
 }
