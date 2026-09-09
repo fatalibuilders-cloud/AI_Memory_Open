@@ -53,6 +53,7 @@ OVERRIDABLE = (
     "breakeven_at_money", "breakeven_lock_money", "entry_confirm_money",
     "cooldown_seconds", "max_positions_per_symbol", "spread_spike_factor",
     "max_slippage_ratio", "trail_atr_mult", "trail_start_money",
+    "min_reward_risk",
     "max_loss_per_trade",
 )
 
@@ -326,6 +327,11 @@ class Settings:
     #: How much history the review replays. Three months of M1 is a lot of
     #: bars but only one configuration, so it stays quick.
     review_days: int = 90
+    #: The target must be at least this multiple of the stop. Widening a
+    #: target adds no risk, so this is enforced by adjusting the order
+    #: rather than refusing it. Below 1.0 a trade wins less than it loses,
+    #: and the win rate has to carry the whole strategy.
+    min_reward_risk: float = 0.0
     max_consecutive_losses: int = 3
     #: Stop trading when the record shows the configuration losing beyond
     #: chance. The bot lost $46 over 139 trades while the evidence that it
@@ -554,6 +560,7 @@ class Settings:
             daily_profit_floor=_f("DAILY_PROFIT_FLOOR", 0.0),
             review_on_pause=_b("REVIEW_ON_PAUSE", True),
             review_days=_i("REVIEW_DAYS", 90),
+            min_reward_risk=_f("MIN_REWARD_RISK", 0.0),
             max_consecutive_losses=_i("MAX_CONSECUTIVE_LOSSES", 3),
             halt_on_failed_evidence=_b("HALT_ON_FAILED_EVIDENCE", True),
             live_requires_evidence=_b("LIVE_REQUIRES_EVIDENCE", True),

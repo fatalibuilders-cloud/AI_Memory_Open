@@ -109,6 +109,9 @@ PRESETS["sweep"] = {
     "MIN_TRADES_PER_HOUR": "0",
     "MAX_SPREAD_RATIO": "0.25",
     "MIN_REWARD_COST_RATIO": "1.5",
+    # Without this a 50% lock can pay less than a stop costs, which is how
+    # a 75% win rate came out at $0.07 a trade.
+    "MIN_REWARD_RISK": "2.0",
 }
 
 PRESETS["riskfirst"] = {

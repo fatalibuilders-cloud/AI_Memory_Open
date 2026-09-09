@@ -756,6 +756,40 @@ The end of a pause is now announced too. A pause at 19:12 followed by
 silence until a restart at 20:19 looks exactly like a fault, even when the
 pause was the 15 minutes it said.
 
+## A win must not be smaller than a loss
+
+Eight live trades: **6 wins, 2 losses — a 75% win rate — and net $0.56.**
+
+```
+  average win   $1.97
+  average loss  $5.63   <- 2.9x the average win
+  profit factor 1.05
+  expectancy    $+0.070 per trade
+  break-even win rate at this size ratio: 74%  (you have 75%)
+```
+
+Winning three times out of four bought seven cents a trade, because the
+losses were nearly three times the size of the wins. The win rate was
+carrying the entire strategy with nothing to spare — and a run of normal
+variance takes it straight below 74%.
+
+```env
+MIN_REWARD_RISK=2.0
+```
+
+The target must be at least this multiple of the stop. Widening a target
+adds no risk — risk is set by the stop — so this is enforced by adjusting
+the order, never by refusing it, and the stop is never touched.
+
+The bot also now reports the shape directly when a protection rung locks
+less than a stop costs:
+
+> the rung locks 1.50 while the stop risks 5.63. A win pays 0.27x what a
+> loss costs, so you need a 79% win rate just to break even.
+
+On the same eight trades with the same 75% win rate, reward at 2x risk
+turns **+$0.56 into +$56.30**.
+
 ## Size must match the stop the order is actually sent with
 
 On a $99,146 account set to 0.5% risk (~$496 a trade), two positions

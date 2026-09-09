@@ -389,6 +389,18 @@ class TradingBot:
                         session.pace.record_block(reason)
                     return
 
+        # A target smaller than the stop makes every win smaller than every
+        # loss, so the win rate has to carry the entire strategy. Widening
+        # the target costs nothing -- risk is set by the stop -- so this is
+        # fixed rather than refused.
+        if cfg.min_reward_risk > 0 and sl_distance > 0:
+            floor_tp = sl_distance * cfg.min_reward_risk
+            if tp_distance < floor_tp:
+                log.info("[%s] %s target %.5f is %.2fR — widening to %.2fR",
+                         session.name, symbol, tp_distance,
+                         tp_distance / sl_distance, cfg.min_reward_risk)
+                tp_distance = floor_tp
+
         # The stop has moved since the size was chosen: cash targets may have
         # replaced it, and the broker minimum may have widened it. Size was
         # computed against the ORIGINAL distance, so leaving it alone risks
@@ -703,23 +715,37 @@ class TradingBot:
         except BrokerError:
             return
         target = abs(p.tp - p.entry_price) * per_price if p.tp else 0.0
-        if target <= 0 or top_lock <= 0 or top_lock >= target * 0.2:
+        stop_money = (abs(p.entry_price - p.sl) * per_price) if p.sl else 0.0
+        # Two ways the same fault shows up, and a position can have both:
+        # the lock is a trivial share of what the trade was aiming at, and
+        # it is smaller than what a losing trade costs. Reported together,
+        # because fixing one without the other leaves the trade unprofitable.
+        caps_target = target > 0 and 0 < top_lock < target * 0.2
+        under_stop = stop_money > 0 and 0 < top_lock < stop_money
+        if not (caps_target or under_stop):
             return
         session.ladder_warned = True
-        log.warning("[%s] %s ladder caps every winner at %.2f against a %.2f "
-                    "target", session.name, p.symbol, top_lock, target)
-        self.remote.broadcast(
-            f"⚠️ [{session.name}] YOUR LADDER IS CAPPING EVERY WINNER.\n\n"
-            f"{p.symbol} is aiming at {target:.2f}, but the last rung locks "
-            f"{top_lock:.2f} and the stop never moves again. So a trade that "
-            f"reaches {target:.2f} still closes at {top_lock:.2f} — you keep "
-            f"{top_lock/target*100:.0f}% of every winner while the losses stay "
-            f"full size.\n\n"
-            f"Fix it with rungs measured against the target instead of in "
-            f"fixed dollars:\n"
-            f"  PROFIT_STAGES_PCT=50:0,75:50\n"
-            f"and clear PROFIT_STAGES. Or set TRAIL_ATR_MULT so the stop "
-            f"keeps following.")
+        log.warning("[%s] %s ladder locks %.2f against a %.2f target and a "
+                    "%.2f stop", session.name, p.symbol, top_lock, target,
+                    stop_money)
+
+        lines = [f"⚠️ [{session.name}] YOUR LADDER IS CAPPING EVERY WINNER.", ""]
+        if caps_target:
+            lines.append(
+                f"{p.symbol} is aiming at {target:.2f}, but the last rung locks "
+                f"{top_lock:.2f} and the stop never moves again — so you keep "
+                f"{top_lock / target * 100:.0f}% of every winner.")
+        if under_stop:
+            lines.append(
+                f"EVERY PROTECTED WIN IS SMALLER THAN A LOSS: the rung locks "
+                f"{top_lock:.2f} while the stop risks {stop_money:.2f}. A win "
+                f"pays {top_lock / stop_money:.2f}x what a loss costs, so you "
+                f"need a {stop_money / (stop_money + top_lock) * 100:.0f}% win "
+                f"rate just to break even.")
+        lines += ["", "Fix both with rungs measured against the target and a "
+                      "reward floor:", "  PROFIT_STAGES_PCT=50:0,75:50",
+                  "  MIN_REWARD_RISK=2", "and clear PROFIT_STAGES."]
+        self.remote.broadcast("\n".join(lines))
 
     def _enforce_loss_cap(self, session: BrokerSession, positions) -> list:
         """Close anything losing more than the cap, without waiting.

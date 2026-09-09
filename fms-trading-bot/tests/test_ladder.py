@@ -10,11 +10,30 @@ from fmsbot.broker.base import Position
 
 from .helpers import FakeBroker, make_bot, settings
 
-ENTRY, TP, STOP = 3400.00, 3403.00, 3390.72     # $3.00 target, $9.28 stop
+# The live shape: a $3.00 target against a $9.28 stop — 0.32R, so even a
+# 50% lock pays less than a loss costs. MIN_REWARD_RISK exists to stop it.
+ENTRY, TP, BAD_STOP = 3400.00, 3403.00, 3390.72
+# A sane one: the same target at 2R.
+STOP = 3401.50 - 3.00                            # $1.50 stop, $3.00 target
 
 
 def _position(ticket, profit):
     return Position(ticket, "XAUUSDm", "buy", 0.01, ENTRY, STOP, TP, profit)
+
+
+def _bad_position(ticket, profit):
+    return Position(ticket, "XAUUSDm", "buy", 0.01, ENTRY, BAD_STOP, TP, profit)
+
+
+def test_a_target_smaller_than_the_stop_is_reported():
+    """0.32R: even a 50% lock pays less than a loss costs."""
+    s = settings(SYMBOLS="XAUUSDm", TIMEFRAME="M1", FIXED_LOT=0.01,
+                 PROFIT_STAGES_PCT="50:0,75:50")
+    b = FakeBroker(price=ENTRY, per_price=1.0)
+    bot, session, msgs = make_bot(s, b, ["XAUUSDm"])
+    bot._protect_profits(session, [_bad_position(1, 2.40)])
+    assert any("SMALLER THAN A LOSS" in m for m in msgs), msgs
+    assert any("MIN_REWARD_RISK" in m for m in msgs)
 
 
 def test_absolute_rungs_cap_the_winner_and_are_reported():
@@ -23,7 +42,7 @@ def test_absolute_rungs_cap_the_winner_and_are_reported():
     b = FakeBroker(price=ENTRY, per_price=1.0)
     bot, session, msgs = make_bot(s, b, ["XAUUSDm"])
 
-    bot._protect_profits(session, [_position(1, 2.20)])
+    bot._protect_profits(session, [_bad_position(1, 2.20)])
     locked = b.modified[1][0] - ENTRY
     assert abs(locked - 0.10) < 1e-9, f"expected the observed +0.10 cap, got {locked}"
 
