@@ -660,6 +660,47 @@ per trade, 2% daily, three positions, one per symbol, pause after three
 losses, rungs at 50%/75% of each trade's target, and the fixed-dollar
 rungs cleared. Expect **few** trades — that is the design.
 
+## Confluence: how many reasons does the setup have?
+
+```env
+CONFLUENCE_MIN=2
+```
+
+A pin bar in open space is noise; the same pin bar where a level, a
+moving average and a Fibonacci retracement meet is a setup. Every
+price-action strategy now counts the independent factors present at the
+signal bar and refuses the trade when too few line up. The factors it can
+compute from bars alone:
+
+* **trend** — the 21 EMA sloping the way the trade wants
+* **ma8 / ma21** — price at one of the two dynamic levels
+* **fib50 / fib61** — price at the 50% or 61.8% retracement of the recent
+  swing
+* **level** — price at a prior swing high or low
+
+The factors that fired are named in the signal's reason, so the log says
+`bullish engulfing at the level [trend+ma21+fib50]` rather than leaving
+you to guess why it fired.
+
+Trend lines and supply zones are deliberately absent. Both need a
+judgement about which lines matter, and a rule invented to stand in for
+that judgement would be counted as evidence without being any.
+
+**What it costs**, measured over 30 days of M5:
+
+| strategy | 0 factors | 2 required | 3 required |
+|---|---|---|---|
+| pin_bar | 10.7/day | 9.8 | 7.4 |
+| engulfing | 16.0/day | 13.4 | 7.4 |
+| inside_bar_breakout | 14.2/day | 9.5 | 2.7 |
+| inside_bar_fakeout | 15.8/day | 10.5 | 5.2 |
+
+Off by default. **Requiring confluence does not make a pattern more
+likely to work** — nobody has demonstrated that, and this bot certainly
+has not. What it does is trade less and pay the spread less often while
+that question is still open, which given everything measured here is the
+right direction to be wrong in.
+
 ## The price-action pattern set
 
 Four setups from the candlestick literature, each written so the one test

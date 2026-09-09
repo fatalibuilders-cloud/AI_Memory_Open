@@ -306,6 +306,16 @@ class Settings:
     #: ...and the body at most this share, or it is a directional bar with
     #: a tail rather than a rejection.
     pin_body_max: float = 0.33
+    #: Require at least this many independent factors to line up before a
+    #: price-action setup is taken. 0 disables the filter. The literature's
+    #: own advice is one or two; the point is quality over quantity, and it
+    #: is also the only lever here that reduces the trade count on purpose.
+    confluence_min: int = 0
+    #: The faster of the two averages used as a dynamic level (8 and 21).
+    ma_fast_period: int = 8
+    #: Bars forming the swing whose 50% and 61.8% retracements count.
+    fib_lookback: int = 100
+
     #: How close the bar must come to the level, in ATR. A pin bar in open
     #: space is just a bar with a wick.
     pin_level_atr: float = 0.5
@@ -568,6 +578,9 @@ class Settings:
             pin_wick_ratio=_f("PIN_WICK_RATIO", 0.66),
             pin_body_max=_f("PIN_BODY_MAX", 0.33),
             pin_level_atr=_f("PIN_LEVEL_ATR", 0.5),
+            confluence_min=_i("CONFLUENCE_MIN", 0),
+            ma_fast_period=_i("MA_FAST_PERIOD", 8),
+            fib_lookback=_i("FIB_LOOKBACK", 100),
             atr_sl_mult=_f("ATR_SL_MULT", 1.5),
             atr_tp_mult=_f("ATR_TP_MULT", 2.0),
             trail_atr_mult=_f("TRAIL_ATR_MULT", 0.0),

@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from . import confluence
 from .broker.base import Bar
 from .series import (atr_full, bollinger_full, ema_full, rolling_max,
                      rolling_min, rsi_full)
@@ -46,6 +47,30 @@ class VecStrategy:
     # shared helper: ATR-based exits
     def _exits(self, atr_value: float) -> tuple[float, float]:
         return atr_value * self.s.atr_sl_mult, atr_value * self.s.atr_tp_mult
+
+    # -- confluence ------------------------------------------------------
+    # Only the price-action setups use these. The indicator strategies are
+    # left alone: a moving-average cross sitting at a moving average is
+    # not two reasons, it is one reason counted twice.
+
+    def _confluence_arrays(self, bars) -> dict:
+        return confluence.arrays(bars, self.s)
+
+    def _checked(self, a, i, side, price, atr_value, risk, reason):
+        """A signal, or None when too few factors line up behind it."""
+        ok, found = self._confluence_ok(a, i, side, price, atr_value)
+        if not ok:
+            return None
+        if found:
+            reason = f"{reason} [{'+'.join(found)}]"
+        return VecSignal(side, risk, risk * self.s.rr_target, reason)
+
+    def _confluence_ok(self, a, i, side, price, atr_value):
+        """(passes, factor names). Always passes when the filter is off."""
+        if self.s.confluence_min <= 0:
+            return True, []
+        found = confluence.factors(a["conf"], i, side, self.s, price, atr_value)
+        return len(found) >= self.s.confluence_min, found
 
 
 class EmaCross(VecStrategy):
@@ -346,7 +371,8 @@ class LiquiditySweep(VecStrategy):
 
         return {"high": highs, "low": lows, "close": closes,
                 "trend": trend, "prev_high": prev_high, "prev_low": prev_low,
-                "atr": atr_full(highs, lows, closes, self.s.atr_period)}
+                "atr": atr_full(highs, lows, closes, self.s.atr_period),
+                "conf": self._confluence_arrays(bars)}
 
     def _swept(self, a, i, side) -> Optional[tuple[int, float]]:
         """Index and extreme of a sweep within the structure window."""
@@ -403,8 +429,8 @@ class LiquiditySweep(VecStrategy):
             return None
         # Beyond the invalidation point, with a little air for the spread.
         risk += v * 0.1
-        return VecSignal(side, risk, risk * self.s.rr_target,
-                         f"{side} after sweep, {self.s.rr_target:.1f}R")
+        return self._checked(a, i, side, price, v, risk,
+                             f"{side} after sweep, {self.s.rr_target:.1f}R")
 
 
 
@@ -447,6 +473,7 @@ class PinBar(VecStrategy):
             "ma": ema_full(closes, self.s.pin_ma_period),
             "atr": atr_full([b.high for b in bars], [b.low for b in bars],
                             closes, self.s.atr_period),
+            "conf": self._confluence_arrays(bars),
         }
 
     def at(self, i, a):
@@ -474,14 +501,14 @@ class PinBar(VecStrategy):
             risk = high - close + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("sell", risk, risk * self.s.rr_target,
-                             f"pin rejection at the {self.s.pin_ma_period} MA")
+            return self._checked(a, i, "sell", close, v, risk,
+                                 f"pin rejection at the {self.s.pin_ma_period} MA")
         if lower >= span * self.s.pin_wick_ratio and rising:
             risk = close - low + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("buy", risk, risk * self.s.rr_target,
-                             f"pin rejection at the {self.s.pin_ma_period} MA")
+            return self._checked(a, i, "buy", close, v, risk,
+                                 f"pin rejection at the {self.s.pin_ma_period} MA")
         return None
 
 
@@ -512,6 +539,7 @@ class InsideBarFakeout(VecStrategy):
             "close": closes,
             "atr": atr_full([b.high for b in bars], [b.low for b in bars],
                             closes, self.s.atr_period),
+            "conf": self._confluence_arrays(bars),
         }
 
     def at(self, i, a):
@@ -531,14 +559,14 @@ class InsideBarFakeout(VecStrategy):
             risk = high - close + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("sell", risk, risk * self.s.rr_target,
-                             "inside bar false breakout, upside")
+            return self._checked(a, i, "sell", close, v, risk,
+                                 "inside bar false breakout, upside")
         if low < ml and ml <= close <= mh:
             risk = close - low + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("buy", risk, risk * self.s.rr_target,
-                             "inside bar false breakout, downside")
+            return self._checked(a, i, "buy", close, v, risk,
+                                 "inside bar false breakout, downside")
         return None
 
 
@@ -570,6 +598,7 @@ class EngulfingBar(VecStrategy):
             "ma": ema_full(closes, self.s.pin_ma_period),
             "atr": atr_full([b.high for b in bars], [b.low for b in bars],
                             closes, self.s.atr_period),
+            "conf": self._confluence_arrays(bars),
         }
 
     def at(self, i, a):
@@ -590,14 +619,14 @@ class EngulfingBar(VecStrategy):
             risk = c - low + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("buy", risk, risk * self.s.rr_target,
-                             "bullish engulfing at the level")
+            return self._checked(a, i, "buy", c, v, risk,
+                                 "bullish engulfing at the level")
         if c < o and pc > po and o >= pc and c <= po and not rising:
             risk = high - c + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("sell", risk, risk * self.s.rr_target,
-                             "bearish engulfing at the level")
+            return self._checked(a, i, "sell", c, v, risk,
+                                 "bearish engulfing at the level")
         return None
 
 
@@ -629,6 +658,7 @@ class InsideBarBreakout(VecStrategy):
             "ma": ema_full(closes, self.s.pin_ma_period),
             "atr": atr_full([b.high for b in bars], [b.low for b in bars],
                             closes, self.s.atr_period),
+            "conf": self._confluence_arrays(bars),
         }
 
     def at(self, i, a):
@@ -646,14 +676,14 @@ class InsideBarBreakout(VecStrategy):
             risk = close - ml + v * 0.1          # stop below the mother bar
             if risk <= 0:
                 return None
-            return VecSignal("buy", risk, risk * self.s.rr_target,
-                             "inside bar breakout with the trend")
+            return self._checked(a, i, "buy", close, v, risk,
+                                 "inside bar breakout with the trend")
         if close < ml and not rising:
             risk = mh - close + v * 0.1
             if risk <= 0:
                 return None
-            return VecSignal("sell", risk, risk * self.s.rr_target,
-                             "inside bar breakdown with the trend")
+            return self._checked(a, i, "sell", close, v, risk,
+                                 "inside bar breakdown with the trend")
         return None
 
 
