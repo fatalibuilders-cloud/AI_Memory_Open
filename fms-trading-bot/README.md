@@ -756,6 +756,39 @@ The end of a pause is now announced too. A pause at 19:12 followed by
 silence until a restart at 20:19 looks exactly like a fault, even when the
 pause was the 15 minutes it said.
 
+## Is the daily goal consistent with the risk rules?
+
+```powershell
+.\.venv\Scripts\python.exe plan.py --profit 150 --trades 1000 --rr 3
+```
+
+Four numbers fight each other and only three can be chosen freely: trades
+per day, risk per trade, reward:risk, and win rate. Choosing the first
+fixes the second — 1000 trades at a 32% win rate is 675 losing trades, and
+they all have to fit inside the day's loss budget. Then the profit target
+fixes the win rate.
+
+```
+   risk/trade  losses/day  day at cap    needs   verdict
+         1.00         675        1863    32.5%   consistent
+         2.00         694         931    30.6%   consistent
+         5.00         705         373    29.5%   breaches the daily cap
+       465.00         712           4    28.8%   breaches the daily cap
+```
+
+The live account was risking **$465 a trade while asking for 1000 trades a
+day**. A 2% cap on $93,148 allows four losses at that size — the plan ends
+after the fourth losing trade, not the thousandth. The same goal at $1 a
+trade is consistent and needs 32.5% wins.
+
+**Costs scale with size.** The spread is charged per trade but it is not a
+fixed sum: a smaller position pays proportionally less, because cost is
+the spread times the position and the position is set by the risk. So a
+trade's cost is a fixed *fraction* of what it risks — the spread over the
+stop distance, which is exactly what `MAX_SPREAD_RATIO` caps. Modelling it
+as a fixed dollar amount makes small positions look far worse than they
+are and badly overstates the win rate a high-frequency plan needs.
+
 ## A win must not be smaller than a loss
 
 Eight live trades: **6 wins, 2 losses — a 75% win rate — and net $0.56.**
@@ -969,6 +1002,7 @@ fms-trading-bot/
 ├── tune_symbols.py        # per-instrument settings from real spreads
 ├── check_config.py        # validate .env before restarting
 ├── throughput.py          # solve for a trades-per-day target, and price it
+├── plan.py                # is a daily profit goal consistent with the risk rules?
 ├── Set-BotSetting.ps1     # change a setting safely, then restart
 ├── bridge.py              # the broker as JSON, for other languages
 ├── Trail-Stops.ps1        # ATR trailing stops from PowerShell
