@@ -114,6 +114,37 @@ PRESETS["sweep"] = {
     "MIN_REWARD_RISK": "2.0",
 }
 
+# The solved plan: $100-200 a day from ~1000 trades at 3R. Every number
+# here comes out of plan.py against a $93k balance and a 2% daily cap --
+# re-run it if the balance changes materially, because RISK_PCT is the one
+# that makes the trade count possible at all.
+PRESETS["scalp1000"] = {
+    "STRATEGY": "",                 # the EMA cross: it signals often enough
+    "ENTRY_MODE": "interval",
+    "TIMEFRAME": "M1",
+    "EMA_FAST": "9", "EMA_SLOW": "21",
+    "ATR_PERIOD": "14",
+    "ATR_SL_MULT": "1.5", "ATR_TP_MULT": "4.5",   # 3R by construction
+    "MIN_REWARD_RISK": "3.0",
+    # ~$1 a trade. At 0.5% the daily cap allows four losses, not a thousand.
+    "FIXED_LOT": "0", "RISK_PCT": "0.0011",
+    "DAILY_LOSS_LIMIT_PCT": "2",
+    "DAILY_PROFIT_TARGET": "200", "DAILY_PROFIT_FLOOR": "100",
+    "ENTRY_INTERVAL_SECONDS": "518", "COOLDOWN_SECONDS": "518",
+    "MIN_TRADES_PER_HOUR": "42", "ENTRY_INTERVAL_FLOOR_SECONDS": "30",
+    "MAX_TRADES_PER_DAY": "1200",
+    "MAX_OPEN_POSITIONS": "8", "MAX_POSITIONS_PER_SYMBOL": "1",
+    "MAX_CONSECUTIVE_LOSSES": "3", "LOSS_PAUSE_MINUTES": "10",
+    # Break-even only. Locking half the target at 3R still pays 1.5R, but
+    # letting winners reach the target is what makes a win 3x a loss.
+    "PROFIT_STAGES_PCT": "67:0",
+    "PROFIT_STAGES": "", "BREAKEVEN_AT_MONEY": "0",
+    "TP_MONEY": "0", "SL_MONEY": "0",
+    "TRAIL_ATR_MULT": "0", "TRAIL_START_MONEY": "0",
+    "MAX_SPREAD_RATIO": "0.25", "MIN_REWARD_COST_RATIO": "1.5",
+    "REVIEW_ON_PAUSE": "true", "REVIEW_DAYS": "90",
+}
+
 PRESETS["riskfirst"] = {
     # Capital preservation > frequency > profit target.
     # The 1,000/day ceiling is a cap, never a quota: the gates below decide
@@ -141,6 +172,14 @@ PRESETS["riskfirst"] = {
 }
 
 NOTES = {
+    "scalp1000": (
+        "The solved plan: about 1000 trades a day at 3R, targeting $100-200.\n"
+        "  Needs a 32.5% win rate against a 28.7% after-cost break-even --\n"
+        "  ordinary, but a thin margin, and nothing here creates an edge.\n"
+        "  RISK_PCT is 0.0011 (about $1 a trade) and that is the point: at\n"
+        "  0.5% the 2% daily cap allows FOUR losses, not a thousand.\n"
+        "  Re-run plan.py if the balance changes materially.\n"
+        "  Measure before trusting it:  find_edge.py --days 60"),
     "sweep": (
         "Higher-timeframe trend, a sweep of the previous session's high or low,\n"
         "  a structure break, and a stop at the point that invalidates the idea.\n"

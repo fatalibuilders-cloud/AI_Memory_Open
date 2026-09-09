@@ -756,6 +756,31 @@ The end of a pause is now announced too. A pause at 19:12 followed by
 silence until a restart at 20:19 looks exactly like a fault, even when the
 pause was the 15 minutes it said.
 
+## Adopting the solved plan
+
+```powershell
+.\.venv\Scripts\python.exe preset.py scalp1000
+```
+
+Every number in it comes out of `plan.py` against a $93k balance and a 2%
+daily cap: ~1000 trades a day at 3R, targeting $100-200, needing a **32.5%
+win rate** against a 28.7% after-cost break-even.
+
+The one that matters is `RISK_PCT=0.0011` — about $1 a trade. At 0.5% the
+daily cap allowed **four losses**, so the day ended after the fourth
+losing trade rather than the thousandth. At $1 it absorbs 1,818.
+
+`PROFIT_STAGES_PCT=67:0` is break-even only, with no early profit lock.
+Locking half the target at 3R still pays 1.5R, but letting winners reach
+the target is what makes a win three times a loss — outcomes become +3R,
+0, or -1R.
+
+Two tests keep the preset honest: one asserts it still matches what
+`plan.py` solves, and one asserts no rung can lock less than 1R, since
+that would make every protected win smaller than a loss.
+
+Re-run `plan.py` if the balance changes materially.
+
 ## Is the daily goal consistent with the risk rules?
 
 ```powershell

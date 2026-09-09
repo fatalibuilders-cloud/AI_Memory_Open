@@ -69,3 +69,42 @@ def test_the_goal_at_the_live_size_is_not_consistent():
     losses_allowed = BALANCE * 0.02 / risk
     expected_losses = 1000 * (1 - 0.325)
     assert expected_losses > losses_allowed * 100
+
+
+def test_the_scalp1000_preset_matches_what_plan_solved():
+    """The preset is the plan. If they drift apart, one of them is a lie."""
+    import preset
+    p = preset.PRESETS["scalp1000"]
+    assert "scalp1000" in preset.NOTES
+
+    balance = BALANCE
+    risk = balance * float(p["RISK_PCT"]) / 100
+    rr = float(p["MIN_REWARD_RISK"])
+    budget = balance * float(p["DAILY_LOSS_LIMIT_PCT"]) / 100
+
+    # ~$1 a trade: the number that makes 1000 trades possible at all
+    assert 0.8 < risk < 1.5, risk
+    # the day's budget must absorb far more than the planned trade count
+    assert budget / risk > int(p["MAX_TRADES_PER_DAY"]), \
+        "the daily cap still ends the day before the trade count is reached"
+    # and the goal must close at that size
+    need = required_win_rate(150, 1000, risk, rr, cost_ratio=0.15)
+    assert need < PLAUSIBLE and need > 100.0 * 1.15 / (rr + 1), need
+
+    # exits consistent with the reward floor
+    assert float(p["ATR_TP_MULT"]) / float(p["ATR_SL_MULT"]) >= rr - 1e-9
+    # and no dollar-denominated ladder, which is what capped every winner
+    assert p["PROFIT_STAGES"] == "" and p["TP_MONEY"] == "0"
+
+
+def test_the_preset_ladder_cannot_pay_less_than_a_loss():
+    """A rung locking under 1R makes every protected win smaller than a loss."""
+    import preset
+    from fmsbot.config import parse_stages
+    p = preset.PRESETS["scalp1000"]
+    rungs = parse_stages(p["PROFIT_STAGES_PCT"])
+    rr = float(p["MIN_REWARD_RISK"])
+    for trigger, lock in rungs:
+        locked_r = lock / 100.0 * rr        # lock is a % of the target
+        assert locked_r == 0.0 or locked_r >= 1.0, (
+            f"rung locks {locked_r:.2f}R — less than a full loss")
