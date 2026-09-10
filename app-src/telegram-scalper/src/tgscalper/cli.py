@@ -495,10 +495,20 @@ def cmd_dryrun(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    """Run the listener, and keep it running.
+
+    Telethon gives up after five connection attempts and raises. That used to
+    end the process, so a passing wifi blip stopped the copier for good and the
+    only symptom was a bot that no longer answered. A dropped connection is a
+    normal event on any laptop, not a reason to stop trading for two days.
+    """
+    import time
+
     config = load_config(args.config, getattr(args, "env", None))
     setup_logging(args.log_level or config.log_level, config.log_file)
 
     from .groupstate import apply_selection
+    from .listener import TelegramListener
 
     apply_selection(config)  # /selectgroup choices win over config.yaml
 
@@ -507,38 +517,61 @@ def cmd_run(args: argparse.Namespace) -> int:
     engine = Engine(config, broker, journal)
 
     if config.execution.live_enabled:
-        log.warning("LIVE TRADING ENABLED — real orders will be placed on %s", config.broker.provider)
+        log.warning(
+            "LIVE TRADING ENABLED — real orders will be placed on %s", config.broker.provider
+        )
+    engine.start()
 
-    control_bot = None
-    if config.control_bot.enabled:
-        from .controlbot import ControlBot
+    min_backoff, max_backoff = 15.0, 300.0
+    backoff = min_backoff
+    exit_code = 0
 
-        control_bot = ControlBot(config, engine, journal)
-
-    from .listener import TelegramListener
-
-    listener = TelegramListener(config, engine, control_bot)
-    if control_bot is not None:
-        control_bot.listener = listener
     try:
-        engine.start()
-        asyncio.run(listener.run())
-    except KeyboardInterrupt:
-        log.info("stopped by user")
-    except Exception as exc:
-        log.exception("listener stopped: %s", exc)
-        journal.record_event("crash", str(exc))
-        return 1
-    finally:
-        if control_bot is not None:
+        while True:
+            # A fresh client per attempt: Telethon binds to the event loop, and
+            # asyncio.run() closes that loop when it returns.
+            control_bot = None
+            if config.control_bot.enabled:
+                from .controlbot import ControlBot
+
+                control_bot = ControlBot(config, engine, journal)
+            listener = TelegramListener(config, engine, control_bot)
+            if control_bot is not None:
+                control_bot.listener = listener
+
+            started = time.monotonic()
             try:
-                asyncio.run(control_bot.stop())
-            except Exception:
-                pass
+                asyncio.run(listener.run())
+                reason = "Telegram disconnected"
+            except KeyboardInterrupt:
+                log.info("stopped by user")
+                break
+            except Exception as exc:
+                reason = f"{type(exc).__name__}: {exc}"
+                log.error("listener stopped — %s", reason)
+                journal.record_event("crash", reason)
+
+            ran_for = time.monotonic() - started
+            # A run that lasted a while was healthy; only repeated fast failures
+            # should back off, or a nightly blip would leave a five-minute gap.
+            if ran_for > 300:
+                backoff = min_backoff
+            if not args.once:
+                log.warning("reconnecting in %.0fs (%s)", backoff, reason)
+                try:
+                    time.sleep(backoff)
+                except KeyboardInterrupt:
+                    break
+                backoff = min(backoff * 2, max_backoff)
+                continue
+
+            exit_code = 1
+            break
+    finally:
         engine.stop()
         journal.record_event("stop", "listener shut down")
         journal.close()
-    return 0
+    return exit_code
 
 
 def cmd_skipped(args: argparse.Namespace) -> int:
@@ -700,6 +733,11 @@ def build_parser() -> argparse.ArgumentParser:
     dryrun.set_defaults(func=cmd_dryrun)
 
     run = sub.add_parser("run", help="start listening to Telegram")
+    run.add_argument(
+        "--once",
+        action="store_true",
+        help="exit on a connection failure instead of reconnecting (for debugging)",
+    )
     run.set_defaults(func=cmd_run)
 
     skipped = sub.add_parser("skipped", help="show messages that were not traded, with their text")
