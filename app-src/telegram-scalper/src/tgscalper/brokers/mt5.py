@@ -340,8 +340,15 @@ class MT5Broker(Broker):
                 return OrderResult(ok=False, error=f"close failed ({code}): {message}")
             last = result
             if result.retcode == mt5.TRADE_RETCODE_DONE:
+                # Read from the position immediately before it went: MT5 only
+                # exposes the settled figure once the deal lands in history,
+                # and this is within a rounding of it.
                 return OrderResult(
-                    ok=True, ticket=ticket, filled_price=result.price, volume=closing
+                    ok=True,
+                    ticket=ticket,
+                    filled_price=result.price,
+                    volume=closing,
+                    profit=float(getattr(position, "profit", 0.0) or 0.0),
                 )
         return OrderResult(
             ok=False,

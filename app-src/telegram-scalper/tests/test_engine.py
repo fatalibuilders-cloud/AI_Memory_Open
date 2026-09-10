@@ -492,3 +492,53 @@ class TestPaperPositionsSettle:
         # A gold price must not settle the EURUSD trade.
         post(engine, "GOLD BUY 2365\nSL 2359\nTP 2375", message_id=3)
         assert any(p.symbol == "EURUSD" for p in broker.positions())
+
+
+class TestManagementDedupe:
+    """A follow-up relayed by several rooms must act once.
+
+    Three rooms carrying one "close half" used to halve the position three
+    times, because only entries were deduplicated.
+    """
+
+    def _open(self, engine):
+        assert post(engine, "GOLD BUY 2350\nSL 2344\nTP 2360", message_id=1).accepted
+
+    def test_repeated_partial_close_acts_once(self, setup):
+        engine, broker, _, _ = setup
+        self._open(engine)
+        before = broker.positions()[0].volume
+
+        first = post(engine, "close half", message_id=2)
+        assert first.accepted
+        after_first = broker.positions()[0].volume
+        assert after_first < before
+
+        # The same instruction relayed by two more rooms.
+        second = post(engine, "close half", message_id=3)
+        third = post(engine, "Close half", message_id=4)
+        assert not second.accepted and "duplicate" in second.reason
+        assert not third.accepted
+        assert broker.positions()[0].volume == after_first
+
+    def test_repeated_break_even_acts_once(self, setup):
+        engine, _, _, _ = setup
+        self._open(engine)
+        assert post(engine, "SL to BE", message_id=2).accepted
+        assert not post(engine, "SL to BE", message_id=3).accepted
+
+    def test_a_different_instruction_still_gets_through(self, setup):
+        engine, broker, _, _ = setup
+        self._open(engine)
+        assert post(engine, "SL to BE", message_id=2).accepted
+        # Moving to a specific price is a different action, not a duplicate.
+        assert post(engine, "move SL to 2352", message_id=3).accepted
+        assert broker.positions()[0].stop_loss == 2352
+
+    def test_the_window_can_be_disabled(self, setup):
+        engine, broker, _, config = setup
+        config.risk.dedupe_window_minutes = 0
+        self._open(engine)
+        assert post(engine, "close half", message_id=2).accepted
+        # With no window, a repeat is honoured — some admins do scale out twice.
+        assert post(engine, "close half", message_id=3).accepted

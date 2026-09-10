@@ -573,6 +573,56 @@ def cmd_skipped(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pnl(args: argparse.Namespace) -> int:
+    """Wins, losses, and which rooms are actually paying."""
+    config = load_config(args.config, getattr(args, "env", None))
+    journal = Journal(config.journal_path)
+    stats = journal.performance(days=args.days)
+
+    print(f"last {args.days} day(s)")
+    if not stats["closed"]:
+        print("  no trades have CLOSED yet", end="")
+        print(f", though {stats['still_open']} are open" if stats["still_open"] else "")
+        print("\n  Profit is only counted once a trade finishes — a floating")
+        print("  number on an open position is not a result yet.")
+        journal.close()
+        return 0
+
+    print(f"  net              : {float(stats['net']):+,.2f}")
+    print(
+        f"  closed           : {stats['closed']} "
+        f"({stats['wins']}W / {stats['losses']}L) — {stats['win_rate']}% win rate"
+    )
+    print(f"  won / lost       : +{stats['gross_profit']:,.2f} / -{stats['gross_loss']:,.2f}")
+    print(f"  average          : +{stats['avg_win']:,.2f} win, -{stats['avg_loss']:,.2f} loss")
+    print(f"  best / worst     : {stats['best']:+,.2f} / {stats['worst']:+,.2f}")
+    if stats["profit_factor"] is not None:
+        print(f"  profit factor    : {stats['profit_factor']}  (above 1 = winners outweigh losers)")
+    if stats["still_open"]:
+        print(f"  still open       : {stats['still_open']} (not counted)")
+
+    for field, heading in (("group", "by room"), ("symbol", "by instrument")):
+        rows = journal.performance_by(field, days=args.days)
+        if len(rows) > 1:
+            print(f"\n  {heading}:")
+            for row in rows:
+                print(
+                    f"    {str(row['label'])[:30]:<32} {row['net']:>+10,.2f}  "
+                    f"({row['wins']}/{row['trades']})"
+                )
+
+    if args.trades:
+        print("\n  closed trades:")
+        for row in journal.closed_trades(days=args.days, limit=args.trades):
+            when = str(row["closed_at"])[:16].replace("T", " ")
+            print(
+                f"    {when}  {row['symbol']:<10} {row['side']:<4} {row['volume']:>6} "
+                f"{row['price']} -> {row['close_price']}  {float(row['profit'] or 0):>+10,.2f}"
+            )
+    journal.close()
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     config = load_config(args.config, getattr(args, "env", None))
     journal = Journal(config.journal_path)
@@ -658,6 +708,11 @@ def build_parser() -> argparse.ArgumentParser:
     skipped.add_argument("--reason", default="", help="only reasons containing this text")
     skipped.set_defaults(func=cmd_skipped)
 
+    pnl = sub.add_parser("pnl", help="profit and loss, by room and instrument")
+    pnl.add_argument("--days", type=int, default=7)
+    pnl.add_argument("--trades", type=int, default=0, help="also list this many closed trades")
+    pnl.set_defaults(func=cmd_pnl)
+
     report = sub.add_parser("report", help="summarise the journal")
     report.add_argument("--days", type=int, default=7)
     report.add_argument("--recent", type=int, default=10, help="also list N recent messages")
@@ -668,7 +723,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command in {"doctor", "chats", "admins", "parse", "report", "symbols", "skipped"}:
+    if args.command in {"doctor", "chats", "admins", "parse", "report", "symbols", "skipped", "pnl"}:
         setup_logging(args.log_level or "WARNING", None)
     try:
         return int(args.func(args))

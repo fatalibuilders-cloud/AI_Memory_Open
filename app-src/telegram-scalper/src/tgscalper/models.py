@@ -190,6 +190,10 @@ class OrderResult:
     volume: float = 0.0
     error: str = ""
     retcode: Optional[int] = None
+    # Realised profit, set when this result closed a position. Without it the
+    # journal records that a trade ended but not what it made, which is the
+    # one number the whole exercise is for.
+    profit: float = 0.0
 
 
 @dataclass

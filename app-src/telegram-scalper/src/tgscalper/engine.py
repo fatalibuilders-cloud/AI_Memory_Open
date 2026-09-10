@@ -226,9 +226,14 @@ class Engine:
         # open, since a paper position that can never close would otherwise
         # hold the per-symbol slot for good and block every later signal.
         if isinstance(self.broker, PaperBroker) and signal.entry:
-            for ticket, hit, exit_price in self.broker.settle_at(broker_symbol, signal.entry):
-                self.journal.record_close(ticket, exit_price)
-                log.info("paper position %s closed at %s %s", ticket, hit, exit_price)
+            for ticket, hit, exit_price, profit in self.broker.settle_at(
+                broker_symbol, signal.entry
+            ):
+                self.journal.record_close(ticket, exit_price, profit)
+                log.info(
+                    "paper position %s closed at %s %s (%+.2f)",
+                    ticket, hit, exit_price, profit,
+                )
             # Only seed a symbol never priced before. Overwriting a known price
             # would erase the gap between "what the admin posted" and "where the
             # market is", which is what the slippage guard reads.
@@ -420,6 +425,21 @@ class Engine:
     # --- managing trades the admin already opened ---
 
     def _handle_management(self, signal: Signal, source: Optional[MessageRef]) -> Decision:
+        # Follow-ups get cross-posted too, and acting on each copy compounds:
+        # three rooms relaying one "close half" halves the position three
+        # times. Entries are deduplicated by fingerprint; so are these.
+        duplicate = self.journal.seen_fingerprint(
+            signal.fingerprint(), self.config.risk.dedupe_window_minutes
+        )
+        if duplicate:
+            reason = (
+                f"duplicate {signal.action.value} already acted on in the last "
+                f"{self.config.risk.dedupe_window_minutes} min"
+            )
+            self.journal.record_signal(signal, accepted=False, reason=reason)
+            log.info("ignored %s: %s", signal.summary(), reason)
+            return Decision(accepted=False, reason=reason, signal=signal, near_miss=True)
+
         tickets = self._target_tickets(signal, source)
         if not tickets:
             reason = f"{signal.action.value}: no matching open position found"
@@ -434,7 +454,7 @@ class Engine:
             if signal.action is Action.CLOSE:
                 result = self.broker.close_position(ticket)
                 if result.ok:
-                    self.journal.record_close(ticket, result.filled_price)
+                    self.journal.record_close(ticket, result.filled_price, result.profit)
                 results.append(result)
 
             elif signal.action is Action.CLOSE_PARTIAL:
@@ -458,7 +478,7 @@ class Engine:
                     )
                     result = self.broker.close_position(ticket)
                     if result.ok:
-                        self.journal.record_close(ticket, result.filled_price)
+                        self.journal.record_close(ticket, result.filled_price, result.profit)
                 else:
                     result = self.broker.close_position(ticket, volume=volume)
                 results.append(result)

@@ -284,3 +284,111 @@ class TestThreadSafety:
                 thread.join()
 
         assert not errors, f"interleaved access raised: {errors[:3]}"
+
+
+class TestPerformance:
+    """The numbers the whole journal exists to produce."""
+
+    def _closed(self, journal, profit: float, symbol: str = "XAUUSD", title: str = "VIP"):
+        signal = a_signal(2350.0 + abs(profit))
+        if signal.source:
+            object.__setattr__(signal.source, "chat_title", title)
+        signal_id = journal.record_signal(signal, accepted=True)
+        ticket = int(abs(profit) * 1000) + len(symbol)
+        journal.record_order(
+            signal_id,
+            signal.source,
+            an_order(symbol),
+            OrderResult(ok=True, ticket=ticket, filled_price=2350.0, volume=0.1),
+            live=False,
+        )
+        journal.record_close(ticket, close_price=2360.0, profit=profit)
+
+    def test_nothing_closed_reports_zero(self, journal):
+        stats = journal.performance(days=7)
+        assert stats["closed"] == 0
+        assert stats["net"] == 0
+        assert stats["win_rate"] == 0.0
+
+    def test_open_trades_are_not_counted_as_results(self, journal):
+        signal = a_signal()
+        signal_id = journal.record_signal(signal, accepted=True)
+        journal.record_order(
+            signal_id, signal.source, an_order(),
+            OrderResult(ok=True, ticket=1, volume=0.1), live=False,
+        )
+        stats = journal.performance(days=7)
+        # A floating number on an open position is not a result yet.
+        assert stats["closed"] == 0
+        assert stats["still_open"] == 1
+
+    def test_wins_and_losses_are_separated(self, journal):
+        for profit in (120.0, 80.0, -60.0):
+            self._closed(journal, profit)
+        stats = journal.performance(days=7)
+        assert stats["closed"] == 3
+        assert stats["wins"] == 2 and stats["losses"] == 1
+        assert stats["net"] == 140.0
+        assert stats["gross_profit"] == 200.0
+        assert stats["gross_loss"] == 60.0
+
+    def test_win_rate_and_averages(self, journal):
+        for profit in (100.0, 100.0, -50.0, -50.0):
+            self._closed(journal, profit)
+        stats = journal.performance(days=7)
+        assert stats["win_rate"] == 50.0
+        assert stats["avg_win"] == 100.0
+        assert stats["avg_loss"] == 50.0
+
+    def test_best_and_worst(self, journal):
+        for profit in (30.0, 250.0, -90.0):
+            self._closed(journal, profit)
+        stats = journal.performance(days=7)
+        assert stats["best"] == 250.0
+        assert stats["worst"] == -90.0
+
+    def test_profit_factor(self, journal):
+        for profit in (200.0, -100.0):
+            self._closed(journal, profit)
+        assert journal.performance(days=7)["profit_factor"] == 2.0
+
+    def test_profit_factor_is_none_with_no_losses(self, journal):
+        # Not infinity, and not 0: it is simply not meaningful yet.
+        self._closed(journal, 100.0)
+        assert journal.performance(days=7)["profit_factor"] is None
+
+    def test_a_losing_period_reports_negative(self, journal):
+        for profit in (-40.0, -60.0, 20.0):
+            self._closed(journal, profit)
+        stats = journal.performance(days=7)
+        assert stats["net"] == -80.0
+        assert stats["losses"] == 2
+
+    def test_breakdown_by_room(self, journal):
+        self._closed(journal, 100.0, title="Doji House")
+        self._closed(journal, -40.0, title="GTMO VIP")
+        self._closed(journal, 25.0, title="Doji House")
+        rows = {row["label"]: row for row in journal.performance_by("group", 7)}
+        assert rows["Doji House"]["net"] == 125.0
+        assert rows["Doji House"]["trades"] == 2
+        assert rows["GTMO VIP"]["net"] == -40.0
+
+    def test_breakdown_by_symbol(self, journal):
+        self._closed(journal, 100.0, symbol="XAUUSD")
+        self._closed(journal, -30.0, symbol="EURUSD")
+        rows = {row["label"]: row["net"] for row in journal.performance_by("symbol", 7)}
+        assert rows["XAUUSD"] == 100.0
+        assert rows["EURUSD"] == -30.0
+
+    def test_rooms_are_ranked_best_first(self, journal):
+        self._closed(journal, -50.0, title="Loser Room")
+        self._closed(journal, 90.0, title="Winner Room")
+        rows = journal.performance_by("group", 7)
+        assert rows[0]["label"] == "Winner Room"
+
+    def test_closed_trades_are_listed_newest_first(self, journal):
+        self._closed(journal, 10.0)
+        self._closed(journal, 20.0)
+        rows = journal.closed_trades(days=7, limit=5)
+        assert len(rows) == 2
+        assert all(row["closed_at"] for row in rows)

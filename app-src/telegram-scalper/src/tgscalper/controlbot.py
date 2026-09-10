@@ -45,6 +45,7 @@ MENU = """<b>TeleScalper</b> — signal copier
 <b>Control</b>
 /pause — stop opening new trades
 /resume — start again
+/pnl — profit and loss, by room
 /trades — recent decisions
 /settings — everything currently in force
 /connect — check the broker link
@@ -158,6 +159,9 @@ class ControlBot:
             "pause": self._cmd_pause,
             "resume": self._cmd_resume,
             "trades": self._cmd_trades,
+            "pnl": self._cmd_pnl,
+            "profit": self._cmd_pnl,
+            "performance": self._cmd_pnl,
             "risk": self._cmd_risk,
             "settings": self._cmd_settings,
             "connect": self._cmd_connect,
@@ -368,6 +372,76 @@ class ControlBot:
                 lines.append(f"✅ {when} {_esc(detail)}")
             else:
                 lines.append(f"▫️ {when} {_esc((row['reason'] or 'ignored')[:70])}")
+        await event.respond("\n".join(lines), parse_mode="html")
+
+    async def _cmd_pnl(self, event: Any) -> None:
+        """Wins, losses, and which rooms are actually paying."""
+        parts = (event.raw_text or "").split()
+        try:
+            days = min(int(parts[1]), 365) if len(parts) > 1 else 7
+        except ValueError:
+            days = 7
+
+        stats = await asyncio.to_thread(self.journal.performance, days)
+        if not stats["closed"]:
+            open_now = stats["still_open"]
+            await event.respond(
+                f"No trades have <b>closed</b> in the last {days} day(s)"
+                + (f", though {open_now} are still open." if open_now else ".")
+                + "\n\nProfit is only counted once a trade finishes — a floating "
+                "number on an open position is not a result yet.",
+                parse_mode="html",
+            )
+            return
+
+        net = float(stats["net"])
+        sign = "🟢" if net > 0 else ("🔴" if net < 0 else "⚪")
+        factor = stats["profit_factor"]
+        lines = [
+            f"<b>Last {days} day(s)</b> — {self._mode()}",
+            f"{sign} <b>Net: {net:+,.2f}</b>",
+            "",
+            f"<b>Closed:</b> {stats['closed']} trades "
+            f"({stats['wins']}W / {stats['losses']}L"
+            + (f" / {stats['scratches']} flat" if stats["scratches"] else "")
+            + f") — {stats['win_rate']}% win rate",
+            f"<b>Won:</b> +{stats['gross_profit']:,.2f}  "
+            f"<b>Lost:</b> -{stats['gross_loss']:,.2f}",
+            f"<b>Average:</b> +{stats['avg_win']:,.2f} per win, "
+            f"-{stats['avg_loss']:,.2f} per loss",
+            f"<b>Best:</b> {stats['best']:+,.2f}  <b>Worst:</b> {stats['worst']:+,.2f}",
+        ]
+        if factor is not None:
+            # Above 1 means the winners outweigh the losers.
+            lines.append(f"<b>Profit factor:</b> {factor}")
+        if stats["still_open"]:
+            lines.append(f"<i>{stats['still_open']} position(s) still open, not counted</i>")
+
+        by_group = await asyncio.to_thread(self.journal.performance_by, "group", days)
+        if len(by_group) > 1:
+            lines.append("\n<b>By room</b>")
+            for row in by_group[:10]:
+                mark = "🟢" if row["net"] > 0 else ("🔴" if row["net"] < 0 else "⚪")
+                lines.append(
+                    f"{mark} {_esc(row['label'])[:28]} — {row['net']:+,.2f} "
+                    f"({row['wins']}/{row['trades']})"
+                )
+
+        by_symbol = await asyncio.to_thread(self.journal.performance_by, "symbol", days)
+        if len(by_symbol) > 1:
+            lines.append("\n<b>By instrument</b>")
+            for row in by_symbol[:8]:
+                mark = "🟢" if row["net"] > 0 else ("🔴" if row["net"] < 0 else "⚪")
+                lines.append(
+                    f"{mark} {_esc(row['label'])} — {row['net']:+,.2f} "
+                    f"({row['wins']}/{row['trades']})"
+                )
+
+        if not self.engine.broker.is_live:
+            lines.append(
+                "\n<i>Paper figures: fills at the signal price, ignoring spread "
+                "and slippage. Real results will be worse.</i>"
+            )
         await event.respond("\n".join(lines), parse_mode="html")
 
     async def _cmd_risk(self, event: Any) -> None:

@@ -327,6 +327,91 @@ class Journal:
         params.append(limit)
         return self._read(query, params)
 
+    def performance(self, days: int = 7) -> dict[str, object]:
+        """Wins, losses and what they came to.
+
+        Only closed trades count. Open positions have a floating number that
+        is not a result yet, and mixing the two is how a losing week reads as
+        a winning one.
+        """
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        rows = self._read(
+            """SELECT profit FROM orders
+               WHERE ok = 1 AND closed_at IS NOT NULL AND closed_at >= ?""",
+            (cutoff,),
+        )
+        profits = [float(row["profit"] or 0.0) for row in rows]
+        wins = [value for value in profits if value > 0]
+        losses = [value for value in profits if value < 0]
+        scratches = len(profits) - len(wins) - len(losses)
+
+        gross_profit = sum(wins)
+        gross_loss = abs(sum(losses))
+        open_rows = self._read(
+            "SELECT COUNT(*) AS n FROM orders WHERE ok = 1 AND closed_at IS NULL"
+        )
+        return {
+            "days": days,
+            "closed": len(profits),
+            "wins": len(wins),
+            "losses": len(losses),
+            "scratches": scratches,
+            "win_rate": round(len(wins) / len(profits) * 100, 1) if profits else 0.0,
+            "net": round(sum(profits), 2),
+            "gross_profit": round(gross_profit, 2),
+            "gross_loss": round(gross_loss, 2),
+            "best": round(max(profits), 2) if profits else 0.0,
+            "worst": round(min(profits), 2) if profits else 0.0,
+            "avg_win": round(gross_profit / len(wins), 2) if wins else 0.0,
+            "avg_loss": round(gross_loss / len(losses), 2) if losses else 0.0,
+            # How many units won per unit lost. Above 1 is a profitable system;
+            # infinite when nothing has lost yet, which is not the same thing.
+            "profit_factor": (
+                round(gross_profit / gross_loss, 2) if gross_loss > 0 else None
+            ),
+            "still_open": int(open_rows[0]["n"]) if open_rows else 0,
+        }
+
+    def performance_by(self, field: str, days: int = 7) -> list[dict[str, object]]:
+        """Break the same figures down by room or by instrument.
+
+        Which rooms actually make money is the question the whole journal
+        exists to answer, and it is invisible in a single total.
+        """
+        column = {"group": "s.chat_title", "symbol": "o.symbol"}[field]
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        rows = self._read(
+            f"""SELECT {column} AS label,
+                       COUNT(*) AS trades,
+                       SUM(CASE WHEN o.profit > 0 THEN 1 ELSE 0 END) AS wins,
+                       SUM(COALESCE(o.profit, 0)) AS net
+                FROM orders o LEFT JOIN signals s ON o.signal_id = s.id
+                WHERE o.ok = 1 AND o.closed_at IS NOT NULL AND o.closed_at >= ?
+                GROUP BY label
+                ORDER BY net DESC""",
+            (cutoff,),
+        )
+        return [
+            {
+                "label": row["label"] or "unknown",
+                "trades": int(row["trades"]),
+                "wins": int(row["wins"] or 0),
+                "net": round(float(row["net"] or 0.0), 2),
+            }
+            for row in rows
+        ]
+
+    def closed_trades(self, days: int = 7, limit: int = 20) -> list[sqlite3.Row]:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        return self._read(
+            """SELECT o.closed_at, o.symbol, o.side, o.volume, o.price,
+                      o.close_price, o.profit, s.chat_title
+               FROM orders o LEFT JOIN signals s ON o.signal_id = s.id
+               WHERE o.ok = 1 AND o.closed_at IS NOT NULL AND o.closed_at >= ?
+               ORDER BY o.closed_at DESC LIMIT ?""",
+            (cutoff, limit),
+        )
+
     def recent(self, limit: int = 20) -> list[sqlite3.Row]:
         return self._read(
             """SELECT ts, chat_title, action, symbol, side, entry, stop_loss, accepted, reason

@@ -93,7 +93,7 @@ class PaperBroker(Broker):
     def last_price(self, symbol: str) -> Optional[float]:
         return self._prices.get(symbol.upper())
 
-    def settle_at(self, symbol: str, price: float) -> list[tuple[int, str, float]]:
+    def settle_at(self, symbol: str, price: float) -> list[tuple[int, str, float, float]]:
         """Close any position whose stop or target this price would have hit.
 
         With no market feed, a paper position would otherwise stay open for
@@ -103,11 +103,11 @@ class PaperBroker(Broker):
         that is the only market data available here, so it is used to settle
         what is already open before the new trade is considered.
 
-        Returns (ticket, "SL"|"TP", exit price) for each position closed.
+        Returns (ticket, "SL"|"TP", exit price, realised profit) per position.
         """
         if price <= 0:
             return []
-        closed: list[tuple[int, str, float]] = []
+        closed: list[tuple[int, str, float, float]] = []
         for ticket, position in list(self._positions.items()):
             if position.symbol.upper() != symbol.upper():
                 continue
@@ -125,8 +125,8 @@ class PaperBroker(Broker):
             # Close at the level itself rather than the observed price: a real
             # stop or limit fills there, give or take slippage we cannot model.
             self._prices[symbol.upper()] = exit_price
-            self.close_position(ticket)
-            closed.append((ticket, reason, exit_price))
+            result = self.close_position(ticket)
+            closed.append((ticket, reason, exit_price, result.profit))
 
         if closed:
             # Drop the stored price so the next signal re-seeds from its own
@@ -236,7 +236,9 @@ class PaperBroker(Broker):
             del self._positions[ticket]
         else:
             position.volume = round(position.volume - closing, 2)
-        return OrderResult(ok=True, ticket=ticket, filled_price=price, volume=closing)
+        return OrderResult(
+            ok=True, ticket=ticket, filled_price=price, volume=closing, profit=profit
+        )
 
     def cancel_order(self, ticket: int) -> bool:
         return self._pending.pop(ticket, None) is not None
