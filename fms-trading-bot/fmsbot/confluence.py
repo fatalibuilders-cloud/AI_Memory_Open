@@ -22,7 +22,8 @@ that judgement would be counted as evidence without being any.
 
 from __future__ import annotations
 
-from .series import ema_full, rolling_max, rolling_min
+from .series import (efficiency_full, ema_full, rolling_max,
+                     rolling_min)
 
 #: Golden-ratio retracements, as fractions of the swing.
 FIB_LEVELS = ((0.5, "fib50"), (0.618, "fib61"))
@@ -43,6 +44,9 @@ def arrays(bars, settings) -> dict:
         # level price has already turned at.
         "level_high": rolling_max(highs, max(2, look // 4)),
         "level_low": rolling_min(lows, max(2, look // 4)),
+        # Not a confluence factor: a separate question about whether this
+        # market is worth trading at all.
+        "efficiency": efficiency_full(closes, settings.efficiency_lookback),
     }
 
 

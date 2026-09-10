@@ -156,3 +156,72 @@ def test_requiring_more_factors_never_produces_more_trades():
         counts.append(sum(1 for i in range(start, len(bars))
                           if st.at(i, a) is not None))
     assert counts == sorted(counts, reverse=True), counts
+
+
+# ------------------------------------------------ choppy-market filter
+
+def test_the_efficiency_ratio_measures_directness():
+    """1.0 for a straight line, near 0 for movement that goes nowhere."""
+    from fmsbot.series import efficiency_full
+    straight = [1.0 + i * 0.01 for i in range(30)]
+    assert abs(efficiency_full(straight, 20)[-1] - 1.0) < 1e-9
+
+    chop = [1.0 + (0.01 if i % 2 else 0.0) for i in range(30)]
+    assert efficiency_full(chop, 20)[-1] < 0.1
+
+    flat = [1.0] * 30
+    assert efficiency_full(flat, 20)[-1] == 0.0
+
+
+def test_a_choppy_market_is_refused_and_a_clean_one_is_not():
+    """Same pattern, two market shapes: only the context differs."""
+    def pin_at_end(prices):
+        rows = [(p, p + 0.0002, p - 0.0002, p) for p in prices]
+        last = prices[-1]
+        rows.append((last, last + 0.0030, last - 0.0002, last - 0.0001))
+        return _bars(rows)
+
+    trending = [1.2000 - i * 0.0010 for i in range(60)]
+    choppy = [1.2000 - (0.0010 if i % 2 else 0.0) for i in range(60)]
+
+    for prices, label in ((trending, "trend"), (choppy, "chop")):
+        bars = pin_at_end(prices)
+        off = VEC_STRATEGIES["pin_bar"](
+            _s(PIN_MA_PERIOD=5, PIN_LEVEL_ATR=50.0))
+        found = off.at(len(bars) - 1, off.precompute(bars))
+        on = VEC_STRATEGIES["pin_bar"](
+            _s(PIN_MA_PERIOD=5, PIN_LEVEL_ATR=50.0,
+               MIN_EFFICIENCY=0.5, EFFICIENCY_LOOKBACK=20))
+        gated = on.at(len(bars) - 1, on.precompute(bars))
+        if label == "trend":
+            assert found is not None and gated is not None, "refused a clean market"
+        else:
+            assert gated is None, "took a trade in a choppy market"
+
+
+def test_the_filter_is_off_by_default():
+    s = _s()
+    assert s.min_efficiency == 0.0
+
+
+def test_a_stricter_efficiency_requirement_never_adds_trades():
+    import random
+    rnd = random.Random(21)
+    px, rows = 1.1000, []
+    for _ in range(3000):
+        o = px
+        px = o + rnd.gauss(0, 0.0003)
+        rng = abs(px - o) + abs(rnd.gauss(0, 0.0003)) * rnd.choice([0.3, 1.0, 2.5])
+        top, bot = max(o, px), min(o, px)
+        spare = max(rng - (top - bot), 0.0)
+        up = spare * rnd.random()
+        rows.append((o, top + up, bot - (spare - up), px))
+    bars = _bars(rows)
+    counts = []
+    for need in (0.0, 0.2, 0.4, 0.6):
+        st = VEC_STRATEGIES["engulfing"](_s(MIN_EFFICIENCY=need))
+        a = st.precompute(bars)
+        start = max(st.warmup(), 2)
+        counts.append(sum(1 for i in range(start, len(bars))
+                          if st.at(i, a) is not None))
+    assert counts == sorted(counts, reverse=True), counts

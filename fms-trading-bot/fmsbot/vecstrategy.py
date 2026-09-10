@@ -57,7 +57,14 @@ class VecStrategy:
         return confluence.arrays(bars, self.s)
 
     def _checked(self, a, i, side, price, atr_value, risk, reason):
-        """A signal, or None when too few factors line up behind it."""
+        """A signal, or None when the context does not support it."""
+        # A choppy market is refused before anything else is considered:
+        # every one of these patterns reads a market that is going
+        # somewhere, and chop is the shape of one that is not.
+        if self.s.min_efficiency > 0:
+            eff = a["conf"]["efficiency"][i]
+            if eff is None or eff < self.s.min_efficiency:
+                return None
         ok, found = self._confluence_ok(a, i, side, price, atr_value)
         if not ok:
             return None

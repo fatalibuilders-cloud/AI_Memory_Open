@@ -660,6 +660,40 @@ per trade, 2% daily, three positions, one per symbol, pause after three
 losses, rungs at 50%/75% of each trade's target, and the fixed-dollar
 rungs cleared. Expect **few** trades — that is the design.
 
+## Staying out of choppy markets
+
+> "The market trades in a crazy way, we can't identify major support
+> levels and resistance. You have to stay away from these types of
+> markets, otherwise you will definitively damage your trading account."
+
+```env
+MIN_EFFICIENCY=0.3
+EFFICIENCY_LOOKBACK=20
+```
+
+Kaufman's efficiency ratio: net displacement over the window divided by
+the total distance travelled to get there. A clean trend approaches 1.0;
+a market that covers ground and ends up where it started approaches 0.
+That is the shape of chop, and measuring it is the only honest way to
+automate "stay away" — the alternative is a human deciding, and this bot
+does not have one watching.
+
+Checked before anything else, because every one of these patterns reads a
+market that is going somewhere.
+
+**What it costs**, over 30 days of M5:
+
+| strategy | off | 0.2 | 0.3 | 0.4 |
+|---|---|---|---|---|
+| pin_bar | 320 | 99 | 51 | 17 |
+| engulfing | 479 | 159 | 60 | 17 |
+| inside_bar_breakout | 426 | 231 | 160 | 85 |
+| inside_bar_fakeout | 474 | 230 | 142 | 67 |
+
+At 0.3 it removes 60–85% of signals. That is a large claim to make on an
+unmeasured filter, so it is off by default, and a test asserts a stricter
+setting can only ever remove trades.
+
 ## Confluence: how many reasons does the setup have?
 
 ```env

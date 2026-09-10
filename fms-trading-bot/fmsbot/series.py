@@ -97,3 +97,30 @@ def atr_full(highs: Sequence[float], lows: Sequence[float],
         value = (value * (period - 1) + trs[i]) / period
         out[i] = value
     return out
+
+
+def efficiency_full(values: Sequence[float],
+                    period: int = 20) -> list[Optional[float]]:
+    """Kaufman's efficiency ratio: how directly price got where it went.
+
+    Net displacement over the window divided by the total distance
+    travelled to achieve it. A clean trend approaches 1.0; a market that
+    covers ground and ends up where it started approaches 0.
+
+    This is the number that separates a market worth trading from a
+    choppy one, and it is the only honest way to automate "stay away from
+    these types of markets": the shape of chop is a lot of movement that
+    goes nowhere, and that is exactly what this measures.
+    """
+    out: list[Optional[float]] = [None] * len(values)
+    if period < 1:
+        return out
+    for i in range(period, len(values)):
+        window = values[i - period:i + 1]
+        travelled = sum(abs(window[k] - window[k - 1])
+                        for k in range(1, len(window)))
+        if travelled <= 0:
+            out[i] = 0.0
+        else:
+            out[i] = abs(window[-1] - window[0]) / travelled
+    return out

@@ -306,6 +306,14 @@ class Settings:
     #: ...and the body at most this share, or it is a directional bar with
     #: a tail rather than a rejection.
     pin_body_max: float = 0.33
+    #: Refuse to trade when the market is choppy. Kaufman's efficiency
+    #: ratio over EFFICIENCY_LOOKBACK bars must reach this: 1.0 is a
+    #: straight line, 0 is a lot of movement that goes nowhere. 0 disables
+    #: the filter. This is the automatable form of "stay away from these
+    #: types of markets".
+    min_efficiency: float = 0.0
+    efficiency_lookback: int = 20
+
     #: Require at least this many independent factors to line up before a
     #: price-action setup is taken. 0 disables the filter. The literature's
     #: own advice is one or two; the point is quality over quantity, and it
@@ -578,6 +586,8 @@ class Settings:
             pin_wick_ratio=_f("PIN_WICK_RATIO", 0.66),
             pin_body_max=_f("PIN_BODY_MAX", 0.33),
             pin_level_atr=_f("PIN_LEVEL_ATR", 0.5),
+            min_efficiency=_f("MIN_EFFICIENCY", 0.0),
+            efficiency_lookback=_i("EFFICIENCY_LOOKBACK", 20),
             confluence_min=_i("CONFLUENCE_MIN", 0),
             ma_fast_period=_i("MA_FAST_PERIOD", 8),
             fib_lookback=_i("FIB_LOOKBACK", 100),
