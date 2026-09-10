@@ -399,6 +399,22 @@ It applies two tests a single-symbol search cannot:
    fat tails, every predictable pattern destroyed. Whatever the search
    finds there, it found in nothing. A strategy only counts if it beats
    that, at p < 0.05 on a binomial test.
+3. **Against the size of the search.** Thirteen strategies are tried, so
+   the best of thirteen at p = 0.05 is not a one-in-twenty result — it is
+   roughly a coin flip. The p-value reported is the chance that *any* of
+   the thirteen would score that well with no edge in any of them.
+4. **Against its own imprecision.** The noise rate in test 2 is itself
+   estimated from a handful of shuffled runs, and one hit in twelve does
+   not establish a rate of 8%. The p-values use the pessimistic end of
+   what those runs allow, so more `--null-runs` is what buys significance
+   — and the tool prints how many it would take.
+
+The first live run of `--days 60` shows what tests 3 and 4 are for:
+`liquidity_sweep` survived on 3 of 6 symbols at a raw p = 0.010, which
+reads as a finding. Counting the search it is p = 0.117, and against a
+noise rate measured from only 12 runs it is p = 0.968. **Nothing has
+been proven yet** — the candidate needs `--null-runs 7` and a second
+window before it is worth a demo account.
 
 The second test is the one that matters, and it was not optional. An
 earlier version of this tool used a hand-picked bar (profit factor 1.1
@@ -764,9 +780,15 @@ searchable:
 .\.venv\Scripts\python.exe find_edge.py --days 60 --strategy engulfing
 ```
 
-**None of them has been measured for edge yet.** The book asserts win
-rates (65%, 70%, "you will always be profitable"); `find_edge.py` is what
-decides whether any of that holds on your broker's data after costs.
+**They have now been measured, and none of them passed.** The book
+asserts win rates (65%, 70%, "you will always be profitable"). On 60 days
+of M5 across 6 symbols, all six patterns failed out of sample on every
+symbol: `inside_bar_fakeout` came last on 5 of the 6 (profit factor
+0.07-0.75) and `pin_bar` was second worst (0.08-0.69). The patterns are
+implemented faithfully and the confluence gating works; what does not
+survive is the claim that they are profitable after costs. Re-run
+`find_edge.py` on your own broker's data before believing either the book
+or this paragraph.
 
 ## A rule-based setup: sweep, structure break, retest
 

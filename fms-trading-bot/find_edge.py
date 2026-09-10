@@ -35,9 +35,15 @@ MIN_OOS_TRADES = 30
 #: A survivor must beat this profit factor, not merely clear 1.0 — costs
 #: are already charged, so 1.0 exactly is a coin flip dressed as a result.
 MIN_OOS_PF = 1.1
-#: Significance required against the tool's own null. 0.05 means: a one-in-
-#: twenty chance of calling noise an edge.
+#: Significance required against the tool's own null, AFTER correcting for
+#: how many strategies were tried. 0.05 means: a one-in-twenty chance that
+#: anything in the whole run is called an edge when nothing has one.
 ALPHA = 0.05
+#: Confidence used for the upper bound on the null rate. The null rate is
+#: itself estimated from a handful of shuffled runs, so its point estimate
+#: is worth little; the p-values use this bound instead, which is the
+#: pessimistic reading those runs still permit.
+NULL_CONFIDENCE = 0.90
 
 
 def shuffled(bars: list, seed: int) -> list:
@@ -80,6 +86,69 @@ def binomial_at_least(k: int, n: int, p: float) -> float:
     return sum(comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(k, n + 1))
 
 
+def binomial_at_most(k: int, n: int, p: float) -> float:
+    """P(X <= k) for X ~ Binomial(n, p)."""
+    from math import comb
+    if p <= 0:
+        return 1.0
+    if p >= 1:
+        return 1.0 if k >= n else 0.0
+    return sum(comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(0, k + 1))
+
+
+def null_rate_upper(hits: int, trials: int, confidence: float) -> float:
+    """The largest null rate the shuffled runs could plausibly be hiding.
+
+    One hit in twelve shuffled runs is not proof that the rate is 8%; with
+    that little data it could easily be a quarter. Using the point estimate
+    makes every p-value look better than the evidence supports, so take the
+    upper end of the interval instead (Clopper-Pearson, by bisection) and
+    let the p-values be conservative until more null runs narrow it.
+    """
+    if trials <= 0:
+        return 1.0
+    if hits >= trials:
+        return 1.0
+    lo, hi = hits / trials, 1.0
+    for _ in range(60):                      # plenty for double precision
+        mid = (lo + hi) / 2
+        # P(seeing this few hits or fewer) at rate `mid`. The upper bound is
+        # the rate at which that probability falls to (1 - confidence).
+        if binomial_at_most(hits, trials, mid) > 1.0 - confidence:
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
+def null_runs_needed(k: int, n: int, tried: int, max_runs: int = 40) -> int:
+    """Shuffled runs per symbol that could settle a k-of-n result.
+
+    Assumes the extra runs turn up no further hits — the best case. If they
+    do turn up hits, the answer is that the candidate was noise, which is
+    the same thing the run is for. Returns 0 when even a clean sweep of
+    `max_runs` would not be enough: with that many symbols the result is
+    simply too weak to rescue with more computation.
+    """
+    for runs in range(1, max_runs + 1):
+        bound = null_rate_upper(0, runs * n, NULL_CONFIDENCE)
+        if family_wise(binomial_at_least(k, n, bound), tried) < ALPHA:
+            return runs
+    return 0
+
+
+def family_wise(pval: float, tried: int) -> float:
+    """P(at least one of `tried` strategies scores this well by luck).
+
+    Testing thirteen strategies and reporting the best one's p-value is the
+    oldest way to manufacture a discovery: at p = 0.05 apiece, roughly one
+    in two such runs produces a "winner" with nothing in it. This is the
+    number that belongs in the verdict.
+    """
+    tried = max(tried, 1)
+    return 1.0 - (1.0 - pval) ** tried
+
+
 def search(base: Settings, bars, point_value: float, spread: float,
            balance: float, grids: dict, label: str = "") -> dict:
     """Best in-sample config per strategy, scored out of sample."""
@@ -116,6 +185,121 @@ def search(base: Settings, bars, point_value: float, spread: float,
 
 def survived(oos) -> bool:
     return len(oos.trades) >= MIN_OOS_TRADES and oos.profit_factor >= MIN_OOS_PF
+
+
+def report(per_strategy: dict, null_hits: dict, tested_symbols: list,
+           tried: int, null_per_symbol: int, days: int) -> int:
+    """Print the verdict. Separated so it can be tested.
+
+    Everything above it takes minutes of simulation to produce. A
+    formatting mistake here throws all of that away at the last step,
+    which is exactly when there is no patience left to re-run it.
+    """
+    print("\n" + "=" * 78)
+    print("VERDICT")
+    print("=" * 78)
+    n = len(tested_symbols)
+    null_trials = n * null_per_symbol
+    print(f"\n  Tested {n} symbol(s), and ran the identical search on "
+          f"{null_trials} shuffled")
+    print( "  copies of the same bars — same volatility, no predictable structure.")
+    print( "  A strategy only counts if it beats what the search finds in noise.\n")
+
+    print(f"  Judged {tried} strategies, so a p-value below is the chance that "
+          f"ANY of\n  the {tried} would score this well with no edge in any of "
+          f"them — not the\n  chance for one named in advance. The noise column "
+          f"shows the measured\n  rate and the pessimistic bound the null runs "
+          f"still allow.\n")
+
+    print(f"  {'strategy':20} {'real':>6} {'noise':>11} {'p':>9}   verdict")
+    print("  " + "-" * 65)
+    winners = []
+    close = []
+    names = sorted(set(per_strategy) | set(null_hits),
+                   key=lambda k: -len(per_strategy.get(k, [])))
+    for name in names:
+        k = len(per_strategy.get(name, []))
+        hits = null_hits.get(name, 0)
+        p0 = hits / null_trials if null_trials else 0.5
+        # A rate estimated from a dozen runs is barely estimated at all, and
+        # a rate of zero is never established by not seeing something. Judge
+        # against the top of the interval those runs leave open.
+        p0_hi = (null_rate_upper(hits, null_trials, NULL_CONFIDENCE)
+                 if null_trials else 1.0)
+        raw = binomial_at_least(k, n, p0)
+        pval = family_wise(binomial_at_least(k, n, p0_hi), tried)
+        if k >= 2 and pval < ALPHA:
+            verdict = "beats noise"
+            winners.append((name, k, pval))
+        elif k >= 2 and raw < ALPHA:
+            verdict = "not proven"
+            close.append((name, k, raw, family_wise(raw, tried), pval))
+        elif k:
+            verdict = "within noise"
+        else:
+            verdict = "-"
+        noise = f"{p0*100:.0f}-{p0_hi*100:.0f}%"
+        print(f"  {name:20} {k:3}/{n:<2} {noise:>11} {pval:9.3f}   {verdict}")
+
+    print()
+    if winners:
+        for name, k, pval in winners:
+            print(f"  {name} survived on {k} of {n} symbols, and chance across "
+                  f"all\n  {tried} strategies explains that only "
+                  f"{pval*100:.1f}% of the time. That is the")
+            print( "  weakest evidence worth acting on — and acting on it means")
+            print( "  DEMO, for weeks, at the size you would really trade.")
+            print( "  Backtests carry no slippage, no requotes, no weekend gaps")
+            print( "  and no nerves.")
+        print( "\n  Confirm before believing it: re-run with --null-runs 5 and")
+        print( "  again over a different window (--days 120). An edge that is")
+        print( "  real survives both; a coincidence survives exactly the run")
+        print( "  that discovered it.")
+    elif close:
+        print("  NOTHING PROVEN — but one candidate is worth another look.")
+        for name, k, raw, fam, pval in close:
+            print(f"\n  {name} survived on {k} of {n} symbols. On its own that "
+                  f"reads as\n  p = {raw:.3f}, which looks like a finding. Two "
+                  f"things stand between\n  that number and a real one:")
+            print(f"    - {tried} strategies were tried, and the best of "
+                  f"{tried} is not the same\n      as one named in advance. "
+                  f"Counting the search: p = {fam:.3f}.")
+            print(f"    - the noise rate came from {null_trials} shuffled runs, "
+                  f"which pins it down\n      only loosely. At the pessimistic "
+                  f"end those runs allow: p = {pval:.3f}.")
+        best = max(close, key=lambda c: c[1])
+        # index 1 is the symbol count — the strongest candidate, not the
+        # luckiest-looking p-value, which is the one worth more computation.
+        need = null_runs_needed(best[1], n, tried)
+        print( "\n  Neither objection says the candidate is worthless — both say "
+               "this\n  run cannot tell, and the second one is fixable: the null "
+               "rate\n  gets sharper with more shuffled runs.\n")
+        if need:
+            print(f"    .\\.venv\\Scripts\\python.exe find_edge.py "
+                  f"--days {days} --null-runs {need}")
+            print(f"\n  {need} runs per symbol is what it would take for "
+                  f"{best[0]} to clear the\n  bar, and only if none of those "
+                  f"runs finds it in noise. Expect it to\n  take about "
+                  f"{(1 + need) / (1 + null_per_symbol):.0f}x as long as this "
+                  f"one.")
+        else:
+            print(f"  With only {n} symbols, {best[0]} surviving on {best[1]} "
+                  f"cannot reach\n  significance however many null runs are "
+                  f"added. Widen the test with\n  --symbols instead.")
+        print( "\n  Then re-run over a different window (--days 120). An edge "
+               "that is\n  real survives both; a coincidence survives exactly "
+               "the run that\n  discovered it.")
+    else:
+        print("  NO EDGE FOUND.")
+        print("  Every apparent winner appeared no more often than the same")
+        print("  search finds in shuffled noise. This is the normal result, and")
+        print("  it is worth more than it feels: it is the money you did not lose")
+        print("  finding out live. Options — try another timeframe, add history")
+        print("  with --days, or accept that these strategies do not beat their")
+        print("  own costs on this market and do not risk money on them.")
+    print("\n  Judge on profit factor, never on win rate. A win rate is chosen")
+    print("  by where the stop sits (see winrate.py); profit factor is earned.")
+    return 0
 
 
 def main() -> int:
@@ -217,56 +401,9 @@ def main() -> int:
         print("\nNo symbol had usable data. Open MT5, log in, and re-run.")
         return 1
 
-    print("\n" + "=" * 78)
-    print("VERDICT")
-    print("=" * 78)
-    null_trials = n * args.null_runs
-    print(f"\n  Tested {n} symbol(s), and ran the identical search on "
-          f"{null_trials} shuffled")
-    print( "  copies of the same bars — same volatility, no predictable structure.")
-    print( "  A strategy only counts if it beats what the search finds in noise.\n")
-
-    print(f"  {'strategy':20} {'real':>6} {'noise':>8} {'p':>9}   verdict")
-    print("  " + "-" * 62)
-    winners = []
-    names = sorted(set(per_strategy) | set(null_hits),
-                   key=lambda k: -len(per_strategy.get(k, [])))
-    for name in names:
-        k = len(per_strategy.get(name, []))
-        # Never claim the null rate is zero: an event unseen in a few dozen
-        # trials is not an impossible one, so use the smallest rate those
-        # trials could have hidden.
-        p0 = max(null_hits.get(name, 0) / null_trials, 1.0 / (2 * null_trials)) \
-            if null_trials else 0.5
-        pval = binomial_at_least(k, n, p0)
-        if k >= 2 and pval < ALPHA:
-            verdict = "beats noise"
-            winners.append((name, k, pval))
-        elif k:
-            verdict = "within noise"
-        else:
-            verdict = "-"
-        print(f"  {name:20} {k:3}/{n:<2} {p0*100:7.0f}% {pval:9.3f}   {verdict}")
-
-    print()
-    if winners:
-        for name, k, pval in winners:
-            print(f"  {name} survived on {k} of {n} symbols, which chance alone")
-            print(f"  explains only {pval*100:.1f}% of the time. That is the "
-                  f"weakest evidence")
-            print( "  worth acting on — and acting on it means DEMO, for weeks, at the")
-            print( "  size you would really trade. Backtests carry no slippage, no")
-            print( "  requotes, no weekend gaps and no nerves.")
-    else:
-        print("  NO EDGE FOUND.")
-        print("  Every apparent winner appeared no more often than the same")
-        print("  search finds in shuffled noise. This is the normal result, and")
-        print("  it is worth more than it feels: it is the money you did not lose")
-        print("  finding out live. Options — try another timeframe, add history")
-        print("  with --days, or accept that these strategies do not beat their")
-        print("  own costs on this market and do not risk money on them.")
-    print("\n  Judge on profit factor, never on win rate. A win rate is chosen")
-    print("  by where the stop sits (see winrate.py); profit factor is earned.")
+    if report(per_strategy, null_hits, tested_symbols,
+              len(grids), args.null_runs, args.days):
+        return 1
     return 0
 
 
