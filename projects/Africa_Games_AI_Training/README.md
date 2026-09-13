@@ -38,6 +38,15 @@ Both games are single-page HTML — open `index.html` in any browser, no server 
 - Nairobi Wild: `Product_Development/NairobiWild_App/index.html` · tests: `node match3.test.mjs` and `node extras.test.mjs`
 - Oware Legends: `Product_Development/OwareLegends_App/index.html` · tests: `node engine.test.mjs`
 
+### On an Android phone
+
+`Product_Development/NairobiWild_App/android/` is the Play Store wrapper — one
+Java activity around the bundled page. Push the branch and GitHub Actions
+builds both a `.aab` (for Play) and a `.apk` (for a phone), and attaches them
+to the run: **Actions → Nairobi Wild — Android → Artifacts**. No Android
+Studio needed. Signing, the upload key and the whole Play submission
+checklist are in `android/README.md` and `store/README.md`.
+
 To hand Nairobi Wild to someone — WhatsApp, a download link, a phone with no
 internet — run `node build.mjs` in its folder. That folds the seven script
 files into one 166 KB page with no external requests. The source tree stays

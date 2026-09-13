@@ -1,4 +1,4 @@
-# Nairobi Wild — Architecture (v0.5)
+# Nairobi Wild — Architecture (v0.6)
 
 ## What it is
 A match-3 puzzle game made in **Nairobi** and played across the whole of Africa. Swap adjacent animals, match three or more, chase a target inside a move limit. The mechanic is the genre standard (Candy Crush shape); the identity is the content — the countries, their animals, the music, the ornament.
@@ -23,6 +23,9 @@ A match-3 puzzle game made in **Nairobi** and played across the whole of Africa.
 | `index.html` | All screens, animation, input, economy, persistence, lobby, duel flow |
 | `match3.test.mjs` | 31 tests — engine rules and the campaign |
 | `extras.test.mjs` | 57 tests — music, animal voices, sound pack, multiplayer, monetization |
+| `build.mjs` | Folds the seven scripts into one self-contained page for sharing and for the APK |
+| `android/` | The Play Store wrapper: one Java activity, the icons, the Gradle build |
+| `store/` | Listing copy, icon, feature graphic, screenshots, and the scripts that regenerate them |
 
 ## The campaign: a tour of Africa, country by country
 **54 countries, 246 stages.** Pick a country, play its major cities in order, finish it and the next country unlocks. The tour opens in Nairobi — where the game is made — then works outward through East Africa, the Horn, Southern, Central, West, North Africa and the islands.
@@ -150,6 +153,53 @@ One module, four entry points — `rewardedAd`, `purchase`, `products`, `onEvent
 
 - **Lives:** 5 max, one per campaign attempt, refunded on a win, one regenerating per 10 minutes on a wall clock. Refill via rewarded ad or 100 coins. **Duels never cost a life** — multiplayer should be encouraged, not taxed.
 - No accounts, no server, no PII. The only identity is a nickname kept on the player's own device.
+
+## The Android app (`android/`)
+
+The whole game is one HTML file, so the whole Android app is one activity
+showing it. `build.mjs` folds the seven scripts into `app/src/main/assets/`
+as a Gradle pre-build step, which is why an APK can never contain a stale
+copy of the game.
+
+**A WebView, not a Trusted Web Activity.** A TWA needs the game hosted on
+HTTPS with Digital Asset Links — a server to pay for and no real offline
+play, which is the entire proposition here. It also cannot show AdMob. The
+trade is Play Billing: it now needs a native bridge rather than the Digital
+Goods API.
+
+**Served from `https://appassets.androidplatform.net/`, never `file://`.**
+`WebViewAssetLoader` reads only from the APK but gives the page a real web
+origin. Under `file://` there is no `localStorage` and every player's save
+would be erased on exit — the single most expensive mistake available in
+this wrapper.
+
+**No `INTERNET` permission.** Everything is in `assets`, so Play's
+Data-safety form is an honest row of "no". Online duels and the recorded
+pack are off in this build; both already degrade cleanly. Adding AdMob means
+adding the permission *and* updating the declaration in the same release.
+
+What the activity actually contributes, beyond a window:
+
+| Concern | Handling | Why |
+|---|---|---|
+| Back button | `window.NW_back()` in the page decides | It clicks the back control the screen already shows, so "back" has exactly one definition. Returns false only on the home screen, where back means leave |
+| System bars | Insets padded onto the WebView | From Android 15 edge-to-edge is not optional; the HUD would sit under the status bar |
+| Font scaling | `textZoom(100)` | The board is a fixed grid; a player on "largest text" would see it burst its frame |
+| Long press | Swallowed | A tile is a game piece, not selectable text |
+| Save file | `localStorage`, included in cloud backup | A new phone should not mean starting the continent again |
+| Battery | `pauseTimers()` on background | The music scheduler would otherwise keep running |
+
+**Building it.** `./gradlew bundleRelease` produces the `.aab` Play wants;
+`assembleRelease` produces the `.apk` a phone can install. Neither needs a
+signing key to run — unsigned output is a deliberate fallback so a red build
+always means real breakage. GitHub Actions builds both on every push
+(`.github/workflows/nairobi-wild-android.yml`), which matters because this
+project has no other guaranteed build machine.
+
+**The upload key is not in this repository and never will be.** `*.jks` is
+git-ignored, and CI reads the key from four secrets. Whoever holds that file
+can publish an update to the app.
+
 
 ## Verification status (2026-08-30)
 - `node match3.test.mjs` → **31/31**; `node extras.test.mjs` → **57/57**.

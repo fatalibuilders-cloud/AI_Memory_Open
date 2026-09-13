@@ -21,8 +21,11 @@ val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+// An unset GitHub Actions step output arrives as "" rather than as nothing,
+// so blank has to mean absent — otherwise an unsigned build dies on
+// file("") instead of quietly skipping the signing config.
 fun secret(prop: String, env: String): String? =
-    keystoreProps.getProperty(prop) ?: System.getenv(env)
+    (keystoreProps.getProperty(prop) ?: System.getenv(env))?.takeIf { it.isNotBlank() }
 
 val storeFilePath = secret("storeFile", "NW_KEYSTORE_FILE")
 val hasSigning = storeFilePath != null && rootProject.file(storeFilePath).exists()
