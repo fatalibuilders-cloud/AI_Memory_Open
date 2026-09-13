@@ -21,7 +21,13 @@ def _clean_value(raw: str) -> str:
     return value
 
 
-def _load_dotenv(path: str | Path = ".env") -> None:
+def _load_dotenv(path: str | Path | None = ".env") -> None:
+    # None means "read no file at all". The test suite passes it: a suite
+    # whose results depend on the operator's live .env is not a safety net,
+    # and six tests failed on the trading machine for exactly that reason
+    # while all of them passed on a machine with no .env in the directory.
+    if path is None:
+        return
     p = Path(path)
     if not p.is_file():
         return
@@ -534,7 +540,7 @@ class Settings:
         return out
 
     @classmethod
-    def load(cls, dotenv_path: str | Path = ".env") -> "Settings":
+    def load(cls, dotenv_path: str | Path | None = ".env") -> "Settings":
         _load_dotenv(dotenv_path)
         # NOTE: broker symbol names are case-sensitive (Exness uses EURUSDm,
         # not EURUSDM) — never normalize the case here.

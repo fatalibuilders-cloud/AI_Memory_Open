@@ -27,7 +27,12 @@ def settings(**env):
                        "TG_PASSWORD": "secret123"})
     os.environ.update({k: str(v) for k, v in env.items()})
     from fmsbot.config import Settings
-    return Settings.load()
+    # dotenv_path=None: never read the .env sitting next to the code. The
+    # operator's live config would otherwise seep in through setdefault and
+    # decide what the tests prove — FIXED_LOT and MIN_EFFICIENCY from a
+    # tuned account were enough to fail six of them on the trading machine
+    # and none of them here.
+    return Settings.load(dotenv_path=None)
 
 
 class FakeBroker(Broker):

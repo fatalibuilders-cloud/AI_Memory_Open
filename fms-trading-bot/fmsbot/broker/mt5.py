@@ -62,6 +62,12 @@ def _mt5():
     return mt5
 
 
+#: Bars per request. The terminal refuses very large single requests with
+#: "Invalid params" (-2), which reads as "no history" and stopped a 120-day
+#: M1 edge test dead on all six symbols.
+_CHUNK = 50_000
+
+
 class MT5Broker(Broker):
     #: Preferred order-filling mode name, overridden by broker subclasses.
     #: Brokers differ here and a wrong mode is rejected as "Unsupported
@@ -193,7 +199,7 @@ class MT5Broker(Broker):
         if not mt5.symbol_select(symbol, True):
             raise BrokerError(
                 f"Symbol {symbol} does not exist on this account.{self._suggest(symbol)}")
-        rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
+        rates = mt5.copy_rates_from_pos(symbol, tf, 0, min(count, _CHUNK))
         # A symbol added to Market Watch for the first time has no local
         # history yet; the terminal downloads it in the background.
         for wait in (2, 5, 8):
@@ -201,7 +207,9 @@ class MT5Broker(Broker):
                 break
             log.info("Waiting %ss for %s history to download...", wait, symbol)
             time.sleep(wait)
-            rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
+            rates = mt5.copy_rates_from_pos(symbol, tf, 0, min(count, _CHUNK))
+        if rates is not None and len(rates) and count > len(rates):
+            rates = self._extend_back(mt5, symbol, tf, count, rates)
         if rates is None or len(rates) == 0:
             err = mt5.last_error()
             hint = self._suggest(symbol)
@@ -212,6 +220,39 @@ class MT5Broker(Broker):
             raise BrokerError(f"No bars for {symbol}: {err}.{hint}")
         return [Bar(int(r["time"]), float(r["open"]), float(r["high"]),
                     float(r["low"]), float(r["close"])) for r in rates]
+
+    def _extend_back(self, mt5, symbol: str, tf: int, count: int, newest):
+        """Walk further back in chunks until `count` bars or history ends.
+
+        One request for 172,800 M1 bars (120 days) is refused outright with
+        "Invalid params" — the terminal answers a bounded request, not an
+        arbitrary one, and the refusal looks exactly like a symbol with no
+        history. Asking for the same span in pieces works.
+        """
+        blocks = [newest]
+        pos, remaining = len(newest), count - len(newest)
+        earliest = int(newest[0]["time"])
+        while remaining > 0:
+            want = min(_CHUNK, remaining)
+            older = mt5.copy_rates_from_pos(symbol, tf, pos, want)
+            if older is None or len(older) == 0:
+                break                      # history exhausted, not an error
+            # A bar closing mid-loop shifts every position by one, which
+            # would otherwise duplicate a bar or skip one. Times are the
+            # only reliable identity here.
+            older = [r for r in older if int(r["time"]) < earliest]
+            if not older:
+                break
+            earliest = int(older[0]["time"])
+            blocks.append(older)
+            pos += len(older)
+            remaining -= len(older)
+            if len(older) < want:
+                break
+        out = []
+        for block in reversed(blocks):     # oldest block first
+            out.extend(block)
+        return out
 
     def _filling_for(self, symbol: str) -> int:
         """Pick a filling mode the symbol actually allows.

@@ -121,19 +121,47 @@ def null_rate_upper(hits: int, trials: int, confidence: float) -> float:
     return hi
 
 
-def null_runs_needed(k: int, n: int, tried: int, max_runs: int = 40) -> int:
+def null_runs_needed(k: int, n: int, tried: int, hits: int = 0,
+                     trials: int = 0, max_runs: int = 60) -> int:
     """Shuffled runs per symbol that could settle a k-of-n result.
 
-    Assumes the extra runs turn up no further hits — the best case. If they
-    do turn up hits, the answer is that the candidate was noise, which is
-    the same thing the run is for. Returns 0 when even a clean sweep of
-    `max_runs` would not be enough: with that many symbols the result is
-    simply too weak to rescue with more computation.
+    The hits already seen are what decide this, and an earlier version
+    ignored them: it assumed every further run would come back clean and
+    so advised 7 runs to a user who had just finished 7 runs that found
+    the strategy in noise 4 times out of 42. More runs sharpen a rate;
+    they do not lower one. So project the observed rate forward, and
+    return 0 when no amount of computation can bring the bound low
+    enough — which is the honest answer whenever the measured noise rate
+    is already near the level the result would have to beat.
     """
+    rate = hits / trials if trials else 0.0
     for runs in range(1, max_runs + 1):
-        bound = null_rate_upper(0, runs * n, NULL_CONFIDENCE)
+        total = runs * n
+        if total <= trials:
+            continue                       # already done, nothing to learn
+        bound = null_rate_upper(round(rate * total), total, NULL_CONFIDENCE)
         if family_wise(binomial_at_least(k, n, bound), tried) < ALPHA:
             return runs
+    return 0
+
+
+def symbols_needed(k: int, n: int, tried: int, rate: float,
+                   max_symbols: int = 40) -> int:
+    """Symbols needed for the same survival fraction to mean something.
+
+    Three of six against a 10% noise rate is not significant once the
+    search is counted, and it never will be — the fraction has to hold up
+    over more instruments. This says how many, at the rate already
+    measured, which is the difference between a test worth running and
+    another re-run of the one that already failed to settle it.
+    """
+    if not k:
+        return 0
+    share = k / n
+    for count in range(n + 1, max_symbols + 1):
+        need = round(share * count)
+        if family_wise(binomial_at_least(need, count, rate), tried) < ALPHA:
+            return count
     return 0
 
 
@@ -233,7 +261,8 @@ def report(per_strategy: dict, null_hits: dict, tested_symbols: list,
             winners.append((name, k, pval))
         elif k >= 2 and raw < ALPHA:
             verdict = "not proven"
-            close.append((name, k, raw, family_wise(raw, tried), pval))
+            close.append((name, k, raw, family_wise(raw, tried), pval,
+                          hits, p0_hi))
         elif k:
             verdict = "within noise"
         else:
@@ -257,7 +286,7 @@ def report(per_strategy: dict, null_hits: dict, tested_symbols: list,
         print( "  that discovered it.")
     elif close:
         print("  NOTHING PROVEN — but one candidate is worth another look.")
-        for name, k, raw, fam, pval in close:
+        for name, k, raw, fam, pval, _, _ in close:
             print(f"\n  {name} survived on {k} of {n} symbols. On its own that "
                   f"reads as\n  p = {raw:.3f}, which looks like a finding. Two "
                   f"things stand between\n  that number and a real one:")
@@ -267,28 +296,56 @@ def report(per_strategy: dict, null_hits: dict, tested_symbols: list,
             print(f"    - the noise rate came from {null_trials} shuffled runs, "
                   f"which pins it down\n      only loosely. At the pessimistic "
                   f"end those runs allow: p = {pval:.3f}.")
-        best = max(close, key=lambda c: c[1])
-        # index 1 is the symbol count — the strongest candidate, not the
-        # luckiest-looking p-value, which is the one worth more computation.
-        need = null_runs_needed(best[1], n, tried)
+        name, k, _, _, _, hits, p0_hi = max(close, key=lambda c: c[1])
+        # By symbol count, not by the prettiest p-value: the strongest
+        # real result is the one worth spending more computation on.
+        runs = null_runs_needed(k, n, tried, hits, null_trials)
         print( "\n  Neither objection says the candidate is worthless — both say "
-               "this\n  run cannot tell, and the second one is fixable: the null "
-               "rate\n  gets sharper with more shuffled runs.\n")
-        if need:
-            print(f"    .\\.venv\\Scripts\\python.exe find_edge.py "
-                  f"--days {days} --null-runs {need}")
-            print(f"\n  {need} runs per symbol is what it would take for "
-                  f"{best[0]} to clear the\n  bar, and only if none of those "
-                  f"runs finds it in noise. Expect it to\n  take about "
-                  f"{(1 + need) / (1 + null_per_symbol):.0f}x as long as this "
-                  f"one.")
+               "this run\n  cannot tell. What would tell:\n")
+
+        if runs:
+            print(f"  1. More shuffled runs. {runs} per symbol would pin the "
+                  f"noise rate down\n     tightly enough for {k} of {n} to "
+                  f"count, if the rate holds.\n")
+            print(f"       .\\.venv\\Scripts\\python.exe find_edge.py "
+                  f"--days {days} --null-runs {runs}\n")
         else:
-            print(f"  With only {n} symbols, {best[0]} surviving on {best[1]} "
-                  f"cannot reach\n  significance however many null runs are "
-                  f"added. Widen the test with\n  --symbols instead.")
-        print( "\n  Then re-run over a different window (--days 120). An edge "
-               "that is\n  real survives both; a coincidence survives exactly "
-               "the run that\n  discovered it.")
+            print(f"  1. NOT more shuffled runs. {hits} of the {null_trials} "
+                  f"shuffled runs found\n     {name} in noise, so the noise "
+                  f"rate really is around "
+                  f"{hits / max(null_trials, 1) * 100:.0f}%, and\n     {k} of "
+                  f"{n} does not beat that once the search is counted. More "
+                  f"runs\n     measure that rate more precisely; they do not "
+                  f"lower it.\n")
+
+        wider = symbols_needed(k, n, tried, p0_hi)
+        if wider:
+            print(f"  2. More symbols. At the noise rate measured here, the "
+                  f"same share\n     surviving over {wider} symbols would "
+                  f"clear the bar. Add the ones you\n     actually want to "
+                  f"trade:\n")
+            print(f"       .\\.venv\\Scripts\\python.exe find_edge.py "
+                  f"--days {days} --null-runs {null_per_symbol} \\\n"
+                  f"           --symbols <your {wider} symbols>\n")
+        else:
+            print(f"  2. More symbols would help, but this share surviving "
+                  f"cannot reach\n     significance at the noise rate "
+                  f"measured, at any number of symbols.\n")
+
+        print(f"  3. One strategy, named in advance, on data it has not seen. "
+              f"The\n     {tried}-strategy penalty exists because {name} was "
+              f"PICKED from\n     this run. Test only it, on a window this run "
+              f"did not use, and\n     the penalty is gone — the hypothesis "
+              f"was fixed before the data:\n")
+        print(f"       .\\.venv\\Scripts\\python.exe find_edge.py "
+              f"--days {days * 2} --null-runs {null_per_symbol} \\\n"
+              f"           --strategy {name}\n")
+        print( "     This is the cheapest of the three and the only one that "
+               "answers\n     the question asked. It is also the one that can "
+               "come back negative,\n     which is what makes it worth "
+               "anything.\n")
+        print( "  An edge that is real survives a window it was not chosen on.")
+        print( "  A coincidence survives exactly the run that discovered it.")
     else:
         print("  NO EDGE FOUND.")
         print("  Every apparent winner appeared no more often than the same")
@@ -368,7 +425,15 @@ def main() -> int:
             print(f"\n{symbol}: only {len(bars)} bars, need 500+")
             continue
         tested_symbols.append(symbol)
-        print(f"\n{symbol}  ({len(bars)} bars, spread {spread:g})")
+        # The span is worth printing because it is not the number asked
+        # for: --days on M1 requests days x 1440 bars, and weekends have
+        # none, so 60 "days" of M1 reaches back about 84 calendar days.
+        # Confirming on "a different window" means checking these dates.
+        from datetime import datetime, timezone
+        span = " to ".join(
+            datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
+            for t in (bars[0].time, bars[-1].time))
+        print(f"\n{symbol}  ({len(bars)} bars, {span}, spread {spread:g})")
         results = search(base, bars, point_value, spread, args.balance, grids,
                          label="searching")
 

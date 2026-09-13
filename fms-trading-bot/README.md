@@ -409,12 +409,27 @@ It applies two tests a single-symbol search cannot:
    what those runs allow, so more `--null-runs` is what buys significance
    — and the tool prints how many it would take.
 
-The first live run of `--days 60` shows what tests 3 and 4 are for:
-`liquidity_sweep` survived on 3 of 6 symbols at a raw p = 0.010, which
-reads as a finding. Counting the search it is p = 0.117, and against a
-noise rate measured from only 12 runs it is p = 0.968. **Nothing has
-been proven yet** — the candidate needs `--null-runs 7` and a second
-window before it is worth a demo account.
+Two live runs of `--days 60` show what tests 3 and 4 are for.
+`liquidity_sweep` survived on 3 of 6 symbols — raw p = 0.014, which reads
+as a finding. Counting the 13-strategy search it is p = 0.166. And the
+second run (`--null-runs 7`, 42 shuffled series) settled the noise rate:
+the same search finds `liquidity_sweep` in **pure noise about 10% of the
+time**, so 3 of 6 is not far from what noise delivers by itself.
+
+More shuffled runs cannot fix that — they measure the 10% more precisely,
+they do not lower it. The tool now says so instead of prescribing another
+run of the same thing, and names the three routes that would settle it:
+more symbols, or the one that actually answers the question — **test the
+single named strategy on a window it was not chosen on**, where the
+13-strategy penalty does not apply because the hypothesis is fixed in
+advance:
+
+```powershell
+.\.venv\Scripts\python.exe find_edge.py --days 120 --null-runs 7 --strategy liquidity_sweep
+```
+
+**Nothing has been proven yet.** No money, not even demo money, until
+that comes back positive.
 
 The second test is the one that matters, and it was not optional. An
 earlier version of this tool used a hand-picked bar (profit factor 1.1
@@ -639,6 +654,14 @@ live account** — the ladder capping winners at $0.10, a stop that moved
 backwards, a safety gate that failed open, an entry path that raised on
 every trade. None of them are hypothetical; each one already cost money
 once. Run this before pushing and after changing anything in `fmsbot/`.
+
+The suite does **not** read your `.env`. Six tests once failed on the
+trading machine and passed everywhere else: `Settings.load()` reads `.env`
+from the working directory, so a tuned account's `FIXED_LOT` and
+`MIN_EFFICIENCY` leaked in and decided what the tests proved. A suite
+whose answers change when you re-tune the account cannot catch the next
+bug, so `tests/test_isolation.py` now holds that line — while still
+checking the real loader reads a BOM-prefixed `.env` correctly.
 
 ## Choosing and combining strategies
 

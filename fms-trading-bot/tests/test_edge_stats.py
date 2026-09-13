@@ -8,7 +8,7 @@ smaller than the evidence supports, and neither was in the arithmetic.
 
 from find_edge import (ALPHA, NULL_CONFIDENCE, binomial_at_least,
                        binomial_at_most, family_wise, null_rate_upper,
-                       null_runs_needed)
+                       null_runs_needed, symbols_needed)
 
 # The run that prompted these tests: 6 symbols, 2 null runs each.
 SYMBOLS, NULL_TRIALS, STRATEGIES = 6, 12, 13
@@ -57,6 +57,23 @@ def test_the_live_verdict_does_not_survive_correction():
     bound = null_rate_upper(1, NULL_TRIALS, NULL_CONFIDENCE)
     conservative = family_wise(binomial_at_least(3, SYMBOLS, bound), STRATEGIES)
     assert conservative > 0.5, conservative     # and the null is 12 samples
+
+
+def test_widening_the_test_is_offered_when_deepening_it_cannot_work():
+    """Three of six at a 10% noise rate needs more instruments, not more CPU."""
+    wider = symbols_needed(3, SYMBOLS, STRATEGIES, 0.10)
+    assert wider > SYMBOLS, wider
+    need = round(3 / SYMBOLS * wider)
+    assert family_wise(binomial_at_least(need, wider, 0.10), STRATEGIES) < ALPHA
+    # a strategy that survived nowhere cannot be rescued by adding symbols
+    assert symbols_needed(0, SYMBOLS, STRATEGIES, 0.10) == 0
+
+
+def test_naming_one_strategy_in_advance_removes_the_penalty():
+    """Why route 3 exists: the multiplicity cost is the search, not the data."""
+    raw = binomial_at_least(3, SYMBOLS, 0.10)
+    assert family_wise(raw, STRATEGIES) > ALPHA     # picked from 13
+    assert family_wise(raw, 1) < ALPHA              # fixed in advance
 
 
 def test_it_says_how_many_null_runs_would_settle_it():
@@ -117,8 +134,26 @@ def test_a_candidate_short_of_proof_is_named_as_such():
                   {"liquidity_sweep": 1})
     assert "not proven" in out
     assert "NOTHING PROVEN" in out
-    assert "--null-runs 7" in out          # what it would take to settle it
     assert "beats noise" not in out
+    # all three routes out, and the one that settles it named as such
+    assert "More symbols" in out
+    assert "--strategy liquidity_sweep" in out
+
+
+def test_it_does_not_prescribe_the_run_that_just_happened():
+    """The advice was "use 7 null runs" to someone who had just used 7.
+
+    Four of 42 shuffled runs found the strategy in noise. More runs
+    measure that 10% more precisely; they cannot make it smaller, and
+    3 of 6 never beats 10% once 13 strategies are counted.
+    """
+    out = _render({"liquidity_sweep": ["EURUSDm", "USDJPYm", "XAUUSDm"]},
+                  {"liquidity_sweep": 4}, null_runs=7)
+    assert "NOT more shuffled runs" in out
+    assert "--null-runs 8" not in out
+    assert null_runs_needed(3, 6, STRATEGIES, hits=4, trials=42) == 0
+    # and the same k/n IS rescuable when noise genuinely never produced it
+    assert null_runs_needed(3, 6, STRATEGIES, hits=0, trials=12) > 2
 
 
 def test_nothing_anywhere_still_says_no_edge_found():
