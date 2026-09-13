@@ -10,3 +10,4 @@
 | `session-summary/2026-08-30--country-tour-and-audio-root-cause.md` | 2026-08-30 | countries, cities, campaign, per-country animals, big five, audio root cause, audiocontext, ios, sound check, difficulty curve |
 | `session-summary/2026-08-30--the-beeps-were-the-ui.md` | 2026-08-30 | beeps, ui sounds, tap sound, animal calls, audio logging, diagnosis, call duration |
 | `session-summary/2026-09-06--recorded-sound-pack-loader.md` | 2026-09-06 | sound pack, recordings, sfx, loader, fallback, licensing, credits, ambience, ogg, data cost |
+| `session-summary/2026-09-13--android-app-and-play-bundle.md` | 2026-09-13 | android, aab, play store, webview, webviewassetloader, gradle, github actions, ci, signing, keystore, launcher icon, store listing, screenshots |

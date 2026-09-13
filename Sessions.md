@@ -2,7 +2,7 @@
 
 > **SCOPE:** This file indexes sessions that modified the **AI Memory system itself** — its structure, standards, policies, shared resources, and cross-project infrastructure. This is NOT a project-level file. Project-specific sessions live in each project's own `Sessions.md`.
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-09-13
 
 ---
 
@@ -33,6 +33,7 @@ Before performing any root-level action (modifying standards, creating new proje
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--country-tour-and-audio-root-cause.md` | 2026-08-30 | africa tour, countries, animals, audio bugfix, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-08-30--the-beeps-were-the-ui.md` | 2026-08-30 | beeps, ui sounds, animal calls, audio diagnosis, games |
 | `projects/Africa_Games_AI_Training/session-summary/2026-09-06--recorded-sound-pack-loader.md` | 2026-09-06 | sound pack, recordings, licensing, audio, games |
+| `projects/Africa_Games_AI_Training/session-summary/2026-09-13--android-app-and-play-bundle.md` | 2026-09-13 | android, play store, aab, ci, store art, games |
 
 ---
 
