@@ -38,6 +38,12 @@ Both games are single-page HTML — open `index.html` in any browser, no server 
 - Nairobi Wild: `Product_Development/NairobiWild_App/index.html` · tests: `node match3.test.mjs` and `node extras.test.mjs`
 - Oware Legends: `Product_Development/OwareLegends_App/index.html` · tests: `node engine.test.mjs`
 
+To hand Nairobi Wild to someone — WhatsApp, a download link, a phone with no
+internet — run `node build.mjs` in its folder. That folds the seven script
+files into one 166 KB page with no external requests. The source tree stays
+the thing you edit; the bundle is only for shipping. A recorded sound pack
+cannot be folded in: it stays beside `index.html` as `African_Wildlife_SFX/`.
+
 ## Key files
 
 | File | Purpose |
