@@ -96,6 +96,14 @@ android {
 }
 
 dependencies {
+    // There is no Kotlin in this app, but AndroidX drags the Kotlin standard
+    // library in transitively at two different versions, and since Kotlin 1.8
+    // the old kotlin-stdlib-jdk7/jdk8 artifacts were folded into the main one.
+    // Mixed versions therefore ship the same classes twice and the build fails
+    // on duplicate classes. The BOM pins them all to one version, where jdk7
+    // and jdk8 are empty forwarding shims.
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.9.24"))
+
     implementation("androidx.appcompat:appcompat:1.7.0")
     // Serves src/main/assets over https://appassets.androidplatform.net/ so the
     // page gets a real web origin. Without it the page is a file:// URL, and
