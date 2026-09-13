@@ -75,7 +75,7 @@ jobs:
           NW_KEYSTORE_PASSWORD: ${{ secrets.NW_KEYSTORE_PASSWORD }}
           NW_KEY_ALIAS: ${{ secrets.NW_KEY_ALIAS }}
           NW_KEY_PASSWORD: ${{ secrets.NW_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon bundleRelease assembleRelease
+        run: ./gradlew --no-daemon bundleRelease assembleRelease assembleDebug
 
       - name: Say whether the bundle is signed
         working-directory: ${{ env.APP_DIR }}/android
@@ -95,11 +95,19 @@ jobs:
           path: ${{ env.APP_DIR }}/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
 
-      # Play takes the .aab; a phone can only install an .apk. The same build
-      # produces both so a real device test costs nothing extra.
-      - name: Upload the .apk for sideloading
+      - name: Upload the release .apk
         uses: actions/upload-artifact@v4
         with:
           name: nairobi-wild-apk
           path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
+
+      # The one artifact here that a phone will actually install without a key
+      # of your own: Android signs debug builds with its own throwaway
+      # keystore. Same game, same assets — it just cannot go to Play.
+      - name: Upload the debug .apk — the one you can install today
+        uses: actions/upload-artifact@v4
+        with:
+          name: nairobi-wild-apk-debug
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

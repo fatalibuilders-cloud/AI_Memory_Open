@@ -18,11 +18,22 @@ a 10 GB SDK download, or a laptop at all.
 1. Push to any branch. `.github/workflows/nairobi-wild-android.yml` runs.
 2. Open the repository on GitHub → **Actions** → the newest
    *Nairobi Wild — Android* run.
-3. At the bottom of the run page, **Artifacts**: `nairobi-wild-aab` and
-   `nairobi-wild-apk`.
+3. At the bottom of the run page, **Artifacts**:
 
-Without the signing secrets below, that bundle is **unsigned** — fine for
-looking at, rejected by Play.
+| Artifact | What it is for |
+|---|---|
+| `nairobi-wild-aab` | the upload to Play |
+| `nairobi-wild-apk-debug` | **the one a phone will install today** |
+| `nairobi-wild-apk` | the release APK, installable only once you sign it |
+
+Without the signing secrets below, the bundle and the release APK are
+**unsigned** — fine for looking at, rejected by Play, and not installable on
+a phone either, because Android refuses unsigned packages.
+
+That is why the debug APK is there. Android signs debug builds with its own
+throwaway keystore, so it installs without any key of yours. It is the same
+game with the same assets and is the right way to test on a real phone before
+going anywhere near the Play Console. It cannot be uploaded to Play.
 
 ## Building on your own machine
 
