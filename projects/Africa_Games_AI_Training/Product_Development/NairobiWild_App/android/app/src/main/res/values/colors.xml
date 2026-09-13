@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Kept in step with --night-1 / --amber in index.html. -->
+    <!-- Kept in step with the night and amber custom properties at the top
+         of index.html. (XML forbids a double hyphen inside a comment, so
+         they cannot be named here the way CSS names them.) -->
     <color name="night">#0e1519</color>
     <color name="amber">#f5a623</color>
     <color name="ic_launcher_background">#12202a</color>
