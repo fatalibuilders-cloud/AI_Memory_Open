@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kept in step with --night-1 / --amber in index.html. -->
+    <color name="night">#0e1519</color>
+    <color name="amber">#f5a623</color>
+    <color name="ic_launcher_background">#12202a</color>
+</resources>

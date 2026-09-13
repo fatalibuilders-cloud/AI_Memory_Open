@@ -1,0 +1,105 @@
+# Builds the Play Store bundle for Nairobi Wild.
+#
+# Why CI and not a laptop: this is the only build machine the project is
+# guaranteed to have. Push the branch, and the .aab comes back as a download
+# on the run's summary page — no Android Studio, no 10 GB SDK, no laptop.
+#
+# Signing is optional. With the four secrets set the bundle comes out signed
+# and uploadable; without them it still builds, so a broken build is always
+# a real breakage and never a missing key.
+name: Nairobi Wild — Android
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App/**"
+      - ".github/workflows/nairobi-wild-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  APP_DIR: projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # A secret cannot be read in an `if:`, but the answer to "is it set?"
+      # can be lifted into an env var here, where secrets are allowed.
+      HAS_UPLOAD_KEY: ${{ secrets.NW_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The engine tests are pure Node and take under a second. A bundle that
+      # fails them should never reach a store, so they gate the build.
+      - name: Test the game engine
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          node match3.test.mjs
+          node extras.test.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The keystore arrives as base64 because a secret has to be text.
+      # It is written outside the workspace so it cannot be picked up by a
+      # later step or committed by accident.
+      - name: Restore the upload key
+        id: key
+        if: env.HAS_UPLOAD_KEY == 'true'
+        env:
+          NW_KEYSTORE_BASE64: ${{ secrets.NW_KEYSTORE_BASE64 }}
+        run: |
+          echo "$NW_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "path=$RUNNER_TEMP/upload.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Build the bundle and a test APK
+        working-directory: ${{ env.APP_DIR }}/android
+        env:
+          NW_KEYSTORE_FILE: ${{ steps.key.outputs.path }}
+          NW_KEYSTORE_PASSWORD: ${{ secrets.NW_KEYSTORE_PASSWORD }}
+          NW_KEY_ALIAS: ${{ secrets.NW_KEY_ALIAS }}
+          NW_KEY_PASSWORD: ${{ secrets.NW_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon bundleRelease assembleRelease
+
+      - name: Say whether the bundle is signed
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          if [ -n "${{ steps.key.outputs.path }}" ]; then
+            echo "### Signed with your upload key — ready for Play." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### UNSIGNED build." >> "$GITHUB_STEP_SUMMARY"
+            echo "Play will reject it. Add the four NW_* secrets to sign." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          ls -lh app/build/outputs/bundle/release/ app/build/outputs/apk/release/ >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the .aab
+        uses: actions/upload-artifact@v4
+        with:
+          name: nairobi-wild-aab
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      # Play takes the .aab; a phone can only install an .apk. The same build
+      # produces both so a real device test costs nothing extra.
+      - name: Upload the .apk for sideloading
+        uses: actions/upload-artifact@v4
+        with:
+          name: nairobi-wild-apk
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn

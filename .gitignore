@@ -13,3 +13,11 @@ keys.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Signing keys. Whoever holds one can publish an update to your app.
+*.jks
+*.keystore
+keystore.properties
+
+# Build output — regenerate with `node build.mjs`, never commit it
+projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App/nairobi-wild.html

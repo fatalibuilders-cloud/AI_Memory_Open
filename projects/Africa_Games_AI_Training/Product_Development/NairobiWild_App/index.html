@@ -1626,6 +1626,39 @@ $('lvBuy').onclick = () => {
 $('lvRelax').onclick = () => { $('ovLives').classList.remove('active'); startRelax(); };
 $('lvClose').onclick = () => $('ovLives').classList.remove('active');
 
+/* ------------------------------------------------------------------
+   Android hardware/gesture back.
+   The Kotlin shell calls this before deciding whether to leave the app.
+   Returns true if the page consumed the press. Rather than duplicating
+   navigation, it clicks the back control the screen already shows, so
+   there is only ever one definition of "back" to keep correct.
+   ------------------------------------------------------------------ */
+window.NW_back = function () {
+  // Overlays first — the topmost one owns the press.
+  const dismiss = {
+    ovStart: 'stBack', ovShop: 'shClose', ovShare: 'shClose2',
+    ovVoices: 'voicesClose', ovHow: 'howClose', ovLives: 'lvClose',
+    ovChallenge: 'chNo', ovEnd: 'endHome',
+  };
+  const open = [...document.querySelectorAll('.ov.active')];
+  if (open.length) {
+    const top = open[open.length - 1];
+    const btn = dismiss[top.id] && $(dismiss[top.id]);
+    if (btn) btn.click();
+    // ovDuelEnd and ovHandover are decisions, not dialogs: swallow the
+    // press so a duel can never be dropped by a stray swipe.
+    return true;
+  }
+  const backBtn = {
+    game: 'btnGameBack', cities: 'btnCityBack',
+    map: 'btnMapBack', lobby: 'btnLobbyBack',
+  };
+  const cur = document.querySelector('.screen.active');
+  const b = cur && backBtn[cur.id] && $(backBtn[cur.id]);
+  if (b) { b.click(); return true; }
+  return false;              // on the home screen: let Android leave.
+};
+
 refreshChrome();
 setInterval(refreshChrome, 30000);
 checkIncomingChallenge();

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;background:transparent}
+  #stage{position:fixed;inset:0;overflow:hidden}
+  svg{display:block;width:100%;height:100%}
+</style></head><body><div id="stage"></div>
+<script>
+/*
+ * Store art for Nairobi Wild.
+ *
+ * An earlier pass tried a hand-drawn acacia and it kept reading as a
+ * mushroom at 48 px. The icon now says what the game actually is instead:
+ * one of its own tiles, with an animal on it. A shopper scrolling Play sees
+ * "match-3" and "wildlife" in the same glance, which no silhouette managed.
+ */
+const P = new URLSearchParams(location.search);
+const art = P.get('art') || 'icon';
+
+const NIGHT = '#12202a', DUSK = '#0b1216';
+const A0 = '#f7b32b', A0_HI = '#ffd884';          // the game's amber tile
+const HUES = [['#ffd884', '#f7b32b'], ['#a5d6f5', '#4a9fd4'],
+              ['#9fe3af', '#57b96b'], ['#ffa583', '#e8623a']];
+
+const tileGrad = (id, hi, lo) => `
+  <linearGradient id="${id}" x1="0" y1="0" x2="0.4" y2="1">
+    <stop offset="0%" stop-color="${hi}"/><stop offset="100%" stop-color="${lo}"/>
+  </linearGradient>`;
+
+/* One game tile: the same rounded square, gradient and drop shadow the board
+   uses, so the icon is literally a piece of the game. */
+const tile = (x, y, size, id, glyph, gsize) => `
+  <rect x="${x}" y="${y + size * 0.045}" width="${size}" height="${size}"
+        rx="${size * 0.24}" fill="rgba(0,0,0,.45)"/>
+  <rect x="${x}" y="${y}" width="${size}" height="${size}"
+        rx="${size * 0.24}" fill="url(#${id})"/>
+  <text x="${x + size / 2}" y="${y + size / 2}" font-size="${gsize}"
+        text-anchor="middle" dominant-baseline="central">${glyph}</text>`;
+
+const beads = (x, y, w, h) => `
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="#d62828"/>
+  <rect x="${x + w * 0.25}" y="${y}" width="${w * 0.25}" height="${h}" fill="#f2ede1"/>
+  <rect x="${x + w * 0.50}" y="${y}" width="${w * 0.25}" height="${h}" fill="#2a9d5c"/>
+  <rect x="${x + w * 0.75}" y="${y}" width="${w * 0.19}" height="${h}" fill="#f5a623"/>`;
+
+const bg = `<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${NIGHT}"/><stop offset="100%" stop-color="${DUSK}"/>
+  </linearGradient>`;
+
+const arts = {
+  // Adaptive foreground: art only, transparent, and inside the 72-unit safe
+  // circle so no launcher mask can clip a corner off the tile.
+  fore: `<svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+    <defs>${tileGrad('t', A0_HI, A0)}</defs>
+    ${tile(27, 27, 54, 't', '&#129409;', 34)}</svg>`,
+
+  // Legacy square icon for Android 7 and older launchers: same tile, but it
+  // has to bring its own background and its own rounded shape.
+  icon: `<svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+    <defs>${tileGrad('t', A0_HI, A0)}${bg}
+      <clipPath id="sq"><rect x="4" y="4" width="100" height="100" rx="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#sq)">
+      <rect x="4" y="4" width="100" height="100" fill="url(#bg)"/>
+      ${tile(27, 24, 54, 't', '&#129409;', 34)}
+      ${beads(30, 87, 48, 5)}
+    </g></svg>`,
+
+  // Play listing icon: 512x512, fully opaque, square — Play rounds it itself.
+  store: `<svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+    <defs>${tileGrad('t', A0_HI, A0)}${bg}</defs>
+    <rect width="108" height="108" fill="url(#bg)"/>
+    ${tile(26, 23, 56, 't', '&#129409;', 35)}
+    ${beads(30, 87, 48, 5)}
+  </svg>`,
+
+  // Feature graphic: the banner across the top of the store listing.
+  feature: `<svg viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0b1216"/>
+        <stop offset="52%" stop-color="#2b2230"/>
+        <stop offset="100%" stop-color="#b4560c"/>
+      </linearGradient>
+      <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffd36e"/>
+        <stop offset="55%" stop-color="#f5a623"/>
+        <stop offset="100%" stop-color="#c9600a"/>
+      </radialGradient>
+      ${HUES.map((h, i) => tileGrad('h' + i, h[0], h[1])).join('')}
+    </defs>
+    <rect width="1024" height="500" fill="url(#sky)"/>
+    <circle cx="824" cy="364" r="96" fill="url(#sun)"/>
+    <!-- Nairobi's skyline: the only city one on a national park horizon -->
+    <g fill="#0b1216" transform="translate(120,58)">
+      <rect x="470" y="330" width="26" height="100"/>
+      <rect x="504" y="296" width="30" height="134"/>
+      <rect x="542" y="272" width="20" height="158"/>
+      <rect x="549" y="248" width="5"  height="26"/>
+      <rect x="570" y="312" width="34" height="118"/>
+      <rect x="612" y="338" width="22" height="92"/>
+      <ellipse cx="668" cy="326" rx="38" ry="13"/>
+      <rect x="663" y="326" width="10" height="104"/>
+      <rect x="700" y="344" width="26" height="86"/>
+    </g>
+    <rect x="0" y="428" width="1024" height="72" fill="#0b1216"/>
+    <!-- Four tiles off the actual board, so the genre is unmistakable -->
+    ${tile(48,  92, 116, 'h0', '&#129409;', 72)}
+    ${tile(176, 92, 116, 'h1', '&#128024;', 72)}
+    ${tile(48, 220, 116, 'h2', '&#129426;', 72)}
+    ${tile(176,220, 116, 'h3', '&#129427;', 72)}
+    <text x="330" y="196" font-family="Georgia,'Times New Roman',serif" font-size="92"
+          font-weight="700" fill="#f8f3e7">Nairobi <tspan fill="#f5a623">Wild</tspan></text>
+    <text x="334" y="250" font-family="Georgia,'Times New Roman',serif" font-size="30"
+          fill="#e3d7bd">Match the wild &#8212; Nairobi to the Mara</text>
+    <text x="334" y="298" font-family="Georgia,'Times New Roman',serif" font-size="26"
+          fill="#c2b295">246 levels &#183; 54 countries &#183; plays offline</text>
+    ${beads(334, 330, 180, 6)}
+  </svg>`,
+};
+document.getElementById('stage').innerHTML = arts[art];
+</script></body></html>

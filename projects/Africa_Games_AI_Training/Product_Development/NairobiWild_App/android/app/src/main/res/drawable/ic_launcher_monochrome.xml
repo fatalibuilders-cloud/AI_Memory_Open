@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The themed-icon silhouette. Android tints this one flat colour to match the
+  wallpaper, so it can carry shape only - no tile, no gradient, no lion's
+  face. A paw survives that reduction and still says "animals" at 48 px.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#000000"
+        android:pathData="M37.0,68.0 C37.0,50.6 71.0,50.6 71.0,68.0 C71.0,85.4 37.0,85.4 37.0,68.0 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M27.0,47.0 C27.0,35.0 41.0,35.0 41.0,47.0 C41.0,59.0 27.0,59.0 27.0,47.0 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M39.0,40.0 C39.0,27.3 54.0,27.3 54.0,40.0 C54.0,52.7 39.0,52.7 39.0,40.0 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M54.0,40.0 C54.0,27.3 69.0,27.3 69.0,40.0 C69.0,52.7 54.0,52.7 54.0,40.0 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M67.0,47.0 C67.0,35.0 81.0,35.0 81.0,47.0 C81.0,59.0 67.0,59.0 67.0,47.0 Z" />
+</vector>

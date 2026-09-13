@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Back up the save file — stars, coins, streak — so a player who changes
+  phone does not start the whole continent again. It lives in the WebView's
+  localStorage, under the app's own data directory.
+-->
+<full-backup-content>
+    <include domain="database" path="." />
+    <include domain="file" path="app_webview" />
+</full-backup-content>
