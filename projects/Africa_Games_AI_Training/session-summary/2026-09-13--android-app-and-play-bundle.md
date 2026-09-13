@@ -70,12 +70,31 @@ amber tiles**, which says "match-3" and "wildlife" in the same glance. Worth
 recording because the failure was not in the drawing but in the choice of
 subject.
 
-## Two real bugs, both caught by CI
+## Three real bugs, each further down the pipeline, all caught by CI
 1. **`Cannot convert '' to File`.** An unset GitHub Actions step output
    arrives as `""`, not as nothing, so the unsigned path called `file("")`
    and died instead of skipping the signing config. Blank now means absent.
-2. The first run also proved the useful half: the engine tests, the SDK
-   setup and AGP resolution all worked, so the failure was one line deep.
+2. **`The string "--" is not permitted within comments`.** A comment in
+   `colors.xml` named the CSS custom properties `--night-1` and `--amber`
+   literally. XML forbids a double hyphen inside a comment, and Android's
+   resource compiler rejects the file outright. Every other resource file was
+   scanned for the same thing.
+3. **Duplicate classes.** AndroidX pulls `kotlin-stdlib` in at 1.8.22 and
+   `kotlin-stdlib-jdk7`/`-jdk8` at 1.6.21; since Kotlin 1.8 those jdk
+   artifacts were folded into the main one, so the same classes shipped
+   twice. Pinned with the Kotlin BOM. There is no Kotlin in this app at all —
+   the activity is Java precisely to keep version axes down — but the standard
+   library still arrives transitively.
+
+**Fourth run green**, then a fourth issue found by reading the output rather
+than by a failure: Android refuses to install an *unsigned* package, so
+neither the `.aab` nor the release `.apk` could go on a phone until the owner
+has a key — and "play it on a real phone" is the one test CI cannot replace.
+The build now also emits a **debug APK**, which Android signs with its own
+throwaway keystore and which installs immediately.
+
+Artifacts, zipped: `.aab` 2.36 MB, debug `.apk` 3.01 MB, release `.apk`
+2.34 MB.
 
 ## What could not be verified here
 **Nobody has run this on an Android device.** The Java compiles and the
@@ -88,7 +107,13 @@ Nairobi phone is the first thing to do, and it is in NextSteps #4.
   both also run in CI as a gate before the Android build.
 - Browser: back hook correct on every screen and overlay; bundle still makes
   **zero network requests** and logs no console errors.
-- GitHub Actions: `.aab` and `.apk` built from a clean checkout.
+- GitHub Actions: `.aab`, release `.apk` and debug `.apk` all built from a
+  clean checkout, run
+  [34769334304](https://github.com/fatalibuilders-cloud/AI_Memory_Open/actions/runs/34769334304).
+- **The artifacts could not be fetched into this container**: GitHub serves
+  them from `*.blob.core.windows.net`, which the network policy blocks, as it
+  blocks `dl.google.com`. They download normally from the Actions page in any
+  browser — including a phone's.
 
 ## Next
 The remaining steps are all the owner's and none are code: make and back up
