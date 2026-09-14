@@ -471,10 +471,22 @@ was not chosen on comes back positive.
 The second test is the one that matters, and it was not optional. An
 earlier version of this tool used a hand-picked bar (profit factor 1.1
 over 5 trades) and confidently recommended `ema_cross` on **pure random
-walks with no edge in them by construction**. Both tests are verified in
-both directions: silent on random walks, and on synthetic series with a
-real trend built in it flags breakout, trend-following and momentum on
-6 of 6 symbols at p < 0.001.
+walks with no edge in them by construction**.
+
+That check is no longer a story — it is `calibrate.py`, and it runs:
+
+```powershell
+.\.venv\Scripts\python.exe calibrate.py --strategy breakout
+.\.venv\Scripts\python.exe calibrate.py --walk-forward 4
+```
+
+It builds synthetic instruments whose answer is known — random walks with
+nothing in them, and the same walks with a mechanical trend planted — and
+requires the tool to be **silent on the first and right about the second**.
+Passing one and failing the other is worse than failing both, because it
+looks like it works. Current state, in both the single-split and the
+4-fold walk-forward mode: silent on noise, and it finds the planted edge
+on 5 of 5 symbols at p = 0.0032.
 
 Judge on profit factor. A win rate is chosen by where you put the stop —
 `winrate.py` will engineer any figure you name and show you what it costs.

@@ -168,3 +168,47 @@ def test_a_strong_result_is_allowed_to_pass():
                   {}, null_runs=5)
     assert "beats noise" in out
     assert "DEMO" in out
+
+
+def test_assess_scores_symbols_and_calibrates_against_their_shuffles():
+    """The loop find_edge runs per symbol, on data small enough to test.
+
+    It was inlined in main() and therefore unreachable except by owning
+    an MT5 terminal — which meant the part that decides whether money is
+    risked was the only part with no test at all.
+    """
+    import random
+    from fmsbot.broker.base import Bar
+    from fmsbot.config import Settings
+    import find_edge, optimize
+
+    rnd = random.Random(3)
+    bars, px = [], 1.10
+    for i in range(1500):
+        px += rnd.gauss(0, 0.0004)
+        bars.append(Bar(i * 300, px, px + 0.0004, px - 0.0004, px))
+
+    base = Settings.load(dotenv_path=None)
+    base.fixed_lot = 0.01
+    grid = {"ema_cross": {"ema_fast": [10], "ema_slow": [30],
+                          "atr_sl_mult": [1.5], "atr_tp_mult": [2.0]}}
+    survivors, nulls, tested = find_edge.assess(
+        base, {"SYNTH": (bars, 1000.0, 0.00008)}, grid,
+        null_runs=1, folds=1, balance=100.0, quiet=True)
+
+    assert tested == ["SYNTH"]
+    # Whatever it concludes, it must stay inside its own arithmetic:
+    # a symbol cannot survive twice, nor a null run produce more hits
+    # than it had chances.
+    assert all(len(set(s)) == len(s) for s in survivors.values())
+    assert all(hits <= 1 for hits in nulls.values())
+    assert set(survivors) <= {"ema_cross"} and set(nulls) <= {"ema_cross"}
+
+
+def test_walk_forward_scores_more_of_the_history_than_one_split():
+    """Four folds test four slices; one split tests one, and that is the
+    whole reason walk-forward is worth the extra time."""
+    from find_edge import folds_of
+    one = sum(end - start for _, start, end in folds_of(9000, 1))
+    many = sum(end - start for _, start, end in folds_of(9000, 4))
+    assert many > one

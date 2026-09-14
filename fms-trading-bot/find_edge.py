@@ -408,6 +408,60 @@ def report(per_strategy: dict, null_hits: dict, tested_symbols: list,
     return 0
 
 
+def assess(base: Settings, series: dict, grids: dict, null_runs: int,
+           folds: int, balance: float, quiet: bool = False) -> tuple:
+    """Score every symbol and calibrate against shuffled copies of it.
+
+    `series` maps a symbol to (bars, point_value, spread). Separated from
+    the MT5 loading above it so the whole verdict can be exercised on
+    data whose truth is known -- see calibrate.py. A test that decides
+    whether to risk money should itself be testable.
+
+    Returns (per_strategy, null_hits, tested_symbols).
+    """
+    per_strategy: dict[str, list[str]] = {}
+    null_hits: dict[str, int] = {}
+    tested: list[str] = []
+    for symbol, (bars, point_value, spread) in series.items():
+        tested.append(symbol)
+        label = "" if quiet else "searching"
+        results = search(base, bars, point_value, spread, balance, grids,
+                         label=label, folds=folds)
+
+        # The same search on the same bars with their order destroyed.
+        # This is the yardstick: anything the search can find in noise,
+        # it will also find in the real series, and that part is not an
+        # edge. It must run the IDENTICAL procedure, walk-forward
+        # included -- a yardstick measured a different way is not one.
+        for seed in range(null_runs):
+            fake = search(base, shuffled(bars, hash(symbol) % 10_000 + seed),
+                          point_value, spread, balance, grids,
+                          label="" if quiet else
+                          f"calibrating {seed + 1}/{null_runs}",
+                          folds=folds)
+            for name, (_, _, oos) in fake.items():
+                if survived(oos):
+                    null_hits[name] = null_hits.get(name, 0) + 1
+
+        if not quiet:
+            print("\r" + " " * 46 + "\r", end="")
+        if not results:
+            if not quiet:
+                print("    no strategy produced enough trades to judge")
+            continue
+        for name, (params, ins, oos) in sorted(
+                results.items(), key=lambda kv: -kv[1][2].profit_factor):
+            ok = survived(oos)
+            if ok:
+                per_strategy.setdefault(name, []).append(symbol)
+            if not quiet:
+                print(f"    {name:20} in-sample PF {ins.profit_factor:5.2f}"
+                      f"  |  out-of-sample PF {oos.profit_factor:5.2f} "
+                      f"({len(oos.trades):3} trades) "
+                      f"{'survived' if ok else ''}")
+    return per_strategy, null_hits, tested
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Test for an edge across symbols")
     p.add_argument("--symbols", help="comma-separated; default: the account's")
@@ -469,9 +523,10 @@ def main() -> int:
     print(f"  About {runs:,} simulations — a few minutes. Leave it running.")
     print("=" * 78)
 
-    per_strategy: dict[str, list[str]] = {}
-    null_hits: dict[str, int] = {}
-    tested_symbols = []
+    series: dict = {}
+    all_survivors: dict[str, list[str]] = {}
+    all_null: dict[str, int] = {}
+    scored: list[str] = []
     short: set[str] = set()
     held = 0
     for symbol in symbols:
@@ -484,7 +539,6 @@ def main() -> int:
         if len(bars) < 500:
             print(f"\n{symbol}: only {len(bars)} bars, need 500+")
             continue
-        tested_symbols.append(symbol)
         # The span is worth printing because it is not the number asked
         # for: --days on M1 requests days x 1440 bars, and weekends have
         # none, so 60 "days" of M1 reaches back about 84 calendar days.
@@ -500,36 +554,17 @@ def main() -> int:
             # same paragraph buries the result they are printed around.
             short.add(symbol)
             held = max(held, len(bars))
-        results = search(base, bars, point_value, spread, args.balance, grids,
-                         label="searching", folds=args.walk_forward)
+        series[symbol] = (bars, point_value, spread)
+        per_strategy, null_hits, tested_symbols = assess(
+            base, {symbol: series[symbol]}, grids, args.null_runs,
+            args.walk_forward, args.balance)
+        for name, hits in null_hits.items():
+            all_null[name] = all_null.get(name, 0) + hits
+        for name, syms in per_strategy.items():
+            all_survivors.setdefault(name, []).extend(syms)
+        scored.extend(tested_symbols)
 
-        # The same search on the same bars with their order destroyed. This
-        # is the yardstick: anything the search can find in noise, it will
-        # also find in the real series, and that part is not an edge.
-        for seed in range(args.null_runs):
-            # The null must run the IDENTICAL procedure, walk-forward
-            # included: a yardstick measured a different way is not one.
-            fake = search(base, shuffled(bars, hash(symbol) % 10_000 + seed),
-                          point_value, spread, args.balance, grids,
-                          label=f"calibrating {seed + 1}/{args.null_runs}",
-                          folds=args.walk_forward)
-            for name, (_, _, oos) in fake.items():
-                if survived(oos):
-                    null_hits[name] = null_hits.get(name, 0) + 1
-
-        print("\r" + " " * 46 + "\r", end="")
-        if not results:
-            print("    no strategy produced enough trades to judge")
-            continue
-        for name, (params, ins, oos) in sorted(
-                results.items(), key=lambda kv: -kv[1][2].profit_factor):
-            ok = survived(oos)
-            if ok:
-                per_strategy.setdefault(name, []).append(symbol)
-            print(f"    {name:20} in-sample PF {ins.profit_factor:5.2f}  |  "
-                  f"out-of-sample PF {oos.profit_factor:5.2f} "
-                  f"({len(oos.trades):3} trades) {'survived' if ok else ''}")
-
+    per_strategy, null_hits, tested_symbols = all_survivors, all_null, scored
     n = len(tested_symbols)
     if n == 0:
         print("\nNo symbol had usable data. Open MT5, log in, and re-run.")
