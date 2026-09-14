@@ -18,6 +18,12 @@ class Bar:
     high: float
     low: float
     close: float
+    #: Spread in POINTS while the bar was forming, when the feed records
+    #: one. Optional because not every backend reports it — but where it
+    #: exists it is the only honest cost figure a backtest has: the live
+    #: spread is whatever the market happens to be doing at the moment the
+    #: test is run, which on a weekend is several times the weekday value.
+    spread: float | None = None
 
 
 @dataclass

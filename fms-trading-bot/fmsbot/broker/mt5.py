@@ -62,6 +62,14 @@ def _mt5():
     return mt5
 
 
+def _spread_of(rate) -> float | None:
+    """The spread recorded with a bar, in points, when the feed has one."""
+    try:
+        return float(rate["spread"])
+    except (KeyError, IndexError, ValueError, TypeError):
+        return None
+
+
 #: Bars per request. The terminal refuses very large single requests with
 #: "Invalid params" (-2), which reads as "no history" and stopped a 120-day
 #: M1 edge test dead on all six symbols.
@@ -219,7 +227,8 @@ class MT5Broker(Broker):
                          "interfere: Stop-ScheduledTask -TaskName FMSTradingBot")
             raise BrokerError(f"No bars for {symbol}: {err}.{hint}")
         return [Bar(int(r["time"]), float(r["open"]), float(r["high"]),
-                    float(r["low"]), float(r["close"])) for r in rates]
+                    float(r["low"]), float(r["close"]),
+                    _spread_of(r)) for r in rates]
 
     def _extend_back(self, mt5, symbol: str, tf: int, count: int, newest):
         """Walk further back in chunks until `count` bars or history ends.

@@ -428,8 +428,29 @@ advance:
 .\.venv\Scripts\python.exe find_edge.py --days 120 --null-runs 7 --strategy liquidity_sweep
 ```
 
-**Nothing has been proven yet.** No money, not even demo money, until
-that comes back positive.
+That confirmation run came back **negative**: `liquidity_sweep` survived
+on 1 of 6 symbols, p = 0.629, within noise. Three runs, no edge. The
+strategy is not traded.
+
+The run also exposed two defects worth more than the result:
+
+- **Costs were priced at the moment the test ran.** Started on a Sunday,
+  it charged AUDUSD 9.2 pips and GBPUSD 3.8 — four to ten times their
+  weekday spreads — because the figure came from `info.spread`. Bars
+  carry the spread that was really quoted while each formed, so the
+  median of those is now the cost charged. This makes backtests look
+  *better*, which is exactly why it is stated here rather than quietly
+  applied: **the passing bar has not moved**, and the shuffled null gets
+  the same cheaper costs, so it is not a free pass.
+- **The window was not new.** The terminal held 100,000 bars per symbol,
+  so `--days 120` returned 8 June to 11 September — nearly the same
+  period as the `--days 60` run it was meant to confirm. `find_edge` now
+  says when it got less history than it asked for, and the fix is MT5's
+  *Tools -> Options -> Charts -> Max bars in chart*, or a higher
+  timeframe.
+
+**Nothing has been proven.** No money, not even demo money, until a run
+on data a strategy was not chosen on comes back positive.
 
 The second test is the one that matters, and it was not optional. An
 earlier version of this tool used a hand-picked bar (profit factor 1.1

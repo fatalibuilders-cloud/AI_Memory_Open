@@ -234,6 +234,50 @@ def load_csv(path: str) -> list[Bar]:
     return bars
 
 
+#: Seconds per bar, by timeframe name.
+_PER_BAR = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
+            "H1": 3600, "H4": 14400, "D1": 86400}
+
+
+def bar_count(timeframe: str, days: int) -> int:
+    """Bars to request for a span of days.
+
+    Note this is a bar COUNT, not a date range: forex prints no bars at
+    the weekend, so 60 "days" of M1 reaches back about 84 calendar days.
+    """
+    return min(int(days * 86400 / _PER_BAR[timeframe]), 200_000)
+
+
+def typical_spread(bars, symbol: str, info) -> float | None:
+    """The spread these bars actually traded at, in price units.
+
+    Every earlier run priced costs from info.spread — the spread at the
+    instant the test ran. A 120-day test started on a Sunday charged
+    9.2 pips on AUDUSD and 3.8 on GBPUSD, four to ten times their weekday
+    values, and every strategy in it lost. The bars carry the spread that
+    was really quoted while each one formed; the median of those is the
+    cost a trade would actually have paid.
+
+    Returns None when the feed records no spread, leaving the caller's
+    fallback in place.
+    """
+    point = getattr(info, "point", 0.0) or 0.0
+    recorded = sorted(b.spread for b in bars if getattr(b, "spread", None))
+    if not recorded or not point:
+        live = getattr(info, "spread", 0) * point
+        return live or None
+    median = recorded[len(recorded) // 2] * point
+    live = getattr(info, "spread", 0) * point
+    # Worth saying out loud: a wide live spread means the market is shut
+    # or thin, and someone reading a losing backtest deserves to know the
+    # costs in it are not the costs they would trade.
+    if live > median * 2 and median > 0:
+        print(f"    note: {symbol} spread is {live:g} right now but "
+              f"{median:g} in this history — the market is closed or thin, "
+              f"so costs are charged at the historical figure.")
+    return median
+
+
 def load_mt5(settings: Settings, symbol: str, timeframe: str, days: int):
     """Returns (bars, point_value, spread) from whichever broker is configured.
 
@@ -244,9 +288,7 @@ def load_mt5(settings: Settings, symbol: str, timeframe: str, days: int):
     broker = build_broker(settings)
     broker.connect()
     try:
-        per_bar = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
-                   "H1": 3600, "H4": 14400, "D1": 86400}[timeframe]
-        count = min(int(days * 86400 / per_bar), 200_000)
+        count = bar_count(timeframe, days)
         bars = broker.bars(symbol, timeframe, count)
 
         point_value = spread = None
@@ -254,7 +296,7 @@ def load_mt5(settings: Settings, symbol: str, timeframe: str, days: int):
             info = broker.mt5.symbol_info(broker._resolve(symbol))
             if info is not None and info.trade_tick_size:
                 point_value = info.trade_tick_value / info.trade_tick_size
-                spread = info.spread * info.point if info.point else None
+                spread = typical_spread(bars, symbol, info)
         elif settings.broker == "binance":
             point_value = 1.0          # USDT-quoted: 1 price unit = 1 USDT
         return (bars,

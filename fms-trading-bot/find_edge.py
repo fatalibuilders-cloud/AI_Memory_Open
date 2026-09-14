@@ -414,6 +414,7 @@ def main() -> int:
     per_strategy: dict[str, list[str]] = {}
     null_hits: dict[str, int] = {}
     tested_symbols = []
+    short: set[str] = set()
     for symbol in symbols:
         try:
             bars, point_value, spread = bt.load_mt5(
@@ -434,6 +435,15 @@ def main() -> int:
             datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
             for t in (bars[0].time, bars[-1].time))
         print(f"\n{symbol}  ({len(bars)} bars, {span}, spread {spread:g})")
+        wanted = bt.bar_count(base.timeframe, args.days)
+        if len(bars) < wanted * 0.95:
+            short.add(symbol)
+            print(f"    note: asked for {wanted:,} bars, got {len(bars):,} — "
+                  f"the terminal is holding\n          all the history it "
+                  f"keeps. Raise it in MT5 (Tools -> Options ->\n          "
+                  f"Charts -> Max bars in chart), or use a higher --timeframe "
+                  f"to\n          cover more calendar time with the same "
+                  f"number of bars.")
         results = search(base, bars, point_value, spread, args.balance, grids,
                          label="searching")
 
@@ -466,6 +476,11 @@ def main() -> int:
         print("\nNo symbol had usable data. Open MT5, log in, and re-run.")
         return 1
 
+    if short:
+        print(f"\n  NOTE: {len(short)} of {n} symbols returned less history "
+              f"than asked for, so\n  this window may be largely the same "
+              f"data as a shorter run. Confirming\n  a strategy needs bars it "
+              f"was not chosen on — check the dates above.")
     if report(per_strategy, null_hits, tested_symbols,
               len(grids), args.null_runs, args.days):
         return 1
