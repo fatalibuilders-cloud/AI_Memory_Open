@@ -65,21 +65,24 @@ def series(kind: str, count: int, seed: int) -> dict:
     return out
 
 
-def verdict(base, data, grids, null_runs, folds, tried) -> list:
-    """The strategies find_edge would call an edge, with their p-values."""
+def verdict(base, data, grids, null_runs, folds, tried) -> tuple:
+    """(called an edge, merely survived) — the second tells a miss apart
+    from a run too small to conclude anything, which look identical in
+    the verdict and need opposite responses."""
     survivors, nulls, tested = fe.assess(
         base, data, grids, null_runs, folds, 100.0, quiet=True)
     n, trials = len(tested), len(tested) * null_runs
-    out = []
+    called, seen = [], []
     for name, syms in survivors.items():
         k = len(syms)
         hits = nulls.get(name, 0)
         bound = (fe.null_rate_upper(hits, trials, fe.NULL_CONFIDENCE)
                  if trials else 1.0)
         p = fe.family_wise(fe.binomial_at_least(k, n, bound), tried)
+        seen.append((name, k, n, p))
         if k >= 2 and p < fe.ALPHA:
-            out.append((name, k, n, p))
-    return sorted(out, key=lambda r: r[3])
+            called.append((name, k, n, p))
+    return sorted(called, key=lambda r: r[3]), sorted(seen, key=lambda r: r[3])
 
 
 def main() -> int:
@@ -104,9 +107,20 @@ def main() -> int:
         print(f"  walk-forward: {args.walk_forward} folds")
     print("=" * 74)
 
+    need = fe.survivors_needed(args.symbols, args.symbols * args.null_runs,
+                               len(grids))
+    if need == 0:
+        print("\n  This configuration cannot produce a positive verdict at "
+              "all.\n  Raising --symbols or --null-runs is the only way to "
+              "learn anything\n  from it, so do that before reading the "
+              "result below.")
+    else:
+        print(f"\n  At this size an edge must show on {need} of "
+              f"{args.symbols} symbols to be called one.")
+
     print("\n1. NOISE — random walks. Nothing in them to find.")
-    found = verdict(base, series("noise", args.symbols, args.seed), grids,
-                    args.null_runs, args.walk_forward, len(grids))
+    found, _ = verdict(base, series("noise", args.symbols, args.seed), grids,
+                       args.null_runs, args.walk_forward, len(grids))
     if found:
         print("   FAIL — it called noise an edge:")
         for name, k, n, pval in found:
@@ -115,20 +129,38 @@ def main() -> int:
         print("   pass — silent, as it must be.")
 
     print("\n2. EDGE — the same walks with a real trend built in.")
-    got = verdict(base, series("edge", args.symbols, args.seed + 1), grids,
-                  args.null_runs, args.walk_forward, len(grids))
+    got, survived_only = verdict(
+        base, series("edge", args.symbols, args.seed + 1), grids,
+        args.null_runs, args.walk_forward, len(grids))
     if got:
         print("   pass — it found what was planted:")
         for name, k, n, pval in got:
             print(f"     {name}: {k}/{n} symbols, p = {pval:.4f}")
+    elif survived_only:
+        # Not the same failure at all: the edge WAS found, and the
+        # arithmetic could not certify it at this sample size.
+        print("   UNDERPOWERED — the edge was found but cannot be certified "
+              "at this size:")
+        for name, k, n, pval in survived_only[:3]:
+            print(f"     {name}: survived {k}/{n} symbols, p = {pval:.4f} "
+                  f"(needs < {fe.ALPHA})")
+        print(f"   The strategies are not the problem — {args.symbols} "
+              f"symbols and {args.null_runs} null runs\n   are. Raise either "
+              f"and re-run.")
     else:
         print("   FAIL — it missed an edge that is there by construction.")
 
     ok = (not found) and bool(got)
+    underpowered = (not got) and bool(survived_only)
     print("\n" + "=" * 74)
     if ok:
         print("CALIBRATED. It says no to noise and yes to a real edge, so a")
         print("verdict from it on your own data is worth reading.")
+    elif underpowered:
+        print("TOO SMALL TO CONCLUDE. The tool behaved correctly — it stayed")
+        print("silent on noise and did find the planted edge — but this many")
+        print("symbols and null runs cannot certify it. A negative verdict")
+        print("from a run this size means nothing either.")
     else:
         print("NOT CALIBRATED. Fix this before believing any verdict it gives")
         print("about a real account — including a negative one.")

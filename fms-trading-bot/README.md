@@ -488,6 +488,29 @@ looks like it works. Current state, in both the single-split and the
 4-fold walk-forward mode: silent on noise, and it finds the planted edge
 on 5 of 5 symbols at p = 0.0032.
 
+### How big a run has to be before it can say anything
+
+The first full 13-strategy calibration *failed to find an edge that was
+there by construction*. Nothing was wrong with the strategies: four
+symbols and two null runs cannot certify anything once the search is
+corrected for. Both tools now say this before the run, not after:
+
+| run | a strategy must survive on |
+|---|---|
+| 4 symbols x 2 null runs, 13 strategies | 4 of 4 — a clean sweep, and only while noise never once produces it |
+| 6 x 2, 13 strategies | 5 of 6 |
+| 6 x 3, 13 strategies | 4 of 6 |
+| 6 x 7, 13 strategies | 3 of 6 |
+| 6 x 7, one named strategy | 2 of 6 |
+
+More null runs buy power because the noise rate they leave open is what
+sets the bar. `calibrate.py` also separates a **miss** ("it did not find
+the planted edge") from **underpowered** ("it found it and the arithmetic
+could not certify it") — the two look identical in a verdict and need
+opposite responses. A negative result from an underpowered run means
+nothing at all, and that is worth knowing before it is used to abandon a
+strategy.
+
 Judge on profit factor. A win rate is chosen by where you put the stop —
 `winrate.py` will engineer any figure you name and show you what it costs.
 

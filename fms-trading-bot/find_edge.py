@@ -145,6 +145,26 @@ def null_runs_needed(k: int, n: int, tried: int, hits: int = 0,
     return 0
 
 
+def survivors_needed(n: int, null_trials: int, tried: int) -> int:
+    """Symbols a strategy must survive on before this run could say yes.
+
+    Worth knowing BEFORE the run, not after: with four symbols, two null
+    runs and thirteen strategies, a strategy that survives on all four
+    still scores p = 0.0497 — the configuration cannot produce a positive
+    result even for a strategy that is perfect. A calibration run found
+    that by missing an edge planted on purpose, which is the only way
+    such a thing is ever found.
+
+    Returns 0 when no result at all would clear the bar.
+    """
+    bound = (null_rate_upper(0, null_trials, NULL_CONFIDENCE)
+             if null_trials else 1.0)
+    for k in range(1, n + 1):
+        if family_wise(binomial_at_least(k, n, bound), tried) < ALPHA:
+            return k
+    return 0
+
+
 def symbols_needed(k: int, n: int, tried: int, rate: float,
                    max_symbols: int = 40) -> int:
     """Symbols needed for the same survival fraction to mean something.
@@ -536,6 +556,29 @@ def main() -> int:
     print( "  beat what the same search finds in shuffled copies of the same bars.")
     runs = combos_total * len(symbols) * (1 + args.null_runs)
     print(f"  About {runs:,} simulations — a few minutes. Leave it running.")
+
+    # What this configuration could possibly conclude, said before the
+    # hour is spent rather than after. The numbers are unforgiving with
+    # few symbols or few null runs, and a run that cannot say yes to a
+    # perfect strategy is an hour spent learning nothing.
+    need = survivors_needed(len(symbols), len(symbols) * args.null_runs,
+                            len(grids))
+    if need == 0:
+        print(f"\n  WARNING: {len(symbols)} symbols x {args.null_runs} null "
+              f"runs x {len(grids)} strategies CANNOT produce")
+        print( "  a positive verdict, however good a strategy is. Add symbols, "
+               "add\n  --null-runs, or narrow to one --strategy before "
+               "spending the time.")
+    else:
+        print(f"\n  At this size a strategy must survive on {need} of "
+              f"{len(symbols)} symbols to beat")
+        print( "  the correction for the search — fewer cannot pass, whatever "
+               "its\n  profit factors look like.")
+        if need == len(symbols):
+            print( "  That is a clean sweep, and it holds only while noise "
+                   "never once\n  produces the strategy. A single hit in the "
+                   "null runs and nothing\n  can pass. Add --null-runs or "
+                   "symbols to leave yourself room.")
     print("=" * 78)
 
     series: dict = {}

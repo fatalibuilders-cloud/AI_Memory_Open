@@ -212,3 +212,40 @@ def test_walk_forward_scores_more_of_the_history_than_one_split():
     one = sum(end - start for _, start, end in folds_of(9000, 1))
     many = sum(end - start for _, start, end in folds_of(9000, 4))
     assert many > one
+
+
+def test_a_run_too_small_to_ever_say_yes_is_named_before_it_runs():
+    """4 symbols x 2 null runs x 13 strategies demands a clean sweep.
+
+    A strategy surviving all four scores p = 0.0497 — inside the bar by
+    0.0003, and only while noise never once produces it. One null hit
+    and nothing can pass. A calibration run at this size duly missed an
+    edge planted on purpose, and an hour of CPU should not be spent
+    discovering that after the fact.
+    """
+    from find_edge import survivors_needed
+    assert survivors_needed(4, 8, STRATEGIES) == 4        # perfect or nothing
+    bound = null_rate_upper(1, 8, NULL_CONFIDENCE)        # a single null hit
+    assert family_wise(binomial_at_least(4, 4, bound), STRATEGIES) > ALPHA
+    # the same four symbols become comfortable with more null runs
+    assert survivors_needed(4, 40, STRATEGIES) < 4
+
+
+def test_the_bar_falls_as_the_null_is_measured_better():
+    """More null runs lower how many symbols a strategy must survive on,
+    because the noise rate they leave open is what sets the bar."""
+    from find_edge import survivors_needed
+    bars = [survivors_needed(6, 6 * r, STRATEGIES) for r in (2, 3, 7)]
+    assert bars == [5, 4, 3], bars
+
+
+def test_naming_one_strategy_lowers_the_bar_by_one_symbol():
+    from find_edge import survivors_needed
+    assert survivors_needed(6, 42, 1) < survivors_needed(6, 42, STRATEGIES)
+
+
+def test_a_perfect_result_is_always_enough_when_anything_is():
+    from find_edge import survivors_needed
+    for n, trials in ((6, 42), (9, 45), (4, 40)):
+        need = survivors_needed(n, trials, STRATEGIES)
+        assert 0 < need <= n, (n, trials, need)
