@@ -61,6 +61,16 @@ OVERRIDABLE = (
     "max_slippage_ratio", "trail_atr_mult", "trail_start_money",
     "min_reward_risk",
     "max_loss_per_trade",
+    "momentum_body_atr",
+)
+
+#: Per-symbol overrides whose value is TEXT, not a number. They need their
+#: own list because the numeric path converts with float() and silently
+#: drops what it cannot parse -- so SYM_XAUUSDM_SESSION_HOURS=7-16 would
+#: have been accepted, ignored, and never mentioned again.
+TEXT_OVERRIDABLE = (
+    "session_hours",
+    "htf_ratios",
 )
 
 
@@ -89,6 +99,14 @@ def _symbol_overrides() -> dict[str, dict[str, object]]:
             out.setdefault(symbol, {})[keys[key]] = float(_clean_value(raw))
         except ValueError:
             continue
+    text_keys = {k.upper(): k for k in TEXT_OVERRIDABLE}
+    for name, raw in os.environ.items():
+        m = re.match(r"^SYM_([A-Z0-9]+)_(.+)$", name.upper())
+        if not m or not raw.strip():
+            continue
+        key = m.group(2)
+        if key in text_keys:
+            out.setdefault(m.group(1), {})[text_keys[key]] = _clean_value(raw)
     # The protection ladder is a list, not a number, but it is the setting
     # that most needs scaling per instrument: $0.25 is a quarter of a
     # EURUSD target and rounding error on Bitcoin.
@@ -292,6 +310,22 @@ class Settings:
     #: How many entry bars make one higher-timeframe bar for the trend
     #: filter. On M5 entries, 12 = 1H and 48 = 4H.
     htf_ratio: int = 12
+    #: Several higher timeframes that must AGREE before a side is taken,
+    #: as bar ratios: "12,48,288" on M5 is 1H, 4H and daily. The blueprint
+    #: reads the stack downwards -- macro sets the environment, the middle
+    #: finds the setup, the entry bar only triggers -- and rejects a lower
+    #: signal that conflicts with a higher one. Empty uses htf_ratio alone,
+    #: which is what every earlier test ran, so results stay comparable.
+    htf_ratios: str = ""
+    #: Hours (UTC) in which trades may be OPENED, e.g. "7-16" for the
+    #: London/New York overlap, "7-11,13-17" for two windows. Empty trades
+    #: every hour. Exits are never blocked by this: a position already
+    #: open is managed around the clock.
+    session_hours: str = ""
+    #: The confirming bar's body must be at least this many ATR. The
+    #: blueprint asks for "a strong momentum candle" and this is the only
+    #: honest way to say it in code. 0 disables the requirement.
+    momentum_body_atr: float = 0.0
     #: Bars forming the "previous session" whose high and low are the
     #: liquidity pool price reaches for. On M5, 288 = one day.
     session_bars: int = 288
@@ -584,6 +618,9 @@ class Settings:
             donchian_period=_i("DONCHIAN_PERIOD", 20),
             strategy=_clean_value(os.environ.get("STRATEGY", "")),
             htf_ratio=_i("HTF_RATIO", 12),
+            htf_ratios=_clean_value(os.environ.get("HTF_RATIOS", "")),
+            session_hours=_clean_value(os.environ.get("SESSION_HOURS", "")),
+            momentum_body_atr=_f("MOMENTUM_BODY_ATR", 0.0),
             session_bars=_i("SESSION_BARS", 288),
             sweep_reject=_f("SWEEP_REJECT", 0.5),
             structure_window=_i("STRUCTURE_WINDOW", 12),

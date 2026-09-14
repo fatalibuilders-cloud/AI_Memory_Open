@@ -331,6 +331,12 @@ def report(res: Result, settings: Settings, symbol: str, spread: float) -> None:
     print(f"  profit factor     : {'inf' if pf == float('inf') else f'{pf:.2f}'}"
           f"   (>1 = profitable, >1.5 = good)")
     print(f"  max drawdown      : {res.max_drawdown_pct:.1f}%")
+    if len(res.trades) >= 20:
+        mc = res.drawdown_percentiles()
+        print(f"  drawdown, reshuffled: {mc[50]:.1f}% typical, "
+              f"{mc[95]:.1f}% at the 95th percentile")
+        print( "                      (same trades, different order — the one "
+               "above is one draw)")
     if res.span_days > 0:
         per_day = res.return_pct / res.span_days
         print(f"  average per day   : {per_day:+.2f}%")

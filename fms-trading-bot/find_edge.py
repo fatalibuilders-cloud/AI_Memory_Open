@@ -26,7 +26,7 @@ import sys
 from copy import copy
 
 from fmsbot.config import Settings
-from fmsbot.sim import simulate
+from fmsbot.sim import SimResult, simulate
 from fmsbot.vecstrategy import VEC_STRATEGIES
 
 #: Fewer trades than this out of sample and the result is noise. Verified:
@@ -177,13 +177,58 @@ def family_wise(pval: float, tried: int) -> float:
     return 1.0 - (1.0 - pval) ** tried
 
 
-def search(base: Settings, bars, point_value: float, spread: float,
-           balance: float, grids: dict, label: str = "") -> dict:
-    """Best in-sample config per strategy, scored out of sample."""
+def folds_of(total: int, folds: int) -> list[tuple[int, int, int]]:
+    """(train_end, test_start, test_end) for each fold.
+
+    One fold is the original two-thirds/one-third split, unchanged, so
+    every earlier measurement still means what it meant.
+
+    More than one is an anchored walk-forward: fit on everything up to a
+    point, score the slice that follows, then move the point forward and
+    refit. It never scores a bar it was fitted on, which is why it can
+    keep asking new questions of a history that has stopped growing --
+    and it answers a different question from a single split, namely
+    whether the strategy keeps working as the market changes rather than
+    whether one set of parameters happened to fit one final third.
+    """
+    if folds <= 1:
+        split = int(total * 2 / 3)
+        return [(split, split, total)]
+    seg = total // (folds + 1)
+    if seg < 2:
+        return [(int(total * 2 / 3), int(total * 2 / 3), total)]
+    out = []
+    for f in range(folds):
+        train_end = seg * (f + 1)
+        end = total if f == folds - 1 else train_end + seg
+        out.append((train_end, train_end, end))
+    return out
+
+
+def fit(base: Settings, train, cls, grid, balance: float,
+        point_value: float, spread: float):
+    """Best in-sample parameters for one strategy, or None."""
     import optimize as opt
 
-    split = int(len(bars) * 2 / 3)
-    train, test = bars[:split], bars[split:]
+    best = None
+    for params in opt.combos(grid):
+        if params.get("ema_fast", 0) >= params.get("ema_slow", 10 ** 9):
+            continue
+        s = copy(base)
+        for key, value in params.items():
+            setattr(s, key, value)
+        r = simulate(train, cls(s), s, balance, point_value, spread)
+        if len(r.trades) < opt.MIN_TRADES:
+            continue
+        if best is None or r.profit_factor > best[1].profit_factor:
+            best = (params, r, s)
+    return best
+
+
+def search(base: Settings, bars, point_value: float, spread: float,
+           balance: float, grids: dict, label: str = "",
+           folds: int = 1) -> dict:
+    """Best in-sample config per strategy, scored out of sample."""
     out = {}
     for name, grid in grids.items():
         if label:
@@ -191,23 +236,27 @@ def search(base: Settings, bars, point_value: float, spread: float,
             # identical to a hang, and a hang is what people assume.
             print(f"\r    {label}: {name:<20}", end="", flush=True)
         cls = VEC_STRATEGIES[name]
-        best = None
-        for params in opt.combos(grid):
-            if params.get("ema_fast", 0) >= params.get("ema_slow", 10 ** 9):
+        ins_all = SimResult(start_balance=balance)
+        oos_all = SimResult(start_balance=balance)
+        params_used = None
+        for train_end, start, end in folds_of(len(bars), folds):
+            best = fit(base, bars[:train_end], cls, grid, balance,
+                       point_value, spread)
+            if best is None:
                 continue
-            s = copy(base)
-            for key, value in params.items():
-                setattr(s, key, value)
-            r = simulate(train, cls(s), s, balance, point_value, spread)
-            if len(r.trades) < opt.MIN_TRADES:
-                continue
-            if best is None or r.profit_factor > best[1].profit_factor:
-                best = (params, r, s)
-        if best is None:
+            params, in_sample, s = best
+            oos = simulate(bars[start:end], cls(s), s, balance,
+                           point_value, spread)
+            ins_all.trades.extend(in_sample.trades)
+            oos_all.trades.extend(oos.trades)
+            ins_all.equity_curve.extend(in_sample.equity_curve)
+            oos_all.equity_curve.extend(oos.equity_curve)
+            # The most recent fold's parameters are the ones that would be
+            # traded tomorrow, so those are the ones worth reporting.
+            params_used = params
+        if params_used is None or not oos_all.trades:
             continue
-        params, in_sample, s = best
-        oos = simulate(test, cls(s), s, balance, point_value, spread)
-        out[name] = (params, in_sample, oos)
+        out[name] = (params_used, ins_all, oos_all)
     return out
 
 
@@ -367,6 +416,11 @@ def main() -> int:
     p.add_argument("--balance", type=float, default=100.0)
     p.add_argument("--timeframe")
     p.add_argument("--strategy", help="test only this one")
+    p.add_argument("--walk-forward", type=int, default=1, metavar="N",
+                   help="N anchored walk-forward folds instead of one "
+                        "two-thirds/one-third split. Refits on everything "
+                        "before each slice, so a history that has stopped "
+                        "growing can still be asked a new question")
     p.add_argument("--null-runs", type=int, default=2,
                    help="shuffled copies per symbol to calibrate against "
                         "(default 2; higher is stricter and slower)")
@@ -405,6 +459,10 @@ def main() -> int:
           f"first two-thirds")
     print(f"  and scored on the final third. A survivor needs profit factor "
           f">= {MIN_OOS_PF}")
+    if args.walk_forward > 1:
+        print(f"  WALK-FORWARD: {args.walk_forward} folds — refit before each "
+              f"slice, scored on the\n  slice that follows, never on a bar it "
+              f"was fitted on.")
     print(f"  and at least {MIN_OOS_TRADES} out-of-sample trades, and must then")
     print( "  beat what the same search finds in shuffled copies of the same bars.")
     runs = combos_total * len(symbols) * (1 + args.null_runs)
@@ -443,15 +501,18 @@ def main() -> int:
             short.add(symbol)
             held = max(held, len(bars))
         results = search(base, bars, point_value, spread, args.balance, grids,
-                         label="searching")
+                         label="searching", folds=args.walk_forward)
 
         # The same search on the same bars with their order destroyed. This
         # is the yardstick: anything the search can find in noise, it will
         # also find in the real series, and that part is not an edge.
         for seed in range(args.null_runs):
+            # The null must run the IDENTICAL procedure, walk-forward
+            # included: a yardstick measured a different way is not one.
             fake = search(base, shuffled(bars, hash(symbol) % 10_000 + seed),
                           point_value, spread, args.balance, grids,
-                          label=f"calibrating {seed + 1}/{args.null_runs}")
+                          label=f"calibrating {seed + 1}/{args.null_runs}",
+                          folds=args.walk_forward)
             for name, (_, _, oos) in fake.items():
                 if survived(oos):
                     null_hits[name] = null_hits.get(name, 0) + 1

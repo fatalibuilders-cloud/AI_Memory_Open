@@ -65,6 +65,15 @@ class VecStrategy:
             eff = a["conf"]["efficiency"][i]
             if eff is None or eff < self.s.min_efficiency:
                 return None
+        # The confirming bar has to mean it. A sweep followed by a bar
+        # that closes almost where it opened is the pattern's shape
+        # without the commitment that makes it worth trading.
+        if self.s.momentum_body_atr > 0 and atr_value > 0:
+            body = a["conf"]["body"][i]
+            if body < atr_value * self.s.momentum_body_atr:
+                return None
+            if a["conf"]["direction"][i] != (1 if side == "buy" else -1):
+                return None
         ok, found = self._confluence_ok(a, i, side, price, atr_value)
         if not ok:
             return None
@@ -339,8 +348,10 @@ class LiquiditySweep(VecStrategy):
     name = "liquidity_sweep"
 
     def warmup(self) -> int:
+        # The slowest timeframe in the stack decides how much history is
+        # needed before any of them has an opinion.
         return max(self.s.session_bars * 2,
-                   self.s.htf_ratio * self.s.ema_slow,
+                   max(self._ratios()) * self.s.ema_slow,
                    self.s.atr_period + 2) + 2
 
     def precompute(self, bars):
@@ -348,20 +359,7 @@ class LiquiditySweep(VecStrategy):
         highs = [b.high for b in bars]
         lows = [b.low for b in bars]
 
-        # Higher-timeframe trend: aggregate N entry bars into one, take an
-        # EMA of those closes, then spread it back over the entry bars so
-        # bar i knows the trend as of the last COMPLETED higher bar.
-        ratio = max(1, self.s.htf_ratio)
-        htf_close = [closes[i] for i in range(ratio - 1, len(closes), ratio)]
-        fast = ema_full(htf_close, self.s.ema_fast)
-        slow = ema_full(htf_close, self.s.ema_slow)
-        trend: list[Optional[int]] = []
-        for i in range(len(bars)):
-            k = i // ratio - 1          # last completed higher-timeframe bar
-            if k < 0 or k >= len(fast) or fast[k] is None or slow[k] is None:
-                trend.append(None)
-            else:
-                trend.append(1 if fast[k] > slow[k] else -1)
+        trend = self._trend_stack(closes, len(bars))
 
         # Previous session's extremes: the pool of resting stops.
         n = self.s.session_bars
@@ -380,6 +378,59 @@ class LiquiditySweep(VecStrategy):
                 "trend": trend, "prev_high": prev_high, "prev_low": prev_low,
                 "atr": atr_full(highs, lows, closes, self.s.atr_period),
                 "conf": self._confluence_arrays(bars)}
+
+    def _ratios(self) -> list[int]:
+        """The higher timeframes that must agree, largest last."""
+        raw = (self.s.htf_ratios or "").strip()
+        if not raw:
+            return [max(1, self.s.htf_ratio)]
+        out = []
+        for part in raw.split(","):
+            part = part.strip()
+            if part:
+                out.append(max(1, int(part)))
+        return sorted(set(out)) or [max(1, self.s.htf_ratio)]
+
+    def _trend_at(self, closes, total, ratio) -> list[Optional[int]]:
+        """One higher timeframe's direction, spread over the entry bars.
+
+        Aggregate `ratio` entry bars into one, take the EMAs of those
+        closes, then read bar i against the last COMPLETED higher bar --
+        never the one still forming, which would be lookahead.
+        """
+        htf_close = [closes[i] for i in range(ratio - 1, len(closes), ratio)]
+        fast = ema_full(htf_close, self.s.ema_fast)
+        slow = ema_full(htf_close, self.s.ema_slow)
+        out: list[Optional[int]] = []
+        for i in range(total):
+            k = i // ratio - 1
+            if k < 0 or k >= len(fast) or fast[k] is None or slow[k] is None:
+                out.append(None)
+            else:
+                out.append(1 if fast[k] > slow[k] else -1)
+        return out
+
+    def _trend_stack(self, closes, total) -> list[Optional[int]]:
+        """The direction every configured timeframe agrees on, or None.
+
+        The blueprint reads the stack downwards -- macro sets the
+        environment, the middle finds the setup, the entry bar only
+        triggers -- and rejects a lower signal that conflicts with a
+        higher one. Unanimity is that rule stated in a way that can be
+        tested: one dissenting timeframe and there is no trade, rather
+        than a weighting that lets a strong opinion outvote a veto.
+
+        With one ratio configured this is exactly the old single-
+        timeframe filter, so every earlier measurement still means what
+        it meant.
+        """
+        stack = [self._trend_at(closes, total, r) for r in self._ratios()]
+        out: list[Optional[int]] = []
+        for i in range(total):
+            votes = {t[i] for t in stack}
+            out.append(votes.pop() if len(votes) == 1 and None not in votes
+                       else None)
+        return out
 
     def _swept(self, a, i, side) -> Optional[tuple[int, float]]:
         """Index and extreme of a sweep within the structure window."""

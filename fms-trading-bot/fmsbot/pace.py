@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 #: tight to clear the spread is a permanent property of the settings and
 #: will block every trade until they change.
 CATEGORIES = (
+    ("outside trading hours", "session filter"),
     ("abnormal conditions", "spread spike"),
     ("stop (limit", "stop too tight for the spread"),
     ("cost of the trade", "target too small for the spread"),
@@ -132,6 +133,10 @@ class Pace:
                              "it will refuse every trade until the exits "
                              "change.")
             fix = {
+                "session filter":
+                    "widen SESSION_HOURS, or accept the lower rate — the "
+                    "hours were chosen to avoid thin markets, and the "
+                    "trades they refuse are the expensive ones",
                 "one position per symbol":
                     "raise MAX_POSITIONS_PER_SYMBOL, or add symbols — the "
                     "interval cannot help while every symbol is occupied",

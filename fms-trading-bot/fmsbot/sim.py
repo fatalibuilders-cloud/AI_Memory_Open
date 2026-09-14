@@ -16,6 +16,7 @@ from typing import Optional
 
 from .broker.base import Bar
 from .vecstrategy import VecStrategy
+from .sessions import Sessions
 
 
 @dataclass
@@ -77,6 +78,38 @@ class SimResult:
             return 0.0
         return (self.end_balance - self.start_balance) / self.start_balance * 100.0
 
+    def drawdown_percentiles(self, runs: int = 500, seed: int = 7,
+                             points=(50, 95)) -> dict:
+        """Worst drawdown across `runs` reshuffles of the trade order.
+
+        The blueprint asks for randomized trade-order analysis, and the
+        reason is that the drawdown a backtest shows is one draw from a
+        distribution: the same trades dealt in a different order produce
+        a different worst moment, and the one that matters is not the one
+        that happened to occur. Wins and losses keep their sizes, so only
+        the sequencing changes -- which is the part the market is free to
+        rearrange on you.
+        """
+        pnls = [t.pnl for t in self.trades]
+        if not pnls or self.start_balance <= 0:
+            return {p: 0.0 for p in points}
+        import random
+        rnd = random.Random(seed)
+        worst = []
+        for _ in range(runs):
+            rnd.shuffle(pnls)
+            equity = peak = self.start_balance
+            deepest = 0.0
+            for pnl in pnls:
+                equity += pnl
+                peak = max(peak, equity)
+                if peak > 0:
+                    deepest = max(deepest, (peak - equity) / peak * 100.0)
+            worst.append(deepest)
+        worst.sort()
+        return {p: worst[min(int(len(worst) * p / 100), len(worst) - 1)]
+                for p in points}
+
     @property
     def per_day_pct(self) -> float:
         return self.return_pct / self.span_days if self.span_days > 0 else 0.0
@@ -88,6 +121,7 @@ def simulate(bars: list[Bar], strategy: VecStrategy, settings,
     if len(bars) > 1:
         res.span_days = (bars[-1].time - bars[0].time) / 86400.0
 
+    hours = Sessions(getattr(settings, "session_hours", ""))
     arrays = strategy.precompute(bars)
     warmup = max(strategy.warmup(), 2)
     open_trades: list[SimTrade] = []
@@ -136,6 +170,11 @@ def simulate(bars: list[Bar], strategy: VecStrategy, settings,
         res.equity_curve.append(equity)
 
         if len(open_trades) >= settings.max_open_positions:
+            continue
+        # Entry happens at the NEXT bar's open, so the session rule is
+        # asked about that bar, not this one. Exits are never gated: a
+        # position already open is managed around the clock.
+        if not hours.allows(nxt.time):
             continue
         signal = strategy.at(i, arrays)
         if signal is None:

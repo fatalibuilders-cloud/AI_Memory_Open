@@ -47,6 +47,13 @@ def arrays(bars, settings) -> dict:
         # Not a confluence factor: a separate question about whether this
         # market is worth trading at all.
         "efficiency": efficiency_full(closes, settings.efficiency_lookback),
+        # Nor is this one. The blueprint's "strong momentum candle" is a
+        # property of the confirming bar, measured against the day's own
+        # volatility so that one number means the same thing on gold and
+        # on EURUSD.
+        "body": [abs(b.close - b.open) for b in bars],
+        "direction": [1 if b.close > b.open else -1 if b.close < b.open else 0
+                      for b in bars],
     }
 
 

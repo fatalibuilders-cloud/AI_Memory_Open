@@ -880,6 +880,79 @@ before it sees money:
 .\.venv\Scripts\python.exe find_edge.py --days 60 --strategy liquidity_sweep
 ```
 
+## The multi-timeframe blueprint
+
+A design document for an "MTF aggressive scalper" — liquidity sweep,
+structure break, momentum confirmation, read down a stack of timeframes
+from monthly to M1. Most of what it describes was already here (the sweep
+setup, HTF bias, risk per trade, daily loss limits, consecutive-loss
+pauses, per-instrument tuning, out-of-sample testing). Four things were
+not, and each is now a setting that can be measured rather than a claim
+that has to be believed.
+
+**A stack of timeframes that must agree.** `HTF_RATIO` used one higher
+timeframe; `HTF_RATIOS` takes several, as bar ratios, and refuses any
+side they do not all agree on:
+
+```env
+HTF_RATIOS=12,48,288      # on M5: 1H, 4H and daily must agree
+```
+
+Unanimity is the document's "reject a lower-timeframe signal when it
+conflicts with a higher one", stated so it can be tested — one dissenting
+timeframe and there is no trade, rather than a weighting that lets a
+strong opinion outvote a veto. Left empty it uses `HTF_RATIO` alone,
+which is what every earlier measurement ran on, so results stay
+comparable.
+
+**Trading hours.** The blueprint's session filter, kept out of the
+strategies on purpose: it is a rule about when the account trades, not
+about what a pattern means. The simulator and the live bot ask the same
+object, so a backtest cannot disagree with a live session about when the
+market was open to it.
+
+```env
+SESSION_HOURS=7-16            # UTC, London/New York overlap
+SESSION_HOURS=7-11,13-17      # two windows
+SYM_XAUUSDM_SESSION_HOURS=7-16    # gold's own hours
+```
+
+UTC, not server time, because a broker's clock moves twice a year and an
+account that silently shifts an hour with it is worse than one that never
+moves. Entries only: a position already open is managed around the clock.
+
+**A momentum candle that means it.** `MOMENTUM_BODY_ATR=0.5` requires the
+confirming bar's body to be at least half an ATR, in the direction of the
+trade. A sweep followed by a bar that closes where it opened has the
+pattern's shape without the commitment.
+
+**Walk-forward testing.** The most useful item in the document, given
+this account's terminal holds only ~98 days of M1 history and a longer
+`--days` returns the same bars:
+
+```powershell
+.\.venv\Scripts\python.exe find_edge.py --days 60 --walk-forward 4 --null-runs 5
+```
+
+Fit on everything up to a point, score the slice that follows, move the
+point forward, refit. It never scores a bar it was fitted on, so a
+history that has stopped growing can still be asked a new question — and
+it answers a better one than a single split: whether the strategy keeps
+working as the market changes, rather than whether one parameter set
+happened to fit one final third. The shuffled null runs the identical
+procedure; a yardstick measured a different way is not one.
+
+**Randomized trade order.** `backtest.py` now reports the drawdown at the
+median and 95th percentile over 500 reshuffles of the trade sequence. The
+drawdown a backtest prints is one draw from a distribution, and the 95th
+percentile is the number to size against.
+
+Two items in the document are not implemented and will not be pretended:
+a **news filter** needs an economic-calendar feed this bot does not have,
+and the **70% win rate** is a target the document itself says to test
+rather than assume — `winrate.py` will engineer any win rate you name and
+show you what it costs in R.
+
 ## Rungs in dollars cap your winners
 
 A live account produced this, over and over:

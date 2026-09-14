@@ -19,6 +19,7 @@ from . import evidence, review
 from .config import Settings
 from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
+from .sessions import Sessions
 from .live import build_strategy, strategy_name
 from .telegram import TelegramRemote
 
@@ -176,6 +177,17 @@ class TradingBot:
 
     def _check_symbol(self, session: BrokerSession, symbol: str) -> None:
         cfg = self.s.for_symbol(symbol)
+        # Trading hours, asked before any work is done. The same object
+        # the simulator asks, so a backtest and a live session cannot
+        # disagree about when this account was open for business. Only
+        # ENTRIES are gated: open positions are managed around the clock.
+        hours = Sessions(cfg.session_hours)
+        if not hours.allows(time.time()):
+            reason = f"outside trading hours ({hours.describe()})"
+            session.last_block = f"{symbol} skipped — {reason}"
+            if session.pace:
+                session.pace.record_block(reason)
+            return
         bars = session.broker.bars(
             symbol, self.s.timeframe,
             max(self.s.history_bars, self.strategy.min_bars() + 2))

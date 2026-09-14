@@ -109,3 +109,10 @@ def test_it_stays_quiet_for_the_first_hour_and_repeats_at_most_hourly():
     p = Pace(target_per_hour=100)
     assert p.shortfall_report([now - 7200], 6) is not None
     assert p.shortfall_report([now - 7200], 6) is None
+
+
+def test_the_session_filter_is_named_and_not_mistaken_for_a_spread_problem():
+    """A quiet hour and a broken setting need opposite responses."""
+    assert classify("outside trading hours (07:00-16:00 UTC)") == "session filter"
+    assert classify("spread 0.00040 is 4.1x its typical — abnormal conditions") \
+        == "spread spike"
