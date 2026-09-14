@@ -415,6 +415,7 @@ def main() -> int:
     null_hits: dict[str, int] = {}
     tested_symbols = []
     short: set[str] = set()
+    held = 0
     for symbol in symbols:
         try:
             bars, point_value, spread = bt.load_mt5(
@@ -437,13 +438,10 @@ def main() -> int:
         print(f"\n{symbol}  ({len(bars)} bars, {span}, spread {spread:g})")
         wanted = bt.bar_count(base.timeframe, args.days)
         if len(bars) < wanted * 0.95:
+            # Once, at the end, not once per symbol: six copies of the
+            # same paragraph buries the result they are printed around.
             short.add(symbol)
-            print(f"    note: asked for {wanted:,} bars, got {len(bars):,} — "
-                  f"the terminal is holding\n          all the history it "
-                  f"keeps. Raise it in MT5 (Tools -> Options ->\n          "
-                  f"Charts -> Max bars in chart), or use a higher --timeframe "
-                  f"to\n          cover more calendar time with the same "
-                  f"number of bars.")
+            held = max(held, len(bars))
         results = search(base, bars, point_value, spread, args.balance, grids,
                          label="searching")
 
@@ -477,10 +475,24 @@ def main() -> int:
         return 1
 
     if short:
+        # What the cap costs in calendar terms, which is what a
+        # confirmation run actually needs: days the strategy has not seen.
+        per_bar = bt.PER_BAR[base.timeframe]
+        covered = held * per_bar / 86400
         print(f"\n  NOTE: {len(short)} of {n} symbols returned less history "
-              f"than asked for, so\n  this window may be largely the same "
-              f"data as a shorter run. Confirming\n  a strategy needs bars it "
-              f"was not chosen on — check the dates above.")
+              f"than asked for. The\n  terminal holds about {held:,} "
+              f"{base.timeframe} bars — roughly {covered:.0f} days of "
+              f"trading —\n  so a longer --days gives the SAME window, not a "
+              f"new one. Confirming a\n  strategy needs bars it was not "
+              f"chosen on. Two ways to get them:\n")
+        print( "    MT5 -> Tools -> Options -> Charts -> Max bars in chart -> "
+               "Unlimited\n    (then restart the terminal), or")
+        for tf in ("M5", "M15", "H1"):
+            if bt.PER_BAR[tf] > per_bar:
+                print(f"    --timeframe {tf}: the same {held:,} bars would "
+                      f"cover about "
+                      f"{held * bt.PER_BAR[tf] / 86400:.0f} days.")
+                break
     if report(per_strategy, null_hits, tested_symbols,
               len(grids), args.null_runs, args.days):
         return 1

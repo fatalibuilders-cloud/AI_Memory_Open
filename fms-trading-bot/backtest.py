@@ -235,7 +235,7 @@ def load_csv(path: str) -> list[Bar]:
 
 
 #: Seconds per bar, by timeframe name.
-_PER_BAR = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
+PER_BAR = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
             "H1": 3600, "H4": 14400, "D1": 86400}
 
 
@@ -245,7 +245,7 @@ def bar_count(timeframe: str, days: int) -> int:
     Note this is a bar COUNT, not a date range: forex prints no bars at
     the weekend, so 60 "days" of M1 reaches back about 84 calendar days.
     """
-    return min(int(days * 86400 / _PER_BAR[timeframe]), 200_000)
+    return min(int(days * 86400 / PER_BAR[timeframe]), 200_000)
 
 
 def typical_spread(bars, symbol: str, info) -> float | None:

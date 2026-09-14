@@ -449,8 +449,24 @@ The run also exposed two defects worth more than the result:
   *Tools -> Options -> Charts -> Max bars in chart*, or a higher
   timeframe.
 
-**Nothing has been proven.** No money, not even demo money, until a run
-on data a strategy was not chosen on comes back positive.
+A fourth run, with costs now priced from the history (EURUSD back to
+0.8 pips from the weekend's 2.0, AUDUSD to 0.9 from 9.2), came back the
+same: **1 of 6, p = 0.629, within noise.** Cheaper costs did lift the
+profit factors — EURUSD 1.30 to 3.41, USDJPY to 1.08, gold to 1.02 —
+but two of those sit under the 1.1 bar, and the bar does not move to
+meet them.
+
+That run also established the ceiling on this question: the terminal
+holds about 100,000 M1 bars, roughly 98 days of trading. `--days 240`
+returns the same June-to-September window as `--days 60`. **There is no
+fresh M1 data to confirm on**, so raising `--days` again only re-reads
+the same bars. `find_edge` now says this once, with the calendar figure
+and the two ways out: raise MT5's max-bars setting, or move to a higher
+timeframe where the same bar budget covers years.
+
+**`liquidity_sweep` is not traded.** Four runs, no edge that survives its
+own null. No money, not even demo money, until a run on data a strategy
+was not chosen on comes back positive.
 
 The second test is the one that matters, and it was not optional. An
 earlier version of this tool used a hand-picked bar (profit factor 1.1
