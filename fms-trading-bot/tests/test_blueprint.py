@@ -218,3 +218,45 @@ def test_it_is_deterministic_so_two_readings_agree():
 
 def test_no_trades_is_not_a_crash():
     assert SimResult(start_balance=1000.0).drawdown_percentiles()[95] == 0.0
+
+
+# -- what the filters cost in trades -----------------------------------
+
+def _sweep_trades(**over):
+    """Trades liquidity_sweep takes over one synthetic series."""
+    import random
+    from fmsbot.broker.base import Bar
+    from fmsbot.sim import simulate
+
+    rnd = random.Random(12)
+    bars, price, step = [], 1.10, 0.0
+    for i in range(9000):
+        step = rnd.gauss(0, 0.0004) + 0.000015 + step * 0.25
+        opened, price = price, price + step
+        bars.append(Bar(i * 300, opened,
+                        max(opened, price) + abs(rnd.gauss(0, 0.0002)),
+                        min(opened, price) - abs(rnd.gauss(0, 0.0002)),
+                        price))
+    s = settings(STRATEGY="liquidity_sweep", FIXED_LOT=0.01,
+                 SESSION_BARS=288, STRUCTURE_WINDOW=12, **over)
+    cls = VEC_STRATEGIES["liquidity_sweep"]
+    return len(simulate(bars, cls(s), s, 100.0, 1000.0, 0.00008).trades)
+
+
+def test_every_blueprint_filter_costs_trades_and_none_adds_any():
+    """Each filter is a veto. Stacking them multiplies the vetoes, and
+    a setup that never fires cannot be measured, however sound it reads."""
+    baseline = _sweep_trades()
+    assert baseline > 0, "the baseline must trade or this proves nothing"
+    for over in ({"HTF_RATIOS": "12,48"},
+                 {"SESSION_HOURS": "7-16"},
+                 {"MOMENTUM_BODY_ATR": 0.5},
+                 {"HTF_RATIOS": "12,48", "SESSION_HOURS": "7-16",
+                  "MOMENTUM_BODY_ATR": 0.5}):
+        assert _sweep_trades(**over) <= baseline, over
+
+
+def test_a_three_deep_stack_can_silence_the_strategy_completely():
+    """Measured, not feared: 1H+4H+daily unanimity leaves nothing to
+    judge on this series, and find_edge needs 30 out-of-sample trades."""
+    assert _sweep_trades(HTF_RATIOS="12,48,288") == 0

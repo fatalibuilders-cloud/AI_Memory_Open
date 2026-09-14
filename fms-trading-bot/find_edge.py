@@ -177,6 +177,12 @@ def family_wise(pval: float, tried: int) -> float:
     return 1.0 - (1.0 - pval) ** tried
 
 
+def opt_min() -> int:
+    """The in-sample trade minimum, named where the message needs it."""
+    import optimize as opt
+    return opt.MIN_TRADES
+
+
 def folds_of(total: int, folds: int) -> list[tuple[int, int, int]]:
     """(train_end, test_start, test_end) for each fold.
 
@@ -445,6 +451,15 @@ def assess(base: Settings, series: dict, grids: dict, null_runs: int,
 
         if not quiet:
             print("\r" + " " * 46 + "\r", end="")
+            # A strategy that never fitted is absent from `results`
+            # entirely, and silence reads as "nothing to say" when it
+            # actually means "this configuration barely trades". With
+            # the blueprint's filters stacked that is the common case,
+            # and it is the finding, not a footnote.
+            missing = sorted(set(grids) - set(results))
+            if missing:
+                print(f"    too few trades to fit ({opt_min()} needed): "
+                      f"{', '.join(missing)}")
         if not results:
             if not quiet:
                 print("    no strategy produced enough trades to judge")

@@ -959,6 +959,28 @@ median and 95th percentile over 500 reshuffles of the trade sequence. The
 drawdown a backtest prints is one draw from a distribution, and the 95th
 percentile is the number to size against.
 
+### What the filters cost
+
+Every one of these is a veto, and vetoes multiply. Measured on one
+synthetic series where the sweep strategy takes 9 trades unfiltered:
+
+| configuration | trades |
+|---|---|
+| baseline, one higher timeframe | 9 |
+| momentum body >= 0.5 ATR | 5 |
+| hours 07:00-16:00 | 3 |
+| stack of two (1H + 4H) | 3 |
+| **stack of three (1H + 4H + daily)** | **0** |
+
+`find_edge.py` needs 30 out-of-sample trades before it will judge
+anything, so a configuration this strict cannot be measured at all — and
+a setup that never fires cannot be profitable however sound it reads.
+This is the tension with a high trade-count goal, stated in numbers:
+every filter that makes a trade better makes trades rarer. The tool now
+names any strategy that produced too few trades to fit, because silence
+there reads as "nothing to report" when it means "this configuration
+barely trades".
+
 Two items in the document are not implemented and will not be pretended:
 a **news filter** needs an economic-calendar feed this bot does not have,
 and the **70% win rate** is a target the document itself says to test
