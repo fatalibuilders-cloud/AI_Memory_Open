@@ -260,3 +260,64 @@ def test_a_three_deep_stack_can_silence_the_strategy_completely():
     """Measured, not feared: 1H+4H+daily unanimity leaves nothing to
     judge on this series, and find_edge needs 30 out-of-sample trades."""
     assert _sweep_trades(HTF_RATIOS="12,48,288") == 0
+
+
+# -- a bad setting must not look like a quiet market -------------------
+
+def test_a_malformed_window_is_caught_at_startup():
+    """check_config.py and the bot both call validate() before trading."""
+    problems = settings(SESSION_HOURS="7").validate()
+    assert any("SESSION_HOURS" in p for p in problems), problems
+    assert not any("SESSION_HOURS" in p
+                   for p in settings(SESSION_HOURS="7-16").validate())
+    assert not any("SESSION_HOURS" in p for p in settings().validate())
+
+
+def test_a_bad_per_symbol_window_is_caught_too_and_named():
+    problems = settings(SYM_XAUUSDM_SESSION_HOURS="25-30").validate()
+    assert any("SYM_XAUUSDM_SESSION_HOURS" in p for p in problems), problems
+
+
+def test_a_bad_setting_does_not_stop_the_trading_loop():
+    """It raised past the loop and out of run(), so the bot went on
+    answering Telegram while never trading again — indistinguishable,
+    from the phone, from a market with no setups in it."""
+    from fmsbot.broker.base import BrokerError
+    from tests.helpers import FakeBroker, make_bot
+
+    s = settings(SYMBOLS="EURUSDm,XAUUSDm", SESSION_HOURS="7-16")
+    bot, session, _ = make_bot(s, FakeBroker(), ["EURUSDm", "XAUUSDm"])
+    session.connected = True
+    calls = []
+
+    def explode(sess, symbol):
+        calls.append(symbol)
+        raise ValueError("wants ranges like 7-16, not '7'")
+
+    bot._check_symbol = explode
+    bot.paused = False
+    bot._notify_closed_positions = lambda sess: None
+    bot._check_pending = lambda sess: None
+    try:
+        bot._tick_session(session)
+    except BrokerError:
+        pass                     # every symbol failing is reported as one
+    assert calls == ["EURUSDm", "XAUUSDm"], "it stopped at the first symbol"
+
+
+def test_why_names_the_strategy_that_is_actually_running():
+    """The one command whose job is explaining silence used to report
+    "EMA<fast>/<slow>" whichever of the thirteen was configured."""
+    from tests.helpers import FakeBroker, make_bot
+
+    s = settings(SYMBOLS="EURUSDm", STRATEGY="liquidity_sweep",
+                 TIMEFRAME="M1", SESSION_HOURS="7-16")
+    bot, session, _ = make_bot(s, FakeBroker(), ["EURUSDm"])
+    session.connected = True
+    bot.sessions = [session]
+    bot.paused = False
+    bot._evidence_blocks = lambda sess: ""
+    out = bot._dispatch("why", [])
+    assert "liquidity_sweep" in out
+    assert "EMA" not in out
+    assert "07:00-16:00 UTC" in out

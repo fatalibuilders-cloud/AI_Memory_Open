@@ -28,11 +28,10 @@ class Sessions:
                 continue
             start, _, end = part.partition("-")
             if not end:
-                raise ValueError(
-                    f"SESSION_HOURS wants ranges like 7-16, not {part!r}")
+                raise ValueError(f"wants ranges like 7-16, not {part!r}")
             a, b = int(start), int(end)
             if not (0 <= a <= 23 and 0 < b <= 24):
-                raise ValueError(f"SESSION_HOURS out of range: {part!r}")
+                raise ValueError(f"hour out of range in {part!r}")
             self.windows.append((a, b))
 
     @property

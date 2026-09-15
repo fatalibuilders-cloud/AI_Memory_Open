@@ -680,6 +680,21 @@ class Settings:
 
     def validate(self) -> list[str]:
         problems = []
+        # Checked here so a typo is caught at startup, by check_config.py or
+        # by the bot before it connects -- not per tick, in the trading loop,
+        # where an exception looks to the operator exactly like a quiet
+        # market: the bot keeps answering Telegram and simply never trades.
+        from .sessions import Sessions
+        for label, spec in [("SESSION_HOURS", self.session_hours)] + [
+                (f"SYM_{symbol_key(sym)}_SESSION_HOURS",
+                 str(over.get("session_hours", "")))
+                for sym, over in self.symbol_overrides.items()]:
+            if not spec:
+                continue
+            try:
+                Sessions(spec)
+            except ValueError as exc:
+                problems.append(f"{label}: {exc}")
         # Multi-account mode validates each account instead of the single set.
         if os.environ.get("ACTIVE_BROKERS", "").strip():
             configs = self.broker_configs()

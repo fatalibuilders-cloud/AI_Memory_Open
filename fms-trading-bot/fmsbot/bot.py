@@ -172,6 +172,13 @@ class TradingBot:
             except BrokerError as exc:
                 failures += 1
                 session.warn_symbol(symbol, exc)
+            except ValueError as exc:
+                # A malformed setting (SESSION_HOURS=7 rather than 7-16)
+                # used to raise straight past this loop and out of run(),
+                # stopping the bot while it still answered Telegram --
+                # which looks exactly like a quiet market.
+                failures += 1
+                session.warn_symbol(symbol, BrokerError(f"bad setting: {exc}"))
         if failures and failures == len(active):
             raise BrokerError(f"all {failures} symbol(s) failing on {session.name}")
 
@@ -1271,9 +1278,20 @@ class TradingBot:
                 blocked = s.last_block
                 if blocked:
                     lines.append(f"  last block: {blocked}")
-            lines.append(f"\nstrategy: EMA{self.s.ema_fast}/{self.s.ema_slow} "
+            # This said "EMA<fast>/<slow>" whatever was configured, so the
+            # one command whose job is to explain silence named the wrong
+            # strategy to anyone running any of the other twelve.
+            lines.append(f"\nstrategy: {self.s.strategy or 'ema_cross'} "
                          f"on {self.s.timeframe}")
-            lines.append("No signal = no trade. Quiet spells are normal.")
+            hours = Sessions(self.s.session_hours)
+            if hours.enabled:
+                inside = hours.allows(time.time())
+                lines.append(
+                    f"trading hours: {hours.describe()} — "
+                    f"{'OPEN now' if inside else 'CLOSED now, entries blocked'}")
+            lines.append("No signal = no trade. Quiet spells are normal, and "
+                         "a setup that fires a few times a day will be silent "
+                         "for hours at a time.")
             return "\n".join(lines)
 
         if command in ("diag", "autotrade", "enable"):
