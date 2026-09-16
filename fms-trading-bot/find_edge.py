@@ -453,6 +453,13 @@ def assess(base: Settings, series: dict, grids: dict, null_runs: int,
         label = "" if quiet else "searching"
         results = search(base, bars, point_value, spread, balance, grids,
                          label=label, folds=folds)
+        # Days of market covered by the slices actually scored, so the
+        # rate below is trades per day of real trading, not per day of
+        # calendar including the weekends these bars skip.
+        span = (bars[-1].time - bars[0].time) / 86400.0 if len(bars) > 1 else 0
+        scored_bars = sum(end - start for _, start, end in
+                          folds_of(len(bars), folds))
+        oos_days = span * scored_bars / len(bars) if bars else 0.0
 
         # The same search on the same bars with their order destroyed.
         # This is the yardstick: anything the search can find in noise,
@@ -490,9 +497,15 @@ def assess(base: Settings, series: dict, grids: dict, null_runs: int,
             if ok:
                 per_strategy.setdefault(name, []).append(symbol)
             if not quiet:
+                # Trades per day, next to the profit factor, because the
+                # two are in direct conflict on this account and seeing
+                # them apart is how a 1000-trades-a-day target got set
+                # against a strategy that signals twice.
+                rate = (f"{len(oos.trades) / oos_days:6.1f}/day"
+                        if oos_days > 0 else " " * 10)
                 print(f"    {name:20} in-sample PF {ins.profit_factor:5.2f}"
                       f"  |  out-of-sample PF {oos.profit_factor:5.2f} "
-                      f"({len(oos.trades):3} trades) "
+                      f"({len(oos.trades):4} trades,{rate}) "
                       f"{'survived' if ok else ''}")
     return per_strategy, null_hits, tested
 

@@ -15,7 +15,7 @@ from dataclasses import replace
 from typing import Optional
 
 from .broker.base import BrokerError
-from . import evidence, review
+from . import evidence, pace, review
 from .config import Settings
 from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
@@ -448,8 +448,9 @@ class TradingBot:
             session.last_block = f"{symbol} refused — {blocked}"
             if session.pace:
                 session.pace.record_block(blocked)
-            self.remote.broadcast(
-                f"🛑 [{session.name}] {symbol} order refused — {blocked}")
+            note = self._refusal_note(session, symbol, blocked)
+            if note:
+                self.remote.broadcast(note)
             return
 
         signal = replace(signal, sl_distance=sl_distance, tp_distance=tp_distance)
@@ -651,6 +652,36 @@ class TradingBot:
                 f"▶️ [{session.name}] pause over — entries resume.")
         elif st.paused_until > time.time():
             session.pause_announced = True
+
+    #: How long an unchanged refusal stays quiet before it is repeated.
+    REFUSAL_QUIET_SECONDS = 1800
+
+    def _refusal_note(self, session: BrokerSession, symbol: str,
+                      reason: str) -> str:
+        """The message to send, or "" while this refusal is unchanged.
+
+        A risk cap the smallest lot cannot satisfy refuses EVERY signal,
+        so the phone filled with ten identical paragraphs in fifteen
+        minutes and the actual trades scrolled away between them. The
+        first one is the information; the next ten are noise, and hiding
+        real events behind noise is how a problem goes unnoticed.
+        """
+        # The numbers in the reason differ every time (the stop moves),
+        # so compare what the refusal is ABOUT, not its exact wording.
+        kind = pace.classify(reason)
+        now = time.time()
+        prev = session.refusals.get(symbol)
+        if prev and prev[0] == kind and now - prev[1] < self.REFUSAL_QUIET_SECONDS:
+            session.refusals[symbol] = (kind, prev[1], prev[2] + 1)
+            return ""
+        repeats = prev[2] if prev and prev[0] == kind else 0
+        session.refusals[symbol] = (kind, now, 1)
+        extra = ""
+        if repeats:
+            mins = (now - prev[1]) / 60.0
+            extra = (f"\n(and {repeats} more like it in the last "
+                     f"{mins:.0f} min — this is the settings, not the market)")
+        return f"🛑 [{session.name}] {symbol} order refused — {reason}{extra}"
 
     def _risk_exceeds_limit(self, session: BrokerSession, cfg, symbol: str,
                             volume: float, sl_distance: float,

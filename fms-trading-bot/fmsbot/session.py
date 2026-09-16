@@ -61,6 +61,11 @@ class BrokerSession:
     #: consecutive order failures caused by a lost trade-server link
     connection_failures: int = 0
     last_block: str = ""          # why the most recent signal was refused
+    #: A refusal that is a permanent property of the settings repeats on
+    #: every signal. Ten identical messages in fifteen minutes bury the
+    #: trades and closes around them, so the same refusal is announced
+    #: once and then counted. symbol -> (message, first seen, count)
+    refusals: dict = field(default_factory=dict)
     #: symbols the broker permanently refuses (trade disabled, unknown), so the
     #: bot stops retrying them every signal. name -> reason
     disabled_symbols: dict[str, str] = field(default_factory=dict)

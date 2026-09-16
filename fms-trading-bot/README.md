@@ -1195,6 +1195,43 @@ Two things now stand between that and an order:
 No single trade may risk more than the whole daily loss limit either, or
 that limit is decorative.
 
+## When the cap and the broker's minimum lot contradict each other
+
+A live account refused nearly every signal for a day:
+
+```
+XAUUSDm order refused — it would risk 29.12, over the 1.02 that
+0.0011% allows, and 0.01 is the smallest size the broker takes
+```
+
+Nothing was broken. "One trade may lose about a dollar" (`RISK_PCT`
+0.0011% of a $93k balance) and "the stop goes beyond the sweep" are each
+reasonable, and on gold at the smallest lot the broker accepts they
+contradict each other: 0.01 lot of gold is one ounce, so a $29 stop risks
+$29 whatever you want it to risk. The bot chose the risk limit over the
+trade, which is correct and looks exactly like a fault.
+
+`feasible.py` prints that arithmetic per symbol before it costs a day:
+
+```powershell
+.\.venv\Scripts\python.exe feasible.py
+.\.venv\Scripts\python.exe feasible.py --risk 0.01
+```
+
+For each symbol: what the smallest lot is worth per price unit, the widest
+stop the cap can pay for, the stop the strategy actually wants, and which
+of the two has to move. There are only ever two answers — raise the cap to
+what the structural stop costs, or set `SL_MONEY` so the stop is sized to
+the cap instead of to structure. The second is not a smaller version of
+the same strategy: the stop stops being the price that says the idea was
+wrong and starts being the price where the money ran out, so it has to be
+re-measured with `find_edge.py` before it is trusted.
+
+Repeated identical refusals are now announced once and then counted. Ten
+copies of the same paragraph in fifteen minutes buried the actual trades
+between them, and `/pace` names this block with its own fix instead of
+filing it under "other".
+
 ## A hard cap on what one trade may lose
 
 A stop loss is the broker's promise, and promises fail: placed at the

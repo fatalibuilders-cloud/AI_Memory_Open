@@ -31,6 +31,12 @@ from dataclasses import dataclass, field
 #: tight to clear the spread is a permanent property of the settings and
 #: will block every trade until they change.
 CATEGORIES = (
+    # The refusal that silenced a live account for a whole day: a $1 cap
+    # that the broker's smallest lot cannot satisfy refuses every signal
+    # on every symbol, and it classified as "other".
+    ("smallest size the broker takes", "risk cap below the minimum lot"),
+    ("max_loss_per_trade cap", "per-trade loss cap"),
+    ("lost in a whole day", "daily loss budget per trade"),
     ("outside trading hours", "session filter"),
     ("abnormal conditions", "spread spike"),
     ("stop (limit", "stop too tight for the spread"),
@@ -133,6 +139,19 @@ class Pace:
                              "it will refuse every trade until the exits "
                              "change.")
             fix = {
+                "risk cap below the minimum lot":
+                    "the smallest lot the broker takes already risks more "
+                    "than RISK_PCT allows on this stop — raise RISK_PCT (or "
+                    "MAX_LOSS_PER_TRADE), or set SL_MONEY so the stop is "
+                    "sized to the cap instead of to structure. Run "
+                    "feasible.py: it prints, per symbol, the largest stop "
+                    "the cap can pay for",
+                "per-trade loss cap":
+                    "raise MAX_LOSS_PER_TRADE, or shorten the stop — at the "
+                    "minimum lot these are the only two ways",
+                "daily loss budget per trade":
+                    "one trade may not risk the whole day's budget: raise "
+                    "DAILY_LOSS_LIMIT_PCT or lower the risk per trade",
                 "session filter":
                     "widen SESSION_HOURS, or accept the lower rate — the "
                     "hours were chosen to avoid thin markets, and the "
