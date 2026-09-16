@@ -15,7 +15,7 @@ from dataclasses import replace
 from typing import Optional
 
 from .broker.base import BrokerError
-from . import evidence, pace, review
+from . import envfile, evidence, pace, review
 from .config import Settings
 from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
@@ -1374,10 +1374,32 @@ class TradingBot:
             if not 0 < value <= 5:
                 return "Risk must be between 0 and 5 (%)."
             self.s.risk_pct = value
+            # Persisted, not just held in memory. A risk change that
+            # reverts on the next restart is dangerous in both
+            # directions: an account quietly back to a cap that refuses
+            # every trade looks like a dead bot, and an account quietly
+            # back to a larger size is worse.
+            try:
+                changed = envfile.save({"RISK_PCT": f"{value:g}"})
+                kept = ("saved to .env" if changed
+                        else "already set to that in .env")
+            except Exception as exc:
+                kept = (f"NOT saved to .env ({str(exc)[:60]}) — it will "
+                        f"revert on restart")
+            lines = [f"Risk per trade set to {value}% — {kept}."]
+            for s_ in self.sessions:
+                try:
+                    money = s_.broker.balance() * value / 100.0
+                except BrokerError:
+                    continue
+                lines.append(f"  {s_.name}: about {money:.2f} per trade")
+            if self.s.max_loss_per_trade > 0:
+                lines.append(f"  MAX_LOSS_PER_TRADE={self.s.max_loss_per_trade:g} "
+                             f"still caps it, whichever is smaller")
             if self.s.fixed_lot > 0:
-                return (f"Risk set to {value}%, but FIXED_LOT={self.s.fixed_lot} is "
-                        f"active so every trade still uses {self.s.fixed_lot} lot. "
-                        f"Set FIXED_LOT=0 in .env to size by risk.")
-            return f"Risk per trade set to {value}%."
+                lines.append(f"  but FIXED_LOT={self.s.fixed_lot} is active, so "
+                             f"every trade still uses {self.s.fixed_lot} lot — "
+                             f"set FIXED_LOT=0 to size by risk")
+            return "\n".join(lines)
 
         return "Unknown command — /help"

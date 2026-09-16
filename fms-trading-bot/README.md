@@ -1227,6 +1227,12 @@ the same strategy: the stop stops being the price that says the idea was
 wrong and starts being the price where the money ran out, so it has to be
 re-measured with `find_edge.py` before it is trusted.
 
+`/risk 0.035` from the phone now **persists to `.env`** and reports what
+the new figure means in money, per account. It used to change the number
+in memory only, so the next restart silently restored the old cap and the
+account went back to refusing every signal — a risk setting that reverts
+on restart is dangerous in both directions.
+
 Repeated identical refusals are now announced once and then counted. Ten
 copies of the same paragraph in fifteen minutes buried the actual trades
 between them, and `/pace` names this block with its own fix instead of

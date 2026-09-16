@@ -16,6 +16,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from fmsbot import envfile
+
 PRESETS: dict[str, dict[str, str]] = {
     # Selective. Few, higher-quality trades. Survives bad weeks.
     "conservative": {
@@ -218,7 +220,7 @@ NOTES = {
 def read_env(path: Path) -> list[str]:
     if not path.is_file():
         sys.exit(f"{path} not found — run this from the fms-trading-bot folder.")
-    return path.read_text(encoding="utf-8").splitlines()
+    return envfile.read_lines(path)
 
 
 def current_values(lines: list[str], keys) -> dict[str, str]:
@@ -236,28 +238,7 @@ def current_values(lines: list[str], keys) -> dict[str, str]:
 
 def apply(lines: list[str], preset: dict[str, str]) -> tuple[list[str], list[str]]:
     """Rewrite owned keys in place; append any that are missing."""
-    seen, out, changes = set(), [], []
-    for line in lines:
-        s = line.strip()
-        if s and not s.startswith("#") and "=" in s:
-            key = s.partition("=")[0].strip()
-            if key in preset:
-                old = s.partition("=")[2].split("#")[0].strip()
-                new = preset[key]
-                if old != new:
-                    changes.append(f"{key}: {old or '(empty)'} -> {new}")
-                seen.add(key)
-                out.append(f"{key}={new}")
-                continue
-        out.append(line)
-    missing = [k for k in preset if k not in seen]
-    if missing:
-        out.append("")
-        out.append("# --- added by preset.py ---")
-        for k in missing:
-            out.append(f"{k}={preset[k]}")
-            changes.append(f"{k}: (not set) -> {preset[k]}")
-    return out, changes
+    return envfile.apply(lines, preset)
 
 
 def main() -> int:
