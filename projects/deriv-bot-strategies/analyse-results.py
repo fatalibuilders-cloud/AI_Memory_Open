@@ -170,6 +170,53 @@ def martingale_what_if(trades, multiplier=2.1, cap=4):
     print("  net %+.2f   largest stake %.2f   worst drawdown %.2f" % (bal, worst, dd))
 
 
+def preregister(n, payout, stake=1.0, trials=200000, seed=20260730):
+    """State, before a run, what result would count as evidence of an edge.
+
+    Under the null hypothesis the market is a coin flip, so each trade pays
+    +payout or -1 with equal probability. Everything below follows from that.
+    """
+    import random
+
+    ev_unit = 0.5 * payout - 0.5
+    sd_unit = math.sqrt(0.5 * payout ** 2 + 0.5 - ev_unit ** 2)
+    mean = n * ev_unit * stake
+    sigma = math.sqrt(n) * sd_unit * stake
+    threshold = mean + 2 * sigma
+    break_even = 1 / (1 + payout)
+    # wins needed for net > threshold:  w*payout - (n-w) > threshold
+    wins_needed = (threshold + n) / (1 + payout)
+
+    rng = random.Random(seed)
+    positive = above = 0
+    for _ in range(trials):
+        w = sum(1 for _ in range(n) if rng.random() < 0.5)
+        net = (w * payout - (n - w)) * stake
+        positive += net > 0
+        above += net > threshold
+
+    print("=" * 64)
+    print("PRE-REGISTERED EXPECTATION for a %d-trade run at %.0f%% payout, %.2f stake" % (n, 100 * payout, stake))
+    print("(what the numbers must beat for the result to mean anything)")
+    print()
+    print("  if the market is a coin flip:")
+    print("    expected net      : %+.2f" % mean)
+    print("    1 sigma           : %.2f      2 sigma: %.2f" % (sigma, 2 * sigma))
+    print("    typical range     : %+.2f to %+.2f  (95%% of runs)" % (mean - 2 * sigma, threshold))
+    print("    chance of finishing in profit by luck alone: %.1f%%" % (100 * positive / trials))
+    print()
+    print("  to claim an edge (2 sigma above the null):")
+    print("    net must exceed   : %+.2f" % threshold)
+    print("    wins must exceed  : %.0f of %d  (%.2f%% win rate)" % (wins_needed, n, 100 * wins_needed / n))
+    print("    break-even rate is: %.2f%%" % (100 * break_even))
+    print("    false-positive rate at this threshold: %.2f%% (Monte Carlo, %d trials)"
+          % (100 * above / trials, trials))
+    print()
+    print("  decide now, not after: a net between %+.2f and %+.2f is the expected outcome"
+          % (mean - 2 * sigma, threshold))
+    print("  of a strategy with no edge, however it feels while it is running.")
+
+
 def chart(trades, stats, path):
     import matplotlib
     matplotlib.use("Agg")
@@ -207,10 +254,23 @@ def chart(trades, stats, path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("csv", nargs="+", help="Deriv transaction CSV export(s)")
+    parser.add_argument("csv", nargs="*", help="Deriv transaction CSV export(s)")
     parser.add_argument("--chart", metavar="PNG", help="write an equity curve chart")
     parser.add_argument("--martingale", action="store_true", help="show what a x2.1 martingale would have done")
+    parser.add_argument("--preregister", type=int, metavar="N",
+                        help="print the thresholds a planned N-trade run must beat, then exit")
+    parser.add_argument("--payout", type=float, default=0.92, metavar="P",
+                        help="payout per unit staked on a win, for --preregister (default 0.92)")
+    parser.add_argument("--stake", type=float, default=1.0, metavar="S",
+                        help="stake per trade, for --preregister (default 1.00)")
     args = parser.parse_args()
+
+    if args.preregister:
+        preregister(args.preregister, args.payout, args.stake)
+        return
+
+    if not args.csv:
+        parser.error("give at least one CSV, or use --preregister N")
 
     trades = read_trades(args.csv)
     if not trades:

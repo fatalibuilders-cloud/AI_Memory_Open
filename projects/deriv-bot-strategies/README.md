@@ -125,6 +125,28 @@ result sits from expectation, streaks, every point where the bot halted itself, 
 aggressive file's stake escalation. The chart plots your equity against the expectation line
 inside a ±2σ cone, which is the quickest way to see whether a run is edge or luck.
 
+## Decide the verdict before the run, not after
+
+`python3 analyse-results.py --preregister 1200` prints what a planned run has to beat. For
+1,200 trades at a 92% payout and a 1.00 stake:
+
+| | |
+| --- | --- |
+| Expected net if the market is a coin flip | **−48.00** |
+| 95% of no-edge runs land between | **−114.51 and +18.51** |
+| Chance of finishing in profit on luck alone | **7.0%** |
+| Net that would count as an edge (2σ) | **above +18.51** |
+| Wins that would take | **635 of 1,200 — a 52.89% win rate** |
+| Break-even win rate | 52.08% |
+
+Verified by Monte Carlo over 200,000 simulated runs: 2.29% of no-edge runs clear that
+threshold, which is the false-positive rate you are accepting.
+
+Write those numbers down before starting. A run that ends at +10 will feel like a winner and
+is not one — it is the 7%. A run that ends at −60 is not a broken bot, it is the middle of
+the expected range. Only a finish above +18.51 is worth a second look, and even then the
+honest next step is to repeat it rather than to raise the stake.
+
 ## How these were validated
 
 Both files were checked against Deriv Bot's own source (`deriv-com/deriv-app`,
