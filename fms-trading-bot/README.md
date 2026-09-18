@@ -1115,6 +1115,29 @@ at the broker's smallest lot, and refuses any symbol whose spread would
 be more than a quarter of the risk or whose stop would sit inside the
 broker's minimum. `--apply` writes them per symbol.
 
+Refusing a symbol takes its slots with it, which shortens every remaining
+trade and widens the spread's share of the risk — so one refusal can
+cause another. The solver re-runs until the set is stable.
+
+Run live against this account at 1000/day, five of six symbols went:
+
+| symbol | moves per M1 bar | spread | spread as share of risk |
+|---|---|---|---|
+| EURUSDm | 0.6 pips | 0.8 pips | 32% |
+| GBPUSDm | 0.9 | 1.0 | 27% |
+| USDJPYm | 1.8 | 2.6 | 35% |
+| AUDUSDm | 0.4 | 0.9 | 54% |
+| USDCADm | 0.6 | 1.6 | 64% |
+| **XAUUSDm** | **$1.22** | **$0.26** | **12%** |
+
+What decides it is movement per unit of spread, not the spread alone.
+AUDUSD moves less than half a pip a minute and costs 0.9 to open: at this
+rate more than half of every stop is paid to the broker before the trade
+starts. Gold moves nearly five times its own spread each minute, so it is
+the only instrument on this account that can be traded a thousand times a
+day — 4 slots, a 5.8-minute hold, a $2.07 stop, and a 37.5% break-even
+win rate.
+
 This is also why the `scalp1000` preset now uses a fixed minimum lot with
 cash exits instead of `RISK_PCT`. Asking `RISK_PCT` to hold each trade to
 a dollar cannot work: 0.0011% of a $93k balance is $1.02, and the

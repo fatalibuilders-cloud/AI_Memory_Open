@@ -128,3 +128,84 @@ def test_the_same_target_becomes_reasonable_with_more_slots():
     spread and one four times it."""
     stop, _ = exits_for_hold(hold_minutes(1000, 24), 0.0001, 3.0)
     assert 0.00008 / stop < 0.25
+
+
+# -- refusing a symbol changes the answer for the others ---------------
+
+LIVE = {   # measured on the account, 2000 M1 bars
+    "EURUSDm": dict(sigma=0.00006, spread=0.00008, value=1000.0, floor=0.0),
+    "GBPUSDm": dict(sigma=0.00009, spread=0.00010, value=1000.0, floor=0.0),
+    "USDJPYm": dict(sigma=0.01779, spread=0.02600, value=6.4, floor=0.0),
+    "AUDUSDm": dict(sigma=0.00004, spread=0.00009, value=1000.0, floor=0.0),
+    "USDCADm": dict(sigma=0.00006, spread=0.00016, value=720.0, floor=0.0),
+    "XAUUSDm": dict(sigma=1.22166, spread=0.26000, value=1.0, floor=0.0),
+}
+
+
+def _solve(symbols=None, target=1000.0, per_symbol=4, ceiling=24, rr=2.0,
+           max_cost=0.25):
+    from rate import solve
+    data = {k: v for k, v in LIVE.items() if symbols is None or k in symbols}
+    return solve(data, target, per_symbol, ceiling, 1.0, rr, max_cost, 24.0)
+
+
+def test_the_live_run_keeps_only_gold():
+    """Five pairs spend 27-65% of the risk on spread at this rate."""
+    got = _solve()
+    assert got["keep"] == ["XAUUSDm"], got["keep"]
+    assert len(got["dropped"]) == 5
+
+
+def test_dropping_symbols_shortens_every_remaining_trade():
+    """The bug this replaced: exits were solved once for 24 slots, five
+    symbols were refused, and the survivor was reported at settings that
+    assumed the other five were still there."""
+    all_six = _solve()
+    gold_only = _solve(symbols=["XAUUSDm"])
+    assert gold_only["slots"] < 24
+    assert gold_only["hold"] < all_six["hold"] or all_six["keep"] == ["XAUUSDm"]
+    # and gold's stop is re-solved for the slots it actually has
+    assert all_six["rows"]["XAUUSDm"]["stop"] == gold_only["rows"]["XAUUSDm"]["stop"]
+
+
+def test_gold_survives_on_its_own_because_it_moves_more_than_it_costs():
+    """1.22 of movement a bar against a 0.26 spread — the ratio that
+    matters is movement per unit of spread, not the spread alone."""
+    got = _solve(symbols=["XAUUSDm"])
+    row = got["rows"]["XAUUSDm"]
+    assert row["cost"] < 0.15
+    assert 35.0 < row["win_rate"] < 40.0
+    assert abs(row["sl_money"] - 2.07) < 0.05
+
+
+def test_a_refusal_can_cascade_into_another():
+    """Fewer symbols means fewer slots means shorter trades means a
+    larger spread share — so one refusal can cause the next."""
+    got = _solve(symbols=["EURUSDm", "GBPUSDm"], max_cost=0.45)
+    assert got["keep"] == [], got["keep"]
+    assert len(got["dropped"]) == 2
+
+
+def test_nothing_survivable_is_reported_as_nothing_not_as_a_default():
+    got = _solve(max_cost=0.01)
+    assert got["keep"] == [] and got["rows"] == {}
+
+
+def test_more_positions_per_symbol_buy_a_longer_trade():
+    tight = _solve(symbols=["XAUUSDm"], per_symbol=4, ceiling=24)
+    roomy = _solve(symbols=["XAUUSDm"], per_symbol=12, ceiling=24)
+    assert roomy["hold"] > tight["hold"]
+    assert roomy["rows"]["XAUUSDm"]["cost"] < tight["rows"]["XAUUSDm"]["cost"]
+
+
+def test_the_ceiling_binds_when_it_is_lower_than_the_per_symbol_total():
+    from rate import slots_for
+    assert slots_for(6, 4, 24) == 24
+    assert slots_for(6, 4, 8) == 8
+    assert slots_for(1, 4, 24) == 4
+
+
+def test_a_lower_target_makes_more_symbols_workable():
+    fast = _solve(target=1000.0)
+    slow = _solve(target=200.0)
+    assert len(slow["keep"]) > len(fast["keep"])
