@@ -72,29 +72,67 @@ def test_the_goal_at_the_live_size_is_not_consistent():
 
 
 def test_the_scalp1000_preset_matches_what_plan_solved():
-    """The preset is the plan. If they drift apart, one of them is a lie."""
+    """The preset is the plan. If they drift apart, one of them is a lie.
+
+    The first version asked RISK_PCT to hold each trade to a dollar. It
+    cannot: 0.0011% of this balance is $1.02 and the broker's smallest
+    lot risks $1.20 to $29 on an ATR stop, so a live account refused
+    every signal for two days. The risk now comes from the exit — a
+    fixed minimum lot with cash exits — which is the only way one number
+    means the same thing on gold and on EURUSD.
+    """
     import preset
     p = preset.PRESETS["scalp1000"]
     assert "scalp1000" in preset.NOTES
 
     balance = BALANCE
-    risk = balance * float(p["RISK_PCT"]) / 100
     rr = float(p["MIN_REWARD_RISK"])
     budget = balance * float(p["DAILY_LOSS_LIMIT_PCT"]) / 100
+    trades = int(p["MAX_TRADES_PER_DAY"])
 
-    # ~$1 a trade: the number that makes 1000 trades possible at all
-    assert 0.8 < risk < 1.5, risk
-    # the day's budget must absorb far more than the planned trade count
-    assert budget / risk > int(p["MAX_TRADES_PER_DAY"]), \
-        "the daily cap still ends the day before the trade count is reached"
-    # and the goal must close at that size
-    need = required_win_rate(150, 1000, risk, rr, cost_ratio=0.15)
-    assert need < PLAUSIBLE and need > 100.0 * 1.15 / (rr + 1), need
+    # Sizing is by fixed lot, so RISK_PCT cannot refuse anything...
+    assert float(p["FIXED_LOT"]) > 0, "cash exits need a fixed size"
+    assert float(p["MAX_LOSS_PER_TRADE"]) == 0, \
+        "an absolute cap would refuse every signal again"
+    # ...and RISK_PCT must still be survivable if the fixed lot is removed
+    assert 0.01 <= float(p["RISK_PCT"]) <= 0.5, p["RISK_PCT"]
+
+    # The day's budget has to absorb the planned trade count at the risk
+    # the exits impose. rate.py sizes those; $1.50 is its upper end here.
+    assert budget / 1.5 > trades, \
+        "the daily cap ends the day before the trade count is reached"
+
+    # And the goal must close at that size.
+    need = required_win_rate(150, 1000, risk=1.0, rr=rr, cost_ratio=0.25)
+    assert need < PLAUSIBLE and need > 100.0 * 1.25 / (rr + 1), need
 
     # exits consistent with the reward floor
     assert float(p["ATR_TP_MULT"]) / float(p["ATR_SL_MULT"]) >= rr - 1e-9
     # and no dollar-denominated ladder, which is what capped every winner
     assert p["PROFIT_STAGES"] == "" and p["TP_MONEY"] == "0"
+
+
+def test_the_preset_has_enough_slots_for_the_rate_it_promises():
+    """Six slots force an 8.6-minute trade whose stop is inside the
+    spread. The slot count is not a taste, it is the rate divided out."""
+    import preset
+    from rate import exits_for_hold, hold_minutes
+    p = preset.PRESETS["scalp1000"]
+
+    slots = min(int(p["MAX_OPEN_POSITIONS"]),
+                int(p["MAX_POSITIONS_PER_SYMBOL"]) * 6)   # six symbols
+    hold = hold_minutes(1000, slots)
+    assert hold > 20, f"{hold:.1f} min per trade is not tradable"
+
+    stop, _ = exits_for_hold(hold, 0.0001, float(p["MIN_REWARD_RISK"]))
+    assert 0.00008 / stop < 0.25, "the spread would be most of the risk"
+
+
+def test_the_note_sends_the_user_to_size_the_exits():
+    """Applying this preset alone leaves ATR stops in place, which is
+    exactly the configuration that refused every trade."""
+    import preset
+    assert "rate.py" in preset.NOTES["scalp1000"]
 
 
 def test_the_preset_ladder_cannot_pay_less_than_a_loss():

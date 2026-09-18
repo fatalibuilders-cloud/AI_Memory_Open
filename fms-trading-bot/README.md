@@ -1076,6 +1076,55 @@ The end of a pause is now announced too. A pause at 19:12 followed by
 silence until a restart at 20:19 looks exactly like a fault, even when the
 pause was the 15 minutes it said.
 
+## "I want 1000 trades a day" is arithmetic, not a setting
+
+```powershell
+.\.venv\Scripts\python.exe rate.py --target 1000
+.\.venv\Scripts\python.exe rate.py --target 1000 --apply
+```
+
+A trade count is a consequence of four things:
+
+```
+trades/day = open positions x minutes in the day / minutes per trade
+```
+
+Only the last is negotiable, and it is decided by where the exits sit.
+For a price that drifts nowhere the expected hold is `stop x target /
+(per-bar movement)^2` bars, so demanding more trades pushes the exits
+together — while the spread stays exactly where it was. Past a point the
+stop is smaller than the cost of opening the trade.
+
+On this account, EURUSD at M1 with a 3R target:
+
+| slots | minutes per trade | stop | spread as share of risk | break-even win rate |
+|---|---|---|---|---|
+| 6 | 8.6 | 1.7 pips | 47% | 36.8% |
+| 12 | 17 | 2.4 pips | 33% | 33.3% |
+| **24** | **35** | **3.4 pips** | **24%** | **30.9%** |
+| 48 | 69 | 4.8 pips | 17% | 29.2% |
+
+So 1000 trades a day is reachable, and six symbols holding one position
+each cannot reach it — not for want of signals but because an 8.6-minute
+trade has to stop out inside its own spread. Twenty-four slots (six
+symbols, four positions each) is what the target costs.
+
+`rate.py` measures each symbol's real per-bar movement and spread, solves
+the exits that deliver the rate, converts them to `SL_MONEY`/`TP_MONEY`
+at the broker's smallest lot, and refuses any symbol whose spread would
+be more than a quarter of the risk or whose stop would sit inside the
+broker's minimum. `--apply` writes them per symbol.
+
+This is also why the `scalp1000` preset now uses a fixed minimum lot with
+cash exits instead of `RISK_PCT`. Asking `RISK_PCT` to hold each trade to
+a dollar cannot work: 0.0011% of a $93k balance is $1.02, and the
+smallest lot the broker sells risks $1.20 on AUDUSD and $29 on gold with
+an ATR stop. A live account refused every signal for two days on that
+contradiction.
+
+**None of this creates an edge.** 31% is what those exits need to break
+even, and it is the number `find_edge.py` has to beat.
+
 ## Adopting the solved plan
 
 ```powershell

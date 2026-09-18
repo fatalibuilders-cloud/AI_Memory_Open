@@ -128,14 +128,24 @@ PRESETS["scalp1000"] = {
     "ATR_PERIOD": "14",
     "ATR_SL_MULT": "1.5", "ATR_TP_MULT": "4.5",   # 3R by construction
     "MIN_REWARD_RISK": "3.0",
-    # ~$1 a trade. At 0.5% the daily cap allows four losses, not a thousand.
-    "FIXED_LOT": "0", "RISK_PCT": "0.0011",
+    # A thousand trades a day needs about a dollar of risk each, and
+    # RISK_PCT cannot deliver it: 0.0011% of this balance is $1.02, and
+    # the smallest lot the broker sells risks $1.20-$29 on an ATR stop,
+    # so every signal was refused for two days. The risk has to come from
+    # the EXIT instead -- a fixed minimum lot with cash exits sized per
+    # symbol by rate.py, which is the only way each trade costs the same
+    # on gold and on EURUSD.
+    "FIXED_LOT": "0.01", "RISK_PCT": "0.035",
+    "MAX_LOSS_PER_TRADE": "0",
     "DAILY_LOSS_LIMIT_PCT": "2",
     "DAILY_PROFIT_TARGET": "200", "DAILY_PROFIT_FLOOR": "100",
     "ENTRY_INTERVAL_SECONDS": "518", "COOLDOWN_SECONDS": "518",
     "MIN_TRADES_PER_HOUR": "42", "ENTRY_INTERVAL_FLOOR_SECONDS": "30",
     "MAX_TRADES_PER_DAY": "1200",
-    "MAX_OPEN_POSITIONS": "8", "MAX_POSITIONS_PER_SYMBOL": "1",
+    # trades/day = slots x minutes in the day / minutes held. Six slots
+    # forced an 8.6-minute trade, whose stop is smaller than the spread
+    # that opens it. Twenty-four slots buy a 35-minute trade instead.
+    "MAX_OPEN_POSITIONS": "24", "MAX_POSITIONS_PER_SYMBOL": "4",
     "MAX_CONSECUTIVE_LOSSES": "3", "LOSS_PAUSE_MINUTES": "10",
     # Break-even only. Locking half the target at 3R still pays 1.5R, but
     # letting winners reach the target is what makes a win 3x a loss.
@@ -175,13 +185,29 @@ PRESETS["riskfirst"] = {
 
 NOTES = {
     "scalp1000": (
-        "The solved plan: about 1000 trades a day at 3R, targeting $100-200.\n"
-        "  Needs a 32.5% win rate against a 28.7% after-cost break-even --\n"
-        "  ordinary, but a thin margin, and nothing here creates an edge.\n"
-        "  RISK_PCT is 0.0011 (about $1 a trade) and that is the point: at\n"
-        "  0.5% the 2% daily cap allows FOUR losses, not a thousand.\n"
-        "  Re-run plan.py if the balance changes materially.\n"
-        "  Measure before trusting it:  find_edge.py --days 60"),
+        "About 1000 trades a day at 3R, targeting $100-200.\n"
+        "\n"
+        "  NOT FINISHED until you run this next:\n"
+        "      rate.py --target 1000 --apply\n"
+        "  It sizes each symbol's cash exits so the trades actually last\n"
+        "  the ~35 minutes the rate needs, and so each risks the same\n"
+        "  amount on gold as on EURUSD. Without it the stop is an ATR\n"
+        "  multiple, which risks $1.20 on AUDUSD and $29 on gold -- and\n"
+        "  the earlier version of this preset asked RISK_PCT to hold that\n"
+        "  to a dollar, which the broker's smallest lot cannot do. Two\n"
+        "  days of live trading refused every signal for that reason.\n"
+        "\n"
+        "  Why 24 positions: trades/day = slots x minutes / minutes held.\n"
+        "  At 6 slots a trade must finish in 8.6 minutes, and its stop is\n"
+        "  then smaller than the spread that opened it -- the break-even\n"
+        "  win rate goes to 37%. At 24 slots the trade gets 35 minutes,\n"
+        "  the spread falls to a quarter of the risk, and break-even is\n"
+        "  31%. That is the whole reason for the number.\n"
+        "\n"
+        "  Nothing here creates an edge. 31% is what these exits need to\n"
+        "  break EVEN, and four measurement runs have not found a strategy\n"
+        "  that clears its own costs on this account:\n"
+        "      find_edge.py --days 60 --walk-forward 4"),
     "sweep": (
         "Higher-timeframe trend, a sweep of the previous session's high or low,\n"
         "  a structure break, and a stop at the point that invalidates the idea.\n"
