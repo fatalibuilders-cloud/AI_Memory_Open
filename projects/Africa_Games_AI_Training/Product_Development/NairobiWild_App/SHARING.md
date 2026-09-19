@@ -26,6 +26,17 @@ Why this beats everything else:
 - **You can fix things.** Push a change and everyone gets it on next launch.
   With a file or an APK you would be asking eleven people to re-download.
 
+**The game carries its own address.** On the home screen there is
+**📣 Send the game to a friend** — it opens a card with the link, a **Copy
+link** button and a **Share…** button that hands straight to WhatsApp. That
+button exists because once the game is installed to a home screen there is
+no address bar to copy the link from, which makes an installed copy
+impossible to pass on. Now every player can pass it on, which is also the
+cheapest growth this game will ever get.
+
+The downloaded file and the APK show the same button, and it sends the web
+address — so even someone you handed a file to can invite the next person.
+
 **What to actually send them:**
 
 > Try the game I built 🦁

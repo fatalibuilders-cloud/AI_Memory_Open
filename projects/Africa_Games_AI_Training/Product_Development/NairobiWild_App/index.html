@@ -306,6 +306,7 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
     <button class="btn red" id="btnDuel">⚔️ &nbsp;Duel a friend</button>
     <button class="btn ghost" id="btnRelax">🌤 &nbsp;Relax — no timer, no lives</button>
     <button class="btn ghost sm" id="btnShop">🛍 Shop</button>
+    <button class="btn green" id="btnInvite">📣 &nbsp;Send the game to a friend</button>
     <div class="togs">
       <button class="btn ghost sm" id="btnVoices">🔈 Sound check</button>
       <button class="btn ghost sm" id="btnHow">❓ How to play</button>
@@ -443,8 +444,8 @@ button { font-family:inherit; cursor:pointer; border:0; color:inherit; }
 </div></div>
 
 <div class="ov" id="ovShare"><div class="cardbox">
-  <div style="font-size:38px">🔗</div>
-  <h2>Challenge sent</h2>
+  <div style="font-size:38px" id="shGlyph">🔗</div>
+  <h2 id="shTitle">Challenge sent</h2>
   <p class="sub" id="shSub">Send this link to a friend. They play the exact same board.</p>
   <div class="field" style="margin-bottom:12px"><input id="shLink" readonly></div>
   <div class="col">
@@ -1257,26 +1258,74 @@ function showDuelResult() {
   $('ovDuelEnd').classList.add('active');
 }
 
-/* ---------------- challenge links (offline duel) ---------------- */
-function openShare(seed, myScore) {
-  const url = MP.challengeUrl(location.href, seed, myScore, myNick());
-  $('shSub').textContent = 'You scored ' + myScore.toLocaleString()
-    + '. Send this to a friend — they play the exact same board.';
-  $('shLink').value = url;
-  $('shCopy').onclick = () => {
+/* ---------------- sharing: challenge links and invitations ----------------
+
+   Where the game lives on the web. Needed because `location` is not always
+   something another person can open: inside the installed APK it is
+   appassets.androidplatform.net, and a copy opened from Downloads is a
+   file:// path on one phone. Change this if the game moves to its own
+   domain. */
+const GAME_HOME = 'https://fatalibuilders-cloud.github.io/AI_Memory_Open/';
+
+function shareableHome() {
+  const onWeb = location.protocol === 'http:' || location.protocol === 'https:';
+  if (onWeb && location.hostname !== 'appassets.androidplatform.net') {
+    return location.origin + location.pathname;     // wherever this copy is hosted
+  }
+  return GAME_HOME;
+}
+
+/* One link card, for both a duel challenge and an invitation.
+
+   Copy and Share are both offered on purpose. navigator.share does not
+   exist on desktop, and inside an installed app there is no address bar to
+   fall back on — a link nobody can get out of the page is the same as no
+   link at all. The field is selectable as the last resort. */
+function openLinkCard(o) {
+  $('shGlyph').textContent = o.glyph;
+  $('shTitle').textContent = o.title;
+  $('shSub').textContent = o.sub;
+  $('shLink').value = o.url;
+  const copy = () => {
     const ok = () => { toast('Link copied'); sfx.coin(); };
-    if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok, () => {
-      $('shLink').select(); ok();
-    });
-    else { $('shLink').select(); ok(); }
+    const manual = () => { $('shLink').focus(); $('shLink').select(); ok(); };
+    if (navigator.clipboard) navigator.clipboard.writeText(o.url).then(ok, manual);
+    else manual();
   };
+  $('shCopy').onclick = copy;
   $('shShare').onclick = () => {
-    const text = myNick() + ' scored ' + myScore.toLocaleString()
-      + ' in Nairobi Wild. Same board — can you beat it?';
-    if (navigator.share) navigator.share({ title: 'Nairobi Wild', text, url }).catch(() => {});
-    else { $('shCopy').click(); toast('Link copied — paste it to a friend'); }
+    if (navigator.share) {
+      navigator.share({ title: 'Nairobi Wild', text: o.text, url: o.url }).catch(() => {});
+    } else { copy(); toast('Link copied — paste it to a friend'); }
   };
   $('ovShare').classList.add('active');
+}
+
+function openShare(seed, myScore) {
+  openLinkCard({
+    glyph: '🔗',
+    title: 'Challenge sent',
+    url: MP.challengeUrl(location.href, seed, myScore, myNick()),
+    sub: 'You scored ' + myScore.toLocaleString()
+       + '. Send this to a friend — they play the exact same board.',
+    text: myNick() + ' scored ' + myScore.toLocaleString()
+       + ' in Nairobi Wild. Same board — can you beat it?',
+  });
+}
+
+/* The growth loop, and the answer to "I can play it but I cannot send it":
+   once the game is installed to a home screen there is no address bar to
+   copy the address from. So the game carries its own address. */
+function openInvite() {
+  openLinkCard({
+    glyph: '📣',
+    title: 'Send the game',
+    url: shareableHome(),
+    sub: 'Works on Android and iPhone. No store, no sign-up, and it keeps '
+       + 'playing after the data runs out.',
+    text: 'Play Nairobi Wild 🦁 — match Africa\'s animals across 54 countries. '
+       + 'Free, no sign-up, works offline.',
+  });
 }
 
 /* Someone opened a challenge link we were sent. */
@@ -1488,6 +1537,7 @@ $('btnPlay').onclick = () => { armAudio(); sfx.tap(); mode = 'campaign'; renderM
 $('btnRelax').onclick = () => { armAudio(); sfx.tap(); startRelax(); };
 $('btnDuel').onclick = () => { armAudio(); sfx.tap(); openLobby(); };
 $('btnShop').onclick = () => { refreshChrome(); renderShop(); $('ovShop').classList.add('active'); };
+$('btnInvite').onclick = () => { armAudio(); sfx.tap(); openInvite(); };
 $('shClose').onclick = () => $('ovShop').classList.remove('active');
 /*
  * Sound check. A player who cannot hear a feature concludes it is broken,
