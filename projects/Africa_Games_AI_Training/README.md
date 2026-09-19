@@ -38,6 +38,13 @@ Both games are single-page HTML — open `index.html` in any browser, no server 
 - Nairobi Wild: `Product_Development/NairobiWild_App/index.html` · tests: `node match3.test.mjs` and `node extras.test.mjs`
 - Oware Legends: `Product_Development/OwareLegends_App/index.html` · tests: `node engine.test.mjs`
 
+### Handing it to someone else
+
+`Product_Development/NairobiWild_App/SHARING.md` covers the three ways to get
+it onto a friend's phone without the Play Store: a link (works on Android and
+iPhone, installs to the home screen, plays offline), the single HTML file, or
+the debug APK.
+
 ### On an Android phone
 
 `Product_Development/NairobiWild_App/android/` is the Play Store wrapper — one

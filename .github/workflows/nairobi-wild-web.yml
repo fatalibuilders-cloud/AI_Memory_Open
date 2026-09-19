@@ -1,0 +1,111 @@
+# Publishes Nairobi Wild as a web page anyone can open on a phone.
+#
+# This is the answer to "how do my friends try it without the Play Store":
+# one link, no install warnings, works on Android and iPhone, and after the
+# first visit it plays with the data switched off.
+#
+# Requires one setting, once: repository Settings -> Pages -> Build and
+# deployment -> Source -> GitHub Actions.
+name: Nairobi Wild — Web
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App/**"
+      - ".github/workflows/nairobi-wild-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never two deploys at once, and let a newer push win rather than queue.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  APP_DIR: projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test the game engine
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          node match3.test.mjs
+          node extras.test.mjs
+
+      - name: Assemble the site
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          mkdir -p _site
+          node build.mjs _site/index.html --web
+          cp web/manifest.webmanifest web/icon-192.png web/icon-512.png _site/
+
+          # Stamp the commit into the worker. The browser byte-compares sw.js
+          # on every navigation, so a new commit is what tells an installed
+          # copy to throw away its cache and pick up this build.
+          sed "s/const VERSION = 'dev';/const VERSION = '${GITHUB_SHA::7}';/" web/sw.js > _site/sw.js
+          grep -q "VERSION = '${GITHUB_SHA::7}'" _site/sw.js
+
+          # GitHub Pages runs Jekyll over the output unless told not to, and
+          # Jekyll silently drops files whose names begin with an underscore.
+          touch _site/.nojekyll
+          ls -lh _site
+
+      # The one test that proves the shared link is worth sharing: install it,
+      # cut the network, and check it still opens with progress intact.
+      - name: Check it installs and plays offline
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+          PLAYWRIGHT_PATH="$PWD/node_modules/playwright/index.js" node web.test.mjs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.APP_DIR }}/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Print the link to share
+        run: |
+          echo "### Play it here" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+      # The deploy step cannot turn Pages on for you, and its own error message
+      # does not say where the switch is. This does.
+      - name: Explain the one setting, if the deploy was refused
+        if: failure()
+        run: |
+          {
+            echo "### Pages is not switched on yet"
+            echo
+            echo "The game built fine — only publishing it was refused."
+            echo
+            echo "**Settings → Pages → Build and deployment → Source → GitHub Actions**,"
+            echo "then re-run this workflow. That is the whole fix."
+            echo
+            echo "If the source is already GitHub Actions, the \`github-pages\`"
+            echo "environment is restricting which branches may deploy: Settings →"
+            echo "Environments → github-pages → Deployment branches, and allow"
+            echo "\`${GITHUB_REF_NAME}\` (or merge this branch into main)."
+          } >> "$GITHUB_STEP_SUMMARY"

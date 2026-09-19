@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#0e1519">
 <title>Nairobi Wild</title>
+<!-- web-only:start
+  Home-screen install. These point at files that exist only on the web host,
+  so `build.mjs` strips this block out of the shareable single file and out of
+  the APK — otherwise the one file someone is handed over WhatsApp would sit
+  there failing to fetch three things it does not need.
+  The Apple tags are what make an iPhone open it full-screen: iOS reads these,
+  not the manifest.
+-->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nairobi Wild">
+<!-- web-only:end -->
 <style>
 /* ==================================================================
    Nairobi Wild — dusk over the savanna, with the city behind it.
@@ -1658,6 +1673,28 @@ window.NW_back = function () {
   if (b) { b.click(); return true; }
   return false;              // on the home screen: let Android leave.
 };
+
+/* ------------------------------------------------------------------
+   Offline install, web build only.
+
+   On a real https host the service worker takes the page on first visit,
+   so every launch after that is free and works with the data off — which
+   is the whole reason a shared link beats handing somebody a file.
+
+   Deliberately silent on failure and skipped everywhere else: a downloaded
+   file has no service workers, and inside the APK the game is already on the
+   phone, so there is nothing to cache and sw.js does not exist. The secure
+   context check also lets it run on http://localhost, which is how it gets
+   tested.
+   ------------------------------------------------------------------ */
+if ('serviceWorker' in navigator
+    && window.isSecureContext
+    && location.protocol !== 'file:'
+    && location.hostname !== 'appassets.androidplatform.net') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 
 refreshChrome();
 setInterval(refreshChrome, 30000);

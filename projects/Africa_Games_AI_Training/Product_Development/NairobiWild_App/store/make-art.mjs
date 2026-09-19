@@ -28,6 +28,14 @@ mkdirSync(STORE, { recursive: true });
 jobs.push({ art: 'store', w: 512, h: 512, alpha: false, out: `${STORE}/play-icon-512.png` });
 jobs.push({ art: 'feature', w: 1024, h: 500, alpha: false, out: `${STORE}/play-feature-1024x500.png` });
 
+// The web build's home-screen icons. Same art as the store icon, which is
+// full-bleed with the tile well inside the centre — so it survives being
+// masked into a circle or a squircle, and can be declared "maskable".
+const WEB = resolve(HERE, '../web');
+mkdirSync(WEB, { recursive: true });
+jobs.push({ art: 'store', w: 192, h: 192, alpha: false, out: `${WEB}/icon-192.png` });
+jobs.push({ art: 'store', w: 512, h: 512, alpha: false, out: `${WEB}/icon-512.png` });
+
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 for (const j of jobs) {
   const page = await browser.newPage({ viewport: { width: j.w, height: j.h }, deviceScaleFactor: 1 });

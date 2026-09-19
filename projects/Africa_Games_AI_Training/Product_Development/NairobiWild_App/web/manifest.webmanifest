@@ -1,0 +1,16 @@
+{
+  "name": "Nairobi Wild",
+  "short_name": "Nairobi Wild",
+  "description": "Match Africa's wildlife across 246 levels and 54 countries. Plays offline.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1519",
+  "theme_color": "#0e1519",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -21,3 +21,5 @@ keystore.properties
 
 # Build output — regenerate with `node build.mjs`, never commit it
 projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App/nairobi-wild.html
+projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App/_site/
+projects/Africa_Games_AI_Training/Product_Development/NairobiWild_App/node_modules/
