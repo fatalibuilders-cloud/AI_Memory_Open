@@ -11,3 +11,4 @@
 | `session-summary/2026-08-30--the-beeps-were-the-ui.md` | 2026-08-30 | beeps, ui sounds, tap sound, animal calls, audio logging, diagnosis, call duration |
 | `session-summary/2026-09-06--recorded-sound-pack-loader.md` | 2026-09-06 | sound pack, recordings, sfx, loader, fallback, licensing, credits, ambience, ogg, data cost |
 | `session-summary/2026-09-13--android-app-and-play-bundle.md` | 2026-09-13 | android, aab, play store, webview, webviewassetloader, gradle, github actions, ci, signing, keystore, launcher icon, store listing, screenshots |
+| `session-summary/2026-09-19--sharing-without-the-store.md` | 2026-09-19 | sharing, friends and family, pwa, service worker, offline, web manifest, github pages, install to home screen, apk sideload, distribution |
