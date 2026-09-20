@@ -306,11 +306,28 @@ Symbol suffixes vary by **account type** as well as broker — confirm with
 
 ```powershell
 .\update.ps1
+.\update.ps1 -Preset scalp1000 -Rate 1000
 ```
 
 Does the whole sequence in the right order: stops the bot, kills any
-leftover process from this folder, pulls, validates `.env`, restarts, and
-prints what changed plus the last few log lines.
+leftover process from this folder, pulls, applies a preset and solves the
+exits if asked, validates `.env`, restarts, and prints what changed plus
+the last few log lines. A preset that fails or a rate no symbol can carry
+stops before the restart, so the bot never comes back up on a
+configuration that was refused.
+
+**It sets its own working directory**, so the full path works from
+anywhere and there is no folder to be in first:
+
+```powershell
+& "C:\Users\Eng Ali\AI_Memory_Open\fms-trading-bot\update.ps1" -Rate 1000
+```
+
+That matters more than it sounds. Every other command in this file has to
+be run from the project folder with the venv's python, and a session of
+running them from the home directory produces nothing but `fatal: not a
+git repository` and `is not recognized as the name of a cmdlet` — the
+tools are fine, the shell is simply somewhere else.
 
 Do not just run `git pull` — that only changes files on disk. The running
 bot keeps executing the code it loaded at startup, so an update without a
