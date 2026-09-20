@@ -138,6 +138,11 @@ class Pace:
                 lines.append("This is a SETTINGS problem, not a quiet market: "
                              "it will refuse every trade until the exits "
                              "change.")
+                lines.append("If the exits came from rate.py, widening them "
+                             "breaks the trade rate they were solved for — "
+                             "the honest reading is that this symbol's spread "
+                             "is too large for the rate. Re-run rate.py; it "
+                             "will say so and drop it.")
             fix = {
                 "risk cap below the minimum lot":
                     "the smallest lot the broker takes already risks more "

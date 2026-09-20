@@ -220,7 +220,9 @@ def main() -> int:
                   f"SYMBOLS. Left in, they keep\n  trading on ATR stops and "
                   f"pay that spread on every one of their trades —\n  a "
                   f"refusal here is not a warning, it is a cost.")
-            settings_out["SYMBOLS"] = ",".join(got["keep"])
+            from fmsbot.config import symbols_env_key
+            settings_out[symbols_env_key(s.active_broker)] = \
+                ",".join(got["keep"])
 
         if args.apply:
             from fmsbot import envfile

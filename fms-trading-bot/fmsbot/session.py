@@ -80,8 +80,21 @@ class BrokerSession:
     #: signals awaiting confirmation, keyed by symbol
     pending: dict[str, _Pending] = field(default_factory=dict)
 
+    #: Symbols waiting for their trading session to reopen, symbol -> the
+    #: time to try again. Kept apart from disabled_symbols because these
+    #: come BACK: gold shuts for an hour every day and for the weekend,
+    #: and treating that as "the broker refuses this instrument" retired
+    #: the only symbol the account could trade, overnight, permanently.
+    retry_symbol_at: dict[str, float] = field(default_factory=dict)
+
     def active_symbols(self) -> list[str]:
-        return [s for s in self.symbols if s not in self.disabled_symbols]
+        now = time.time()
+        for symbol, when in list(self.retry_symbol_at.items()):
+            if now >= when:
+                del self.retry_symbol_at[symbol]
+        return [s for s in self.symbols
+                if s not in self.disabled_symbols
+                and s not in self.retry_symbol_at]
 
     @property
     def label(self) -> str:

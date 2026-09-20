@@ -1076,6 +1076,30 @@ The end of a pause is now announced too. A pause at 19:12 followed by
 silence until a restart at 20:19 looks exactly like a fault, even when the
 pause was the 15 minutes it said.
 
+## A shut market is not a broken symbol
+
+At 01:00 a live account produced this:
+
+```
+XAUUSDm disabled — the broker refuses orders on it.
+Order rejected (10017): session closed
+Still trading: EURUSDm, GBPUSDm, USDJPYm, AUDUSDm, USDCADm
+```
+
+Gold takes a daily break, and the broker rejects out-of-hours orders with
+code 10017 — which was on the list of rejections that mean "this account
+may never trade this instrument". So the bot retired the one symbol on
+the account whose movement beats its own spread, for the rest of the
+session, and carried on with five that cannot pay theirs.
+
+Rejections are now read in the right order: "session closed", "market
+closed" and 10018 are a timetable, not a verdict. The symbol is paused
+for half an hour, announced once as outside its trading hours, and
+returns on its own. Only a genuine refusal — trade disabled, symbol does
+not exist — retires it, and that list now also matches the broker's own
+wording ("trading is disabled for this SYMBOL"), which it previously
+recognised only by the numeric code.
+
 ## "I want 1000 trades a day" is arithmetic, not a setting
 
 ```powershell
@@ -1113,7 +1137,10 @@ symbols, four positions each) is what the target costs.
 the exits that deliver the rate, converts them to `SL_MONEY`/`TP_MONEY`
 at the broker's smallest lot, and refuses any symbol whose spread would
 be more than a quarter of the risk or whose stop would sit inside the
-broker's minimum. `--apply` writes them per symbol.
+broker's minimum. `--apply` writes them per symbol, and writes the symbol list to the
+variable that actually supplies it — with `ACTIVE_BROKER=exness` that is
+`BROKER_EXNESS_SYMBOLS`, and a tool writing plain `SYMBOLS` would have
+been silently overruled by the profile.
 
 Refusing a symbol takes its slots with it, which shortens every remaining
 trade and widens the spread's share of the risk — so one refusal can

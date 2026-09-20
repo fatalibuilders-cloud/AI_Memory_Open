@@ -32,17 +32,49 @@ _TF_SECONDS = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800,
 #: Order rejections that will not resolve by retrying: the account simply
 #: cannot trade this instrument.
 _PERMANENT_SYMBOL_ERRORS = (
-    "10017",             # trade disabled for the symbol
+    "10017",                  # trade disabled for the symbol
     "trade disabled",
+    "trading is disabled",    # the same thing in the broker's own words
+    "trading disabled",
     "does not exist",
     "not offered",
-    "market closed" ,    # not permanent, but retrying all session is pointless
 )
 
 
-def _is_permanent_symbol_error(exc: Exception) -> bool:
+#: Rejections that mean "not right now" and carry no information about
+#: whether the account may ever trade this symbol.
+_CLOSED_MARKET_ERRORS = (
+    "session closed",
+    "market closed",
+    "market is closed",
+    "10018",             # the broker's own "market closed" code
+)
+
+#: How long to wait before trying a symbol whose session was shut. Gold's
+#: daily break is about an hour; a weekend is longer, and the retry after
+#: an hour simply finds it shut again and waits another.
+SESSION_RETRY_SECONDS = 1800
+
+
+def _is_closed_market(exc: Exception) -> bool:
     text = str(exc).lower()
-    return any(marker in text for marker in _PERMANENT_SYMBOL_ERRORS[:4])
+    return any(marker in text for marker in _CLOSED_MARKET_ERRORS)
+
+
+def _is_permanent_symbol_error(exc: Exception) -> bool:
+    """Whether this rejection will still be there in an hour.
+
+    Checked AFTER _is_closed_market, and the order is the whole point.
+    The broker rejects an out-of-hours order as "(10017): session
+    closed", 10017 was on the permanent list, and the bot retired gold
+    for the rest of the session at one in the morning -- the only
+    instrument on the account that could carry the trade rate, taken out
+    by its own daily break.
+    """
+    if _is_closed_market(exc):
+        return False
+    text = str(exc).lower()
+    return any(marker in text for marker in _PERMANENT_SYMBOL_ERRORS)
 
 
 #: The link to the broker is down — never keep firing orders into that.
@@ -478,7 +510,21 @@ class TradingBot:
                         f"their broker-side stops.")
                 raise BrokerError(f"trade server unreachable: {exc}")
             session.connection_failures = 0
-            if _is_permanent_symbol_error(exc):
+            if _is_closed_market(exc):
+                until = time.time() + SESSION_RETRY_SECONDS
+                first = symbol not in session.retry_symbol_at
+                session.retry_symbol_at[symbol] = until
+                log.info("[%s] %s out of session, retrying at %s",
+                         session.name, symbol,
+                         time.strftime("%H:%M", time.localtime(until)))
+                if first:
+                    self.remote.broadcast(
+                        f"🕒 {session.name}: {symbol} is outside its trading "
+                        f"hours — the broker will not accept orders on it "
+                        f"right now.\nTrying again at "
+                        f"{time.strftime('%H:%M', time.localtime(until))}. "
+                        f"This is the market's own timetable, not a setting.")
+            elif _is_permanent_symbol_error(exc):
                 # Retrying this every signal only spams the phone — the broker
                 # will keep refusing until the account or symbol list changes.
                 reason = str(exc).split("\n")[0]

@@ -199,6 +199,22 @@ def _profile_value(profile: str, key: str, fallback_env: str) -> str:
     return os.environ.get(fallback_env, "").strip()
 
 
+def symbols_env_key(profile: str) -> str:
+    """The variable that actually supplies the symbol list.
+
+    With ACTIVE_BROKER=exness the list comes from BROKER_EXNESS_SYMBOLS
+    when that is set, and only then from SYMBOLS. A tool that writes
+    SYMBOLS without checking would be silently overruled by the profile
+    -- the change appears to be made, the bot keeps trading the old list,
+    and nothing anywhere says so.
+    """
+    if profile:
+        key = f"BROKER_{profile.upper()}_SYMBOLS"
+        if os.environ.get(key, "").strip():
+            return key
+    return "SYMBOLS"
+
+
 #: Backends that speak MetaTrader 5 and therefore share MT5 credentials.
 MT5_BACKENDS = ("mt5", "exness", "deriv", "vantage")
 
