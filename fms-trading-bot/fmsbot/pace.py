@@ -55,6 +55,15 @@ CATEGORIES = (
 )
 
 
+#: Blocks that will not lift until the trading day rolls over. Repeating
+#: them hourly is noise: nothing the operator does tonight changes them,
+#: and the repetition hides the messages that do matter.
+TERMINAL_FOR_THE_DAY = frozenset({
+    "daily loss limit",
+    "trade cap",
+})
+
+
 def classify(reason: str) -> str:
     """Which knob a block is really about."""
     low = (reason or "").lower()
@@ -74,6 +83,9 @@ class Pace:
     blocks: Counter = field(default_factory=Counter)
     #: when the shortfall was last reported, so it is said once an hour
     last_warned: float = 0.0
+    #: the cause reported last time, so a condition that will not change
+    #: until tomorrow is not re-announced every hour until then
+    last_cause: str = ""
 
     def record_block(self, reason: str) -> None:
         self.blocks[classify(reason)] += 1
@@ -123,6 +135,15 @@ class Pace:
             return None
         if time.time() - self.last_warned < 3600:
             return None
+        # A day's loss limit does not lift until the day does, so saying
+        # so again at 05:15, 06:15, 07:15 and 08:15 adds nothing and
+        # buries whatever else arrives. Reported once, then only if the
+        # reason changes.
+        cause = self.blocks.most_common(1)[0][0] if self.blocks else ""
+        if cause in TERMINAL_FOR_THE_DAY and cause == self.last_cause:
+            self.last_warned = time.time()
+            return None
+        self.last_cause = cause
         self.last_warned = time.time()
 
         lines = [f"{done} trades in the last hour, target "

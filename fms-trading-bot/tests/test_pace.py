@@ -116,3 +116,53 @@ def test_the_session_filter_is_named_and_not_mistaken_for_a_spread_problem():
     assert classify("outside trading hours (07:00-16:00 UTC)") == "session filter"
     assert classify("spread 0.00040 is 4.1x its typical — abnormal conditions") \
         == "spread spike"
+
+
+def test_a_day_ending_block_is_said_once_not_every_hour():
+    """The phone carried the same paragraph at 05:15, 06:15, 07:15 and
+    08:15. A daily loss limit does not lift until the day does, and
+    repeating it buries whatever else arrives."""
+    p = Pace(target_per_hour=42)
+    for _ in range(168):
+        p.record_block("daily loss limit hit (-2.01%)")
+    old = [time.time() - 7200]
+
+    first = p.shortfall_report(old, symbols=1)
+    assert first and "daily loss limit" in first
+
+    # The next hour: the counter empties on each report and refills with
+    # the same refusals, because nothing about the day has changed.
+    for _ in range(168):
+        p.record_block("daily loss limit hit (-2.03%)")
+    p.last_warned = 0
+    assert p.shortfall_report(old, symbols=1) is None
+
+
+def test_a_changed_reason_is_reported_even_after_a_silent_hour():
+    """Silence must be about the cause, not the clock: a new problem is
+    news whatever came before it."""
+    p = Pace(target_per_hour=42)
+    for _ in range(100):
+        p.record_block("daily loss limit hit (-2.01%)")
+    old = [time.time() - 7200]
+    assert p.shortfall_report(old, symbols=1)
+
+    for _ in range(100):
+        p.record_block("EURUSDm cooldown (120s left)")
+    p.last_warned = 0
+    second = p.shortfall_report(old, symbols=1)
+    assert second and "cooldown" in second
+
+
+def test_a_recoverable_block_still_repeats_hourly():
+    """A spread spike can clear in minutes; staying quiet about it would
+    hide a market that came back."""
+    p = Pace(target_per_hour=42)
+    for _ in range(50):
+        p.record_block("spread 0.0004 is 4.1x its typical — abnormal conditions")
+    old = [time.time() - 7200]
+    assert p.shortfall_report(old, symbols=1)
+    for _ in range(50):
+        p.record_block("spread 0.0004 is 4.1x its typical — abnormal conditions")
+    p.last_warned = 0
+    assert p.shortfall_report(old, symbols=1) is not None

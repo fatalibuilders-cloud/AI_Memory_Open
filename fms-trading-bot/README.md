@@ -727,6 +727,14 @@ exits change. Reporting the second as the first sends you to wait out a
 quiet market while your configuration is broken, which is worse than
 saying nothing — so both readings have their own regression test.
 
+A block that cannot lift until the trading day rolls over — the daily
+loss limit, the daily trade cap — is said **once**, with the day's result
+in money and how long until the limits reset, and then not again until
+the reason changes. A live account carried the identical paragraph at
+05:15, 06:15, 07:15 and 08:15; nothing the operator could do at any of
+those hours would have changed it, and the repetition hides the messages
+that do matter.
+
 `/pace` shows the same thing on demand. A bot quietly missing its target
 while you adjust the wrong setting is worse than one that tells you which
 gate is closed.

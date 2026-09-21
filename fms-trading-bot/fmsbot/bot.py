@@ -12,6 +12,7 @@ import logging
 import threading
 import time
 from dataclasses import replace
+from datetime import date, datetime, time as dtime, timedelta
 from typing import Optional
 
 from .broker.base import BrokerError
@@ -650,8 +651,31 @@ class TradingBot:
             report = session.pace.shortfall_report(
                 session.risk.stats.entry_times, len(session.active_symbols()))
             if report:
+                # "0 trades in the last hour" is not the news when the
+                # day's loss limit stopped them. What was lost, and when
+                # trading resumes, is what the operator needs.
+                report += self._day_so_far(session)
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
+
+    def _day_so_far(self, session: BrokerSession) -> str:
+        """The day's result in money, and when the limits reset."""
+        st = session.risk.stats
+        if st.start_balance <= 0:
+            return ""
+        try:
+            equity = session.broker.equity()
+        except BrokerError:
+            return ""
+        moved = equity - st.start_balance
+        pct = moved / st.start_balance * 100.0
+        tomorrow = datetime.combine(date.today() + timedelta(days=1),
+                                    dtime.min)
+        hours = (tomorrow - datetime.now()).total_seconds() / 3600.0
+        return (f"\n\nToday: {moved:+.2f} ({pct:+.2f}%) over {st.trades} "
+                f"trade(s), from {st.start_balance:.2f}."
+                f"\nThe day's limits reset at midnight, in "
+                f"{hours:.0f}h.")
 
     def _start_review(self, session: BrokerSession) -> None:
         """Spend the pause re-examining the settings, off the trading loop.
