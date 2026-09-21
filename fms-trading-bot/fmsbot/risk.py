@@ -20,6 +20,13 @@ log = logging.getLogger("fmsbot.risk")
 class DayStats:
     day: date = field(default_factory=date.today)
     start_balance: float = 0.0
+    #: Equity at the day's first check. The loss limit is measured against
+    #: THIS, not against the balance: balance excludes the profit and loss
+    #: of positions still open, so a float carried past midnight counted
+    #: as a loss made today. An account holding a 2% floating loss at
+    #: midnight began every new day already over its limit, blocked every
+    #: trade, and therefore never closed the positions that caused it.
+    start_equity: float = 0.0
     trades: int = 0
     last_entry: dict[str, float] = field(default_factory=dict)  # symbol -> ts
     #: entry timestamps inside the rolling window, for the trade cap
@@ -61,6 +68,10 @@ class RiskManager:
         self.stats = DayStats(
             day=saved_day,
             start_balance=float(data.get("start_balance", 0.0)),
+            # Older state files predate this field; the balance is the
+            # closest thing they recorded.
+            start_equity=float(data.get("start_equity", 0.0)
+                               or data.get("start_balance", 0.0)),
             trades=int(data.get("trades", 0)),
             last_entry={k: float(v) for k, v in data.get("last_entry", {}).items()},
             entry_times=[float(t) for t in data.get("entry_times", [])],
@@ -77,6 +88,7 @@ class RiskManager:
             self.state_path.write_text(json.dumps({
                 "day": self.stats.day.isoformat(),
                 "start_balance": self.stats.start_balance,
+                "start_equity": self.stats.start_equity,
                 "trades": self.stats.trades,
                 "last_entry": self.stats.last_entry,
                 "entry_times": self.stats.entry_times,
@@ -86,14 +98,30 @@ class RiskManager:
         except OSError:
             log.exception("Could not persist risk state")
 
-    def _roll(self, balance: float) -> None:
+    def _roll(self, balance: float, equity: float | None = None) -> None:
+        # equity defaults to balance only for callers that have no equity
+        # to hand; every gate that matters passes the real figure.
+        equity = balance if equity is None else equity
         if self.stats.day != date.today():
-            self.stats = DayStats(start_balance=balance)
-            log.info("New trading day, start balance %.2f", balance)
+            self.stats = DayStats(start_balance=balance, start_equity=equity)
+            log.info("New trading day, start balance %.2f, equity %.2f",
+                     balance, equity)
             self._save()
-        elif self.stats.start_balance == 0.0:
+            return
+        if self.stats.start_balance == 0.0:
             self.stats.start_balance = balance
             self._save()
+        if self.stats.start_equity == 0.0:
+            self.stats.start_equity = equity or self.stats.start_balance
+            self._save()
+
+    def day_pnl(self, equity: float) -> tuple[float, float]:
+        """(money, percent) the account has moved today."""
+        base = self.stats.start_equity or self.stats.start_balance
+        if base <= 0:
+            return 0.0, 0.0
+        moved = equity - base
+        return moved, moved / base * 100.0
 
     def rolling_trades(self) -> int:
         """Entries inside the rolling window, pruning what has aged out."""
@@ -129,7 +157,7 @@ class RiskManager:
 
     def can_enter(self, symbol: str, balance: float, equity: float,
                   open_total: int, open_symbol: int) -> tuple[bool, str]:
-        self._roll(balance)
+        self._roll(balance, equity)
         s, st = self.s, self.stats
 
         if st.paused_until > time.time():
@@ -155,12 +183,11 @@ class RiskManager:
             return False, f"max open positions ({s.max_open_positions})"
         if open_symbol >= s.max_positions_per_symbol:
             return False, f"already positioned in {symbol}"
-        if st.start_balance > 0:
-            dd = (equity - st.start_balance) / st.start_balance * 100.0
+        if (st.start_equity or st.start_balance) > 0:
+            gain, dd = self.day_pnl(equity)
             if dd <= -s.daily_loss_limit_pct:
                 return False, f"daily loss limit hit ({dd:+.2f}%)"
             # A day's profit is only real once you stop trading it back.
-            gain = equity - st.start_balance
             if s.daily_profit_target > 0 and gain >= s.daily_profit_target:
                 return False, (f"daily profit target reached "
                                f"({gain:+.2f} of {s.daily_profit_target:.2f}) "
@@ -182,16 +209,16 @@ class RiskManager:
         self._save()
 
     def day_summary(self, balance: float, equity: float) -> str:
-        self._roll(balance)
+        self._roll(balance, equity)
         st = self.stats
-        pnl = equity - st.start_balance if st.start_balance else 0.0
+        pnl, _ = self.day_pnl(equity)
         return (f"today: {st.trades}/{self.s.max_trades_per_day} trades, "
                 f"day PnL {pnl:+.2f}")
 
     def explain(self, balance: float, equity: float,
                 open_total: int, symbols: list[str]) -> list[str]:
         """Human-readable state of every gate, for the /why command."""
-        self._roll(balance)
+        self._roll(balance, equity)
         s, st = self.s, self.stats
         out = []
         if st.paused_until > time.time():
@@ -206,10 +233,27 @@ class RiskManager:
                    + (f"/{s.max_consecutive_losses}" if s.max_consecutive_losses
                       else " (pause disabled)"))
         out.append(f"trades today: {st.trades}/{s.max_trades_per_day}")
-        if st.start_balance > 0 and (s.daily_profit_target > 0
-                                     or s.daily_profit_floor > 0):
-            gain = equity - st.start_balance
-            line = f"today: {gain:+.2f}"
+        # Always shown, whether or not a profit target is configured: the
+        # daily LOSS limit was the gate refusing every trade on a live
+        # account and /why -- the command for explaining exactly that --
+        # did not mention it unless a profit target happened to be set.
+        base = st.start_equity or st.start_balance
+        if base > 0:
+            gain, dd = self.day_pnl(equity)
+            line = f"today: {gain:+.2f} ({dd:+.2f}%) from {base:.2f}"
+            if s.daily_loss_limit_pct > 0:
+                line += f", loss limit {s.daily_loss_limit_pct:.1f}%"
+                if dd <= -s.daily_loss_limit_pct:
+                    line += "  ← HIT, no entries until midnight"
+            out.append(line)
+            floating = equity - balance
+            if abs(floating) > 0.005:
+                out.append(f"open positions are {floating:+.2f} — that is "
+                           f"counted in the figure above")
+        if base > 0 and (s.daily_profit_target > 0
+                         or s.daily_profit_floor > 0):
+            gain, _ = self.day_pnl(equity)
+            line = f"target: {gain:+.2f}"
             if s.daily_profit_floor > 0:
                 line += f"  floor {s.daily_profit_floor:.0f}"
                 line += " ✓" if gain >= s.daily_profit_floor else ""

@@ -1362,6 +1362,35 @@ copies of the same paragraph in fifteen minutes buried the actual trades
 between them, and `/pace` names this block with its own fix instead of
 filing it under "other".
 
+## The day's loss is measured from where the day started
+
+A live account went days without a trade, reporting every hour:
+
+```
+0 trades in the last hour, target 42.
+  168 x daily loss limit
+Mostly daily loss limit — the day's loss limit is doing its job.
+```
+
+It was not doing its job. The limit compared today's **equity** against
+today's opening **balance**, and balance excludes the profit and loss of
+positions that are still open. A float carried past midnight was
+therefore counted as a loss made today: an account holding a 2% floating
+loss at midnight began every new day already over its limit, refused
+every entry — and so never closed the positions that caused it. The
+refusal that was supposed to end at midnight never ended.
+
+The day now starts from the account's actual equity, and the limit
+measures against that. A trade going against you still counts while it is
+open, which is the honest reading; what no longer counts is yesterday's.
+
+`/why` also reports this unconditionally now. It showed the day's figure
+only when a profit target happened to be configured, so the command whose
+whole job is explaining silence never mentioned the gate causing it. It
+prints the day's move in money and percent, the limit, whether it is hit,
+and how much of the figure is open positions rather than realised losses
+— those need opposite responses.
+
 ## A hard cap on what one trade may lose
 
 A stop loss is the broker's promise, and promises fail: placed at the
