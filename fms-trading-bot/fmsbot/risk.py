@@ -132,13 +132,23 @@ class RiskManager:
         self.stats.entry_times = [t for t in self.stats.entry_times if t >= cutoff]
         return len(self.stats.entry_times)
 
-    def record_result(self, pnl: float) -> Optional[str]:
-        """Record a closed trade. Returns a message when a pause begins."""
+    def record_result(self, pnl: float, scratch: bool = False) -> Optional[str]:
+        """Record a closed trade. Returns a message when a pause begins.
+
+        `scratch` marks a trade whose stop had already been moved to
+        break-even. It cost nothing, so it is neither a win nor a loss:
+        counting it as a loss put a live account into "3 losses in a row
+        — pausing entries" off two real losses and one trade that was
+        deliberately taken out of risk. The protection that saved the
+        trade was then the reason the bot stopped trading.
+        """
         st, s = self.stats, self.s
         if pnl > 0:
             st.consecutive_losses = 0
             self._save()
             return None
+        if scratch:
+            return None                    # neither breaks the streak nor adds
         st.consecutive_losses += 1
         message = None
         if s.max_consecutive_losses and st.consecutive_losses >= s.max_consecutive_losses:

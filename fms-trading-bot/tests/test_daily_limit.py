@@ -115,3 +115,51 @@ def test_a_state_file_written_before_this_field_existed_still_loads():
         assert r.stats.start_equity == BALANCE
         assert r.stats.trades == 40
         assert not r.can_enter("XAUUSDm", BALANCE, BALANCE * 0.97, 0, 0)[0]
+
+
+# -- a break-even scratch is not a loss --------------------------------
+
+def test_a_break_even_close_neither_breaks_a_streak_nor_adds_to_it():
+    """A live account showed -4.00, +0.00, -4.24 and then "3 losses in a
+    row — pausing entries". One of those three was a trade deliberately
+    taken out of risk: the protection that saved it became the reason
+    the bot stopped trading."""
+    r = _risk(MAX_CONSECUTIVE_LOSSES=3, LOSS_PAUSE_MINUTES=10)
+    assert r.record_result(-4.00) is None
+    assert r.record_result(0.00, scratch=True) is None
+    assert r.stats.consecutive_losses == 1, "the scratch counted"
+    assert r.record_result(-4.24) is None
+    assert r.stats.consecutive_losses == 2
+
+
+def test_three_real_losses_still_pause_entries():
+    r = _risk(MAX_CONSECUTIVE_LOSSES=3, LOSS_PAUSE_MINUTES=10)
+    r.record_result(-4.00)
+    r.record_result(-4.10)
+    assert "3 losses in a row" in (r.record_result(-4.24) or "")
+
+
+def test_a_scratch_does_not_wipe_a_streak_either():
+    """It is not a win: two real losses either side of it are still two
+    losses in a row, and the next one is the third."""
+    r = _risk(MAX_CONSECUTIVE_LOSSES=3, LOSS_PAUSE_MINUTES=10)
+    r.record_result(-4.00)
+    r.record_result(-0.01, scratch=True)
+    r.record_result(-4.10)
+    assert "3 losses in a row" in (r.record_result(-4.24) or "")
+
+
+def test_a_winner_still_clears_the_streak():
+    r = _risk(MAX_CONSECUTIVE_LOSSES=3)
+    r.record_result(-4.00)
+    r.record_result(-4.10)
+    r.record_result(+12.00)
+    assert r.stats.consecutive_losses == 0
+
+
+def test_a_small_loss_that_was_not_protected_is_still_a_loss():
+    """The flag says the stop had reached break-even, not that the
+    number is small — the bot passes it from the position's own state."""
+    r = _risk(MAX_CONSECUTIVE_LOSSES=3)
+    r.record_result(-0.26, scratch=False)
+    assert r.stats.consecutive_losses == 1

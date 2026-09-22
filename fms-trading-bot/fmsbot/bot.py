@@ -622,11 +622,15 @@ class TradingBot:
                     f"🏁 [{session.name}] position {ticket} closed. "
                     f"Equity: {equity:.2f}")
                 continue
-            mark = "✅" if pnl > 0 else "🔻"
+            # A trade whose stop had reached break-even is a scratch, not
+            # a loss: it was taken out of risk on purpose.
+            scratch = ticket in session.stage_done and pnl <= 0
+            mark = "✅" if pnl > 0 else ("➖" if scratch else "🔻")
             self.remote.broadcast(
                 f"{mark} [{session.name}] position {ticket} closed "
-                f"{pnl:+.2f}. Equity: {equity:.2f}")
-            pause_msg = session.risk.record_result(pnl)
+                f"{pnl:+.2f}{' (break-even)' if scratch else ''}. "
+                f"Equity: {equity:.2f}")
+            pause_msg = session.risk.record_result(pnl, scratch=scratch)
             if pause_msg:
                 self.remote.broadcast(f"⏸ [{session.name}] {pause_msg}")
                 self._start_review(session)

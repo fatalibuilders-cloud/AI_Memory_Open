@@ -209,3 +209,33 @@ def test_a_lower_target_makes_more_symbols_workable():
     fast = _solve(target=1000.0)
     slow = _solve(target=200.0)
     assert len(slow["keep"]) > len(fast["keep"])
+
+
+# -- the rate and the risk budget have to agree ------------------------
+
+def test_the_live_account_cannot_carry_a_thousand_trades():
+    """$917 with a 2% daily limit loses $18.35 before it halts. At $4.10
+    a trade that is four trades, not a thousand — and the limit then
+    refuses everything for the rest of the day, which reads on the phone
+    as a broken bot."""
+    from rate import trades_the_budget_allows
+    got = trades_the_budget_allows(917.27, 2.0, 4.10)
+    assert 4 <= got <= 5, got
+
+
+def test_the_same_exits_are_fine_on_the_account_they_were_solved_for():
+    from rate import trades_the_budget_allows
+    assert trades_the_budget_allows(92929.45, 2.0, 4.10) > 450
+
+
+def test_a_wider_daily_limit_buys_proportionally_more_trades():
+    from rate import trades_the_budget_allows
+    assert (trades_the_budget_allows(1000.0, 4.0, 2.0)
+            == 2 * trades_the_budget_allows(1000.0, 2.0, 2.0))
+
+
+def test_nothing_configured_is_not_an_infinite_budget():
+    from rate import trades_the_budget_allows
+    assert trades_the_budget_allows(0.0, 2.0, 4.0) == 0.0
+    assert trades_the_budget_allows(917.0, 0.0, 4.0) == 0.0
+    assert trades_the_budget_allows(917.0, 2.0, 0.0) == 0.0

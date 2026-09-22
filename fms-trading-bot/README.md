@@ -1362,6 +1362,48 @@ copies of the same paragraph in fifteen minutes buried the actual trades
 between them, and `/pace` names this block with its own fix instead of
 filing it under "other".
 
+## A break-even trade is not a loss
+
+A live account produced this sequence, in one minute:
+
+```
+position 3262436914 closed -4.00
+position 3262377837 closed +0.00      <- stop had been moved to break-even
+position 3262403829 closed -4.24
+3 losses in a row — pausing entries for 10 min
+```
+
+Two losses and a scratch. The middle trade had reached +9.22, its stop
+was moved to break-even, and it cost nothing — which is exactly what the
+protection is for. Counting it as a loss meant the feature that saved the
+trade was the reason the bot stopped trading.
+
+A close on a position whose stop had reached break-even is now neither a
+win nor a loss: it does not add to the streak and it does not clear one.
+Two real losses either side of a scratch are still two in a row, and the
+next one is the third. The message says `➖ closed +0.00 (break-even)` so
+the phone shows the same thing the counter does.
+
+## The rate and the risk budget have to agree
+
+`rate.py` now checks the two against each other and says so when they
+disagree:
+
+```
+Balance 917.27, daily loss limit 2% = 18.35.
+At 4.10 a trade that is 4 losing trades before the day halts.
+
+THE BUDGET CANNOT CARRY THE RATE. 1000 trades a day at 4.10 risk is
+4,100 of risk against a 18.35 budget.
+```
+
+A thousand trades a day and a 2% daily loss limit are each reasonable and
+on a small account they contradict each other. The limit stops the day
+after the fourth loss and keeps stopping it, which reads on the phone as
+a broken bot rather than as two numbers that were never compared. A
+smaller target, a larger limit, or a bigger account — the broker's
+smallest lot sets the floor under the risk, so there is no fourth option.
+
 ## The day's loss is measured from where the day started
 
 A live account went days without a trade, reporting every hour:

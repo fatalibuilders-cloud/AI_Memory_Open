@@ -73,6 +73,21 @@ def per_bar_move(bars) -> float:
     return steps[len(steps) // 2] * 1.4826
 
 
+def trades_the_budget_allows(balance: float, daily_loss_pct: float,
+                             risk_per_trade: float) -> float:
+    """Losing trades the day's loss limit permits before it halts trading.
+
+    The rate and the risk budget are solved separately and have to agree.
+    A $917 account with a 2% daily limit can lose $18 in a day; at $4.10
+    a trade that is four losses, not a thousand. The limit then refuses
+    every entry for the rest of the day, which reads on the phone as a
+    broken bot rather than as arithmetic that was never checked.
+    """
+    if balance <= 0 or daily_loss_pct <= 0 or risk_per_trade <= 0:
+        return 0.0
+    return balance * daily_loss_pct / 100.0 / risk_per_trade
+
+
 def slots_for(symbols: int, per_symbol: int, ceiling: int) -> int:
     """Positions that can actually be open at once."""
     return max(1, min(symbols * max(1, per_symbol), max(1, ceiling)))
@@ -237,6 +252,33 @@ def main() -> int:
             print(f"    MIN_TRADES_PER_HOUR={args.target / args.hours:.0f}")
         else:
             print( "\n  Re-run with --apply to write these.")
+
+        # Does the day's loss budget survive the rate it was asked for?
+        try:
+            balance = broker.balance()
+        except Exception:
+            balance = 0.0
+        biggest = max(r["sl_money"] for r in got["rows"].values())
+        room = trades_the_budget_allows(balance, s.daily_loss_limit_pct,
+                                        biggest)
+        if room:
+            print(f"\n  Balance {balance:.2f}, daily loss limit "
+                  f"{s.daily_loss_limit_pct:g}% = "
+                  f"{balance * s.daily_loss_limit_pct / 100:.2f}.")
+            print(f"  At {biggest:.2f} a trade that is {room:.0f} losing "
+                  f"trades before the day halts.")
+            if room < args.target * 0.5:
+                print(f"\n  THE BUDGET CANNOT CARRY THE RATE. "
+                      f"{args.target:g} trades a day at")
+                print(f"  {biggest:.2f} risk is {args.target * biggest:,.0f} "
+                      f"of risk against a {balance * s.daily_loss_limit_pct / 100:.2f}")
+                print( "  budget. The limit will stop the day early and keep "
+                       "stopping it, which\n  is not a fault to debug — it is "
+                       "these two numbers disagreeing.")
+                print( "\n  Pick one: a smaller --target, a larger "
+                       "DAILY_LOSS_LIMIT_PCT, or a bigger\n  account. There "
+                       "is no fourth option, and the broker's smallest lot\n"
+                       "  sets the floor under the risk.")
 
         worst = max(r["win_rate"] for r in got["rows"].values())
         print(f"\n  These exits deliver the RATE. They do not create an edge: "
