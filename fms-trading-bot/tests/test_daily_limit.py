@@ -163,3 +163,49 @@ def test_a_small_loss_that_was_not_protected_is_still_a_loss():
     r = _risk(MAX_CONSECUTIVE_LOSSES=3)
     r.record_result(-0.26, scratch=False)
     assert r.stats.consecutive_losses == 1
+
+
+# -- the trade cap and the loss limit must agree -----------------------
+
+def test_the_live_mismatch_is_announced_at_startup():
+    """1200 trades a day against a 2% limit on 909.06: nine trades spent
+    the budget, and the phone kept showing 9/1200."""
+    from tests.helpers import FakeBroker, make_bot
+
+    s = settings(SYMBOLS="XAUUSDm", MAX_TRADES_PER_DAY=1200,
+                 DAILY_LOSS_LIMIT_PCT=2.0, FIXED_LOT=0.01,
+                 SYM_XAUUSDM_SL_MONEY=1.76)
+    bot, session, messages = make_bot(s, FakeBroker(balance=909.06),
+                                      ["XAUUSDm"])
+    bot.remote = type("R", (), {"broadcast": lambda self, m: messages.append(m)})()
+    bot._warn_trade_cap([session])
+    assert messages, "the mismatch was not reported"
+    text = messages[0]
+    assert "1200" in text and "10 trades" in text, text
+
+
+def test_a_cap_the_budget_can_carry_is_not_flagged():
+    from tests.helpers import FakeBroker, make_bot
+
+    s = settings(SYMBOLS="XAUUSDm", MAX_TRADES_PER_DAY=6,
+                 DAILY_LOSS_LIMIT_PCT=2.0, FIXED_LOT=0.01,
+                 SYM_XAUUSDM_SL_MONEY=1.76)
+    bot, session, messages = make_bot(s, FakeBroker(balance=909.06),
+                                      ["XAUUSDm"])
+    bot.remote = type("R", (), {"broadcast": lambda self, m: messages.append(m)})()
+    bot._warn_trade_cap([session])
+    assert not messages, messages
+
+
+def test_the_same_settings_are_fine_on_a_large_account():
+    """Nothing about the settings changed — only what they cost."""
+    from tests.helpers import FakeBroker, make_bot
+
+    s = settings(SYMBOLS="XAUUSDm", MAX_TRADES_PER_DAY=1200,
+                 DAILY_LOSS_LIMIT_PCT=2.0, FIXED_LOT=0.01,
+                 SYM_XAUUSDM_SL_MONEY=1.76)
+    bot, session, messages = make_bot(s, FakeBroker(balance=200_000.0),
+                                      ["XAUUSDm"])
+    bot.remote = type("R", (), {"broadcast": lambda self, m: messages.append(m)})()
+    bot._warn_trade_cap([session])
+    assert not messages, messages

@@ -157,6 +157,49 @@ PRESETS["scalp1000"] = {
     "REVIEW_ON_PAUSE": "true", "REVIEW_DAYS": "90",
 }
 
+PRESETS["small"] = {
+    # For an account of a few hundred to a few thousand, which is where
+    # the broker's minimum lot stops being a rounding error and starts
+    # deciding what can be traded at all.
+    #
+    # 0.01 lot of gold is one ounce: a sensible structural stop on it
+    # risks $5-15, which is 0.5-1.6% of a $900 account -- most of a day's
+    # budget in one trade. The same 0.01 lot of EURUSD is $0.10 a pip, so
+    # a 20-pip stop risks $2. The pairs are what a small account can size
+    # properly, and gold is not.
+    "SYMBOLS": "EURUSDm,GBPUSDm,USDJPYm,AUDUSDm,USDCADm",
+    "STRATEGY": "liquidity_sweep",
+    "ENTRY_MODE": "signal",
+    # M15, not M1. The spread does not shrink when the timeframe does:
+    # at a 20-pip stop EURUSD's 0.8-pip spread is 4% of the risk, and at
+    # the 1.7-pip stop a thousand trades a day demands it is 47%.
+    "TIMEFRAME": "M15",
+    "HTF_RATIO": "4",               # 1H trend from M15 bars
+    "SESSION_BARS": "96",           # one day of M15
+    "SWEEP_REJECT": "0.5",
+    "STRUCTURE_WINDOW": "12",
+    "RR_TARGET": "2.0", "MIN_REWARD_RISK": "2.0",
+    "ATR_PERIOD": "14",
+    "FIXED_LOT": "0", "RISK_PCT": "0.5",
+    "MAX_LOSS_PER_TRADE": "0",
+    "DAILY_LOSS_LIMIT_PCT": "2",
+    # 0.5% a trade against a 2% day is four losses. A cap above that is
+    # decoration: the daily limit ends the day first, and an operator
+    # watching the trade count wonders why.
+    "MAX_TRADES_PER_DAY": "6",
+    "MAX_OPEN_POSITIONS": "3", "MAX_POSITIONS_PER_SYMBOL": "1",
+    "MAX_CONSECUTIVE_LOSSES": "3", "LOSS_PAUSE_MINUTES": "30",
+    "COOLDOWN_SECONDS": "900",
+    "PROFIT_STAGES_PCT": "50:0,75:50",
+    "PROFIT_STAGES": "", "BREAKEVEN_AT_MONEY": "0",
+    "TRAIL_ATR_MULT": "1.5", "TRAIL_START_MONEY": "0",
+    "TP_MONEY": "0", "SL_MONEY": "0",
+    "MIN_TRADES_PER_HOUR": "0",
+    "ENTRY_INTERVAL_SECONDS": "0",
+    "MAX_SPREAD_RATIO": "0.25", "MIN_REWARD_COST_RATIO": "1.5",
+    "DAILY_PROFIT_TARGET": "0", "DAILY_PROFIT_FLOOR": "0",
+}
+
 PRESETS["riskfirst"] = {
     # Capital preservation > frequency > profit target.
     # The 1,000/day ceiling is a cap, never a quota: the gates below decide
@@ -184,6 +227,34 @@ PRESETS["riskfirst"] = {
 }
 
 NOTES = {
+    "small": (
+        "For an account of a few hundred to a few thousand.\n"
+        "\n"
+        "  What changed and why, after a live account lost 2.07% in nine\n"
+        "  trades and hit its daily limit before 03:20:\n"
+        "\n"
+        "  - Off M1 interval mode. Entering every 518 seconds in the\n"
+        "    trend direction is the configuration find_edge measured at\n"
+        "    profit factor 0.38 — it gives back 60% of what it risks, and\n"
+        "    it was the one running.\n"
+        "  - Off gold. 0.01 lot is one ounce, so a structural stop risks\n"
+        "    $5-15 — most of a small account's daily budget in one trade.\n"
+        "  - Onto M15. The spread does not shrink with the timeframe: at\n"
+        "    a 20-pip stop EURUSD's spread is 4% of the risk; at the\n"
+        "    1.7-pip stop a thousand trades a day needs, it is 47%.\n"
+        "  - Six trades a day, because 0.5% a trade against a 2% daily\n"
+        "    limit is four losses. A larger cap is decoration.\n"
+        "\n"
+        "  This gives up the trade-count target. It is not reachable on a\n"
+        "  small account: the broker's minimum lot sets a floor under the\n"
+        "  risk, and the daily limit divided by that floor is the most\n"
+        "  trades a day can hold.\n"
+        "\n"
+        "  liquidity_sweep is here because it is the only strategy that\n"
+        "  ever beat its own null on this data — on 3 of 6 symbols, at a\n"
+        "  p that did not survive correction. That is the best evidence\n"
+        "  available, and it is not proof:\n"
+        "      find_edge.py --days 60 --walk-forward 4 --strategy liquidity_sweep"),
     "scalp1000": (
         "About 1000 trades a day at 3R, targeting $100-200.\n"
         "\n"

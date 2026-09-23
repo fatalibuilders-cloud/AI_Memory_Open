@@ -127,6 +127,7 @@ class TradingBot:
             log.info("  %-10s %s  symbols: %s", s.name,
                      "connected" if s.connected else "OFFLINE", ", ".join(s.symbols))
         self._warn_interval_mode()
+        self._warn_trade_cap(live)
 
         lines = [f"🤖 Bot online ({state}) — {len(live)} account(s):"]
         for s in self.sessions:
@@ -152,6 +153,43 @@ class TradingBot:
 
     def stop(self) -> None:
         self._stop.set()
+
+    def _warn_trade_cap(self, sessions: list[BrokerSession]) -> None:
+        """Say when the trade cap and the daily loss limit disagree.
+
+        A live account ran MAX_TRADES_PER_DAY=1200 against a 2% daily
+        limit on a $909 balance. Nine trades spent the day's budget and
+        the limit refused everything after 03:20 — for days, reported as
+        "the day's loss limit is doing its job" while the trade count
+        said 9/1200. The two numbers were never compared, and the one
+        that binds is not the one on the phone.
+        """
+        s = self.s
+        if s.daily_loss_limit_pct <= 0 or s.max_trades_per_day <= 0:
+            return
+        for session in sessions:
+            try:
+                balance = session.broker.balance()
+            except BrokerError:
+                continue
+            budget = balance * s.daily_loss_limit_pct / 100.0
+            cfg = s.for_symbol(session.symbols[0]) if session.symbols else s
+            risk = (cfg.sl_money if cfg.fixed_lot > 0 and cfg.sl_money > 0
+                    else balance * cfg.risk_pct / 100.0)
+            if risk <= 0:
+                continue
+            affordable = budget / risk
+            if affordable >= s.max_trades_per_day * 0.5:
+                continue
+            msg = (f"⚠️ [{session.name}] MAX_TRADES_PER_DAY is "
+                   f"{s.max_trades_per_day}, but {balance:.2f} with a "
+                   f"{s.daily_loss_limit_pct:g}% daily limit allows "
+                   f"{budget:.2f} of loss — about {affordable:.0f} trades at "
+                   f"{risk:.2f} each.\nThe daily limit will end the day "
+                   f"long before the trade cap does. Whichever number you "
+                   f"meant, the other one is decoration.")
+            log.warning(msg.replace("\n", " "))
+            self.remote.broadcast(msg)
 
     def _warn_interval_mode(self) -> None:
         if self.s.entry_mode != "interval":

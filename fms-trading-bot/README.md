@@ -1362,6 +1362,43 @@ copies of the same paragraph in fifteen minutes buried the actual trades
 between them, and `/pace` names this block with its own fix instead of
 filing it under "other".
 
+## A small account cannot trade everything
+
+```powershell
+.\.venv\Scripts\python.exe preset.py small
+```
+
+A live account of $909 hit its 2% daily loss limit in **nine trades**,
+before 03:20, running `ema_cross` on M1 in interval mode with
+`MAX_TRADES_PER_DAY=1200`. Every part of that is arithmetic, not bad luck:
+
+- **0.01 lot of gold is one ounce.** A structural stop on it risks $5-15
+  — most of a small account's entire daily budget in a single trade. The
+  same minimum lot of EURUSD is $0.10 a pip, so a 20-pip stop risks $2.
+  What a small account can trade is decided by the broker's minimum lot,
+  not by preference.
+- **The spread does not shrink with the timeframe.** At a 20-pip stop
+  EURUSD's 0.8-pip spread is 4% of the risk; at the 1.7-pip stop a
+  thousand trades a day requires, it is 47%. The trade-rate target is
+  what made the costs unpayable, not the market.
+- **0.5% a trade against a 2% day is four losses.** A cap of 1200 is
+  decoration: the daily limit ends the day first, while the phone shows
+  `9/1200` and nothing explains which number is binding.
+
+The bot now says this at startup rather than leaving it to be discovered:
+
+```
+⚠️ MAX_TRADES_PER_DAY is 1200, but 909.06 with a 2% daily limit allows
+18.18 of loss — about 10 trades at 1.76 each. The daily limit will end
+the day long before the trade cap does.
+```
+
+The `small` preset is the configuration that fits: `liquidity_sweep` on
+M15, signal mode, the FX pairs without gold, six trades a day, 0.5% each.
+It gives up the trade-count target, which is not reachable on a small
+account — the minimum lot sets a floor under the risk, and the daily
+limit divided by that floor is the most trades a day can hold.
+
 ## A break-even trade is not a loss
 
 A live account produced this sequence, in one minute:
