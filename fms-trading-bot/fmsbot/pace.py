@@ -55,12 +55,16 @@ CATEGORIES = (
 )
 
 
-#: Blocks that will not lift until the trading day rolls over. Repeating
-#: them hourly is noise: nothing the operator does tonight changes them,
-#: and the repetition hides the messages that do matter.
-TERMINAL_FOR_THE_DAY = frozenset({
+#: Blocks that will not lift on their own. Repeating them hourly is
+#: noise: nothing happens on its own to change them, and the repetition
+#: hides the messages that do matter. The first two lift at midnight;
+#: the evidence ones lift only when the configuration changes, which
+#: makes hourly repetition of those even less use.
+TERMINAL_BLOCKS = frozenset({
     "daily loss limit",
     "trade cap",
+    "evidence halt",
+    "evidence gate",
 })
 
 
@@ -140,7 +144,7 @@ class Pace:
         # buries whatever else arrives. Reported once, then only if the
         # reason changes.
         cause = self.blocks.most_common(1)[0][0] if self.blocks else ""
-        if cause in TERMINAL_FOR_THE_DAY and cause == self.last_cause:
+        if cause in TERMINAL_BLOCKS and cause == self.last_cause:
             self.last_warned = time.time()
             return None
         self.last_cause = cause
@@ -212,7 +216,9 @@ class Pace:
                     "consecutive losses paused trading",
                 "evidence halt":
                     "the record says this configuration loses; trading is "
-                    "halted deliberately",
+                    "halted deliberately. This does not lift by waiting — "
+                    "/evidence shows the record, and it clears itself when "
+                    "the configuration changes",
                 "evidence gate":
                     "real money needs a proven configuration first",
             }.get(top)

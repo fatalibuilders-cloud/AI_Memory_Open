@@ -166,3 +166,29 @@ def test_a_recoverable_block_still_repeats_hourly():
         p.record_block("spread 0.0004 is 4.1x its typical — abnormal conditions")
     p.last_warned = 0
     assert p.shortfall_report(old, symbols=1) is not None
+
+
+def test_an_evidence_halt_is_not_repeated_hourly_either():
+    """It lifts only when the configuration changes, so an hourly
+    reminder is even less use than for a daily limit — and a live
+    account carried it at 03:05, 04:05, 05:05 and 06:05."""
+    p = Pace(target_per_hour=42)
+    old = [time.time() - 7200]
+    for _ in range(168):
+        p.record_block("the record over 60 trades says this configuration loses")
+    first = p.shortfall_report(old, symbols=1)
+    assert first and "evidence halt" in first
+
+    for _ in range(167):
+        p.record_block("the record over 61 trades says this configuration loses")
+    p.last_warned = 0
+    assert p.shortfall_report(old, symbols=1) is None
+
+
+def test_the_evidence_advice_says_waiting_will_not_help():
+    p = Pace(target_per_hour=42)
+    for _ in range(10):
+        p.record_block("the record over 60 trades says this configuration loses")
+    out = p.shortfall_report([time.time() - 7200], symbols=1)
+    assert "does not lift by waiting" in out
+    assert "/evidence" in out
