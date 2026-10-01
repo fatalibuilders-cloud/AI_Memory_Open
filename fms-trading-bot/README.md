@@ -1364,6 +1364,42 @@ copies of the same paragraph in fifteen minutes buried the actual trades
 between them, and `/pace` names this block with its own fix instead of
 filing it under "other".
 
+## A $100 account, for a month, on demo
+
+```powershell
+.\.venv\Scripts\python.exe preset.py micro
+```
+
+Every order on a live $100 account was refused:
+
+```
+GBPUSDm order refused — it would risk 0.96, over the 0.50 that 0.5%
+allows, and 0.01 is the smallest size the broker takes
+```
+
+0.5% of $100 is $0.50. The broker's smallest trade is 0.01 lot — $0.10 a
+pip — so a ten-pip stop risks twice the cap. **No percentage can buy a
+fraction of the minimum lot.** The sweep's stops ran 10 to 52 pips on
+this data, which on $100 is 1% to 5.2% of the account per trade, and
+there is no setting that makes it smaller.
+
+So `micro` turns the percentage gate off (a fixed 0.01 lot is already the
+floor) and bounds the trade in money instead: $3 a trade, a 10% daily
+limit, four trades a day. A 2% daily limit on $100 is $2 and would refuse
+the day's first entry.
+
+These are reckless percentages on real capital and the right ones on a
+demo account whose job is to produce a month of trades to measure. Scale
+the account, not the risk: at $1,000 the same trades are 0.1-0.5% each,
+which is what they should be.
+
+**What a month can tell you.** Four trades a day over twenty trading days
+is about eighty — enough for the evidence gate to reach a verdict, not
+enough to be sure of it. At 2-3% a trade the spread of outcomes is very
+wide: a month ending up 30% and a month ending down 30% are both ordinary
+results for a strategy with no edge whatsoever. Read `/evidence` and the
+profit factor, not the balance.
+
 ## A small account cannot trade everything
 
 ```powershell

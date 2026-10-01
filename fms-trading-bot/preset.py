@@ -200,6 +200,55 @@ PRESETS["small"] = {
     "DAILY_PROFIT_TARGET": "0", "DAILY_PROFIT_FLOOR": "0",
 }
 
+PRESETS["micro"] = {
+    # For a $100 DEMO account, and nothing else.
+    #
+    # The broker's smallest trade is 0.01 lot, which on a USD-quoted pair
+    # is $0.10 a pip. The sweep's stops ran 10 to 52 pips on this data,
+    # so one trade risks $1 to $5.20 -- between 1% and 5.2% of a hundred
+    # dollars. There is no setting that makes that smaller: 0.01 lot is
+    # the floor, and a percentage cannot buy a fraction of it.
+    #
+    # So the risk-per-trade gate is turned OFF (FIXED_LOT does the
+    # sizing) and the cap is set in money instead. These are reckless
+    # percentages on real capital and the right ones on a demo account
+    # whose purpose is to produce a month of trades to measure.
+    "SYMBOLS": "EURUSDm,GBPUSDm,USDJPYm,AUDUSDm,USDCADm",
+    "STRATEGY": "liquidity_sweep",
+    "ENTRY_MODE": "signal",
+    "TIMEFRAME": "M15",
+    "HTF_RATIO": "4",
+    "SESSION_BARS": "96",
+    "SWEEP_REJECT": "0.5",
+    "STRUCTURE_WINDOW": "12",
+    "RR_TARGET": "2.0", "MIN_REWARD_RISK": "2.0",
+    "ATR_PERIOD": "14",
+    "FIXED_LOT": "0.01",            # the broker's floor, so sizing is moot
+    "RISK_PCT": "3.0",              # inert under FIXED_LOT; sane if removed
+    # Refuse only the widest stops. At $3 a trade a $100 account survives
+    # a bad run; at $5.20 it does not.
+    "MAX_LOSS_PER_TRADE": "3.00",
+    # 10%, because 2% of $100 is $2 and the smallest possible trade risks
+    # more than that -- a 2% limit would refuse the day's first entry.
+    "DAILY_LOSS_LIMIT_PCT": "10",
+    "MAX_TRADES_PER_DAY": "4",
+    "MAX_OPEN_POSITIONS": "2", "MAX_POSITIONS_PER_SYMBOL": "1",
+    "MAX_CONSECUTIVE_LOSSES": "3", "LOSS_PAUSE_MINUTES": "60",
+    "COOLDOWN_SECONDS": "900",
+    "PROFIT_STAGES_PCT": "50:0,75:50",
+    "PROFIT_STAGES": "", "BREAKEVEN_AT_MONEY": "0",
+    "TRAIL_ATR_MULT": "1.5", "TRAIL_START_MONEY": "0",
+    "TP_MONEY": "0", "SL_MONEY": "0",
+    "MIN_TRADES_PER_HOUR": "0", "ENTRY_INTERVAL_SECONDS": "0",
+    "MAX_SPREAD_RATIO": "0.25", "MIN_REWARD_COST_RATIO": "1.5",
+    "DAILY_PROFIT_TARGET": "0", "DAILY_PROFIT_FLOOR": "0",
+    # The whole point of the month: a verdict from the account's own
+    # record rather than from a backtest.
+    "EVIDENCE_MIN_TRADES": "30",
+    "HALT_ON_FAILED_EVIDENCE": "true",
+    "LIVE_REQUIRES_EVIDENCE": "true",
+}
+
 PRESETS["riskfirst"] = {
     # Capital preservation > frequency > profit target.
     # The 1,000/day ceiling is a cap, never a quota: the gates below decide
@@ -227,6 +276,31 @@ PRESETS["riskfirst"] = {
 }
 
 NOTES = {
+    "micro": (
+        "A $100 DEMO account, for one month. Demo only — say it twice.\n"
+        "\n"
+        "  Why the percentages look wrong: the broker's smallest trade is\n"
+        "  0.01 lot, which is $0.10 a pip. The sweep's stops ran 10 to 52\n"
+        "  pips, so one trade risks $1.00 to $5.20 — 1% to 5.2% of a\n"
+        "  hundred dollars. No setting makes that smaller. 0.5% of $100\n"
+        "  is $0.50 and the smallest trade the broker will accept risks\n"
+        "  twice that, which is why every order was refused.\n"
+        "\n"
+        "  So: fixed 0.01 lot, a $3 cap per trade (the widest stops are\n"
+        "  refused), a 10% daily limit, 4 trades a day. A 2% daily limit\n"
+        "  on $100 is $2 and would refuse the day's first entry.\n"
+        "\n"
+        "  What a month can and cannot tell you. Four trades a day over\n"
+        "  twenty trading days is about 80 trades — enough for the\n"
+        "  evidence gate to reach a verdict, and not enough to be sure of\n"
+        "  it. At 2-3% a trade the spread of outcomes is very wide: a\n"
+        "  month that ends up 30% and a month that ends down 30% are both\n"
+        "  ordinary results for a strategy with no edge at all. Read\n"
+        "  /evidence and the profit factor, not the balance.\n"
+        "\n"
+        "  Do not carry these percentages to a funded account. Scale the\n"
+        "  account, not the risk: at $1000 the same trades are 0.1-0.5%\n"
+        "  each, which is what they should have been all along."),
     "small": (
         "For an account of a few hundred to a few thousand.\n"
         "\n"
