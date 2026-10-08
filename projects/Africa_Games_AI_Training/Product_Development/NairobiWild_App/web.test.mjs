@@ -125,6 +125,19 @@ check('no errors while offline', offErrors.length === 0, offErrors.join(' | '));
 const saved = await offline.evaluate(() => !!localStorage.getItem('nairobiWild.v1'));
 check('save file survives', saved);
 
+// Every file the manifest names must actually be there. A typo in an icon or
+// screenshot path is invisible in the page and fatal in a packaging tool.
+const manifestFiles = await page.evaluate(async (m) => {
+  const refs = [...(m.icons || []), ...(m.screenshots || [])].map((i) => i.src);
+  const out = [];
+  for (const src of refs) {
+    const r = await fetch(new URL(src, location.href)).catch(() => null);
+    if (!r || !r.ok) out.push(src);
+  }
+  return out;
+}, manifest);
+check('every manifest file resolves', manifestFiles.length === 0, manifestFiles.join(' '));
+
 // A browser asks for /favicon.ico whether or not you declare one. Anything
 // missing here is a file a real phone would also fail to fetch.
 check('nothing 404s', missing.length === 0, missing.join(' '));

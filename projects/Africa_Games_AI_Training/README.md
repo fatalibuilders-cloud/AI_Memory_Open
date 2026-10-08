@@ -45,6 +45,14 @@ it onto a friend's phone without the Play Store: a link (works on Android and
 iPhone, installs to the home screen, plays offline), the single HTML file, or
 the debug APK.
 
+### Into the Play Store
+
+Two routes, compared in `Product_Development/NairobiWild_App/PWABUILDER.md`:
+PWABuilder wraps the live web page as a Trusted Web Activity (easiest, but
+needs the game served from an origin root, and rules out AdMob), or the
+`android/` build wraps the game itself (no asset links, offline from the
+first launch, keeps AdMob).
+
 ### On an Android phone
 
 `Product_Development/NairobiWild_App/android/` is the Play Store wrapper — one

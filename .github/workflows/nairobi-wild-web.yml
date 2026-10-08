@@ -51,6 +51,12 @@ jobs:
           mkdir -p _site
           node build.mjs _site/index.html --web
           cp web/manifest.webmanifest web/icon-192.png web/icon-512.png _site/
+          cp -r web/screenshots _site/
+
+          # Digital Asset Links, for the day a Trusted Web Activity needs to
+          # prove it owns this origin. Copied only if present, because the file
+          # is worthless until it sits at the ORIGIN ROOT — see PWABUILDER.md.
+          if [ -d web/.well-known ]; then cp -r web/.well-known _site/; fi
 
           # Stamp the commit into the worker. The browser byte-compares sw.js
           # on every navigation, so a new commit is what tells an installed

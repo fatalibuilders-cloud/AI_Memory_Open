@@ -10,14 +10,21 @@ const { chromium } = require_(process.env.PLAYWRIGHT_PATH || 'playwright');
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CHROME = process.env.CHROMIUM_PATH || undefined;
 const APP = process.argv[2] || resolve(HERE, '../nairobi-wild.html');
-const OUT = resolve(HERE, 'screenshots');
+
+// Two sizes, same flow, chosen by env rather than by a second script:
+//   default  — 1080x1920 for the Play listing. Play wants phone shots between
+//              320 and 3840 px with an aspect ratio no wider than 2:1, and
+//              360x640 at 3x is a real phone resolution inside every rule.
+//   SCALE=1.5, OUT_DIR=../web/screenshots — 540x960 for the web manifest.
+//              These are only ever fetched when a browser shows its richer
+//              install dialog, and a quarter of the bytes is the difference
+//              between a courtesy and a cost on a prepaid bundle.
+const SCALE = Number(process.env.SCALE || 3);
+const OUT = resolve(HERE, process.env.OUT_DIR || 'screenshots');
 mkdirSync(OUT, { recursive: true });
 
-// Play wants phone shots between 320 and 3840 px with an aspect ratio no
-// wider than 2:1. 360x640 at 3x lands on exactly 1080x1920 — a real phone
-// resolution, safely inside every rule.
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
-const page = await browser.newPage({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 3 });
+const page = await browser.newPage({ viewport: { width: 360, height: 640 }, deviceScaleFactor: SCALE });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e.message)));
 
