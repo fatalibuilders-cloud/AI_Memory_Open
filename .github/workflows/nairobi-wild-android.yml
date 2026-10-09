@@ -26,6 +26,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Raised from the workflow default so the last step can publish a release.
+    permissions:
+      contents: write
     env:
       # A secret cannot be read in an `if:`, but the answer to "is it set?"
       # can be lifted into an env var here, where secrets are allowed.
@@ -111,3 +114,59 @@ jobs:
           name: nairobi-wild-apk-debug
           path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # An Actions artifact is a signed-in-only .zip, which is a poor thing to
+      # hand somebody on a phone. The same APK also goes to a release, where it
+      # is a plain .apk behind a link that never changes:
+      #   .../releases/download/apk-latest/nairobi-wild-debug.apk
+      # Only from the default branch or a claude/* working branch — a release
+      # moved by an experimental branch would be worse than no release.
+      - name: Publish the debug APK where a phone can just download it
+        if: >-
+          github.event_name != 'pull_request' &&
+          (github.ref_name == github.event.repository.default_branch ||
+           startsWith(github.ref_name, 'claude/'))
+        working-directory: ${{ env.APP_DIR }}/android
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "$(ls app/build/outputs/apk/debug/*.apk | head -1)" nairobi-wild-debug.apk
+
+          # Delete and recreate rather than edit: it is the one way to move a
+          # fixed tag onto the new commit without leaving a stale asset behind.
+          gh release delete apk-latest --cleanup-tag --yes || true
+          gh release create apk-latest nairobi-wild-debug.apk \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Nairobi Wild — test build" \
+            --notes "$(cat <<'NOTES'
+          **This is a test build, not the Play Store version.**
+
+          [Download nairobi-wild-debug.apk](https://github.com/${{ github.repository }}/releases/download/apk-latest/nairobi-wild-debug.apk)
+
+          ### Installing it
+
+          1. Tap the link above on an Android phone.
+          2. Android will say it cannot install from this source. Tap
+             **Settings**, allow it for the app you are in, then go back and
+             **Install**.
+          3. Google Play Protect will say it does not recognise the app. That
+             is expected for anything not from the Play Store — **Install
+             anyway**.
+
+          ### What it is
+
+          The same game as [the web version](https://fatalibuilders-cloud.github.io/AI_Memory_Open/),
+          wrapped as an Android app. It plays entirely offline and asks for no
+          permissions — not even internet access.
+
+          Signed with Android's throwaway debug key, so it installs without any
+          key of ours. That also means it cannot be uploaded to Google Play, and
+          the eventual Play version will not install over the top of it.
+
+          Prefer the web link if you just want to play: it needs no installing
+          and works on iPhone too.
+          NOTES
+          )"
+          echo "### Test build published" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${{ github.repository }}/releases/download/apk-latest/nairobi-wild-debug.apk" >> "$GITHUB_STEP_SUMMARY"

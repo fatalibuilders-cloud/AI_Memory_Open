@@ -65,8 +65,15 @@ game to someone sitting next to you over Bluetooth.
 ## 3. Send the debug APK
 
 A real Android app: its own icon, its own entry in the app drawer, no
-browser anywhere. Download `nairobi-wild-apk-debug` from **Actions → Nairobi
-Wild — Android → Artifacts**, unzip it, and share the `.apk`.
+browser anywhere. **One permanent link, no sign-in, no unzipping:**
+
+```
+https://github.com/fatalibuilders-cloud/AI_Memory_Open/releases/download/apk-latest/nairobi-wild-debug.apk
+```
+
+Every green Android build replaces the file behind that link, so it is always
+the newest test build. (The same APK is also an Actions artifact, but that is
+a signed-in-only `.zip` — a poor thing to hand somebody on a phone.)
 
 The costs are real:
 
