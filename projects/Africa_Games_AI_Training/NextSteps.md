@@ -21,7 +21,7 @@
 7. **Source the recorded sound pack** (optional, but it is the surest fix for "does that sound like a lion?"). The loader is built and tested: drop `African_Wildlife_SFX/` beside `index.html`, add `pack.json`, set `window.NAIROBI_WILD_SFX_PACK = true` in the packaged build. See `Product_Development/NairobiWild_App/African_Wildlife_SFX/README.md`. **Budget under 3 MB** and fill in `LICENSE/credits.txt` before shipping — CC-BY needs attribution, and many "free" packs bar ad-supported apps. Recording at a Nairobi conservancy is the cleanest option and a marketing story.
 
 8. **`RealtimeAdapter` for the standalone app** — the Android build has no artifact `room`, so online duels need a WebSocket service implementing the same interface as `RoomAdapter` (see `NairobiWild_architecture.md`). Offline duels need nothing.
-9. **A privacy policy** — mandatory the moment ads ship, because AdMob collects an advertising ID. Short and honest, since the game stores nothing on a server.
+9. **~~A privacy policy~~** — ✅ done 2026-10-09, published at `/AI_Memory_Open/privacy/`. It must be **revised in the same release that switches ads on**, because AdMob collects an advertising ID this version does not.
 10. **Blockers and new goal types** — snares to cut, waterholes to fill, an animal to escort down the board. With 246 stages the content shortage is solved; variety of *goal* is now the gap.
 11. **Localize** — Swahili first (the UI already uses Swahili animal names and interjections), then English, French, Amharic.
 12. **Analytics** — the revenue-event hook already fires with placement names; wire it to a real analytics SDK so ad revenue can be attributed to the moment that earned it, and pair it with D1/D7 retention before any paid acquisition.

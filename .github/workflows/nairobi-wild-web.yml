@@ -53,6 +53,10 @@ jobs:
           cp web/manifest.webmanifest web/icon-192.png web/icon-512.png _site/
           cp -r web/screenshots _site/
 
+          # Play will not accept a listing without a privacy policy URL, and
+          # it must be a plain public page — not a doc anyone can edit.
+          cp -r web/privacy _site/
+
           # Digital Asset Links, for the day a Trusted Web Activity needs to
           # prove it owns this origin. Copied only if present, because the file
           # is worthless until it sits at the ORIGIN ROOT — see PWABUILDER.md.

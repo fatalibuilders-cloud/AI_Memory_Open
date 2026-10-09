@@ -88,10 +88,13 @@ Things that stop a submission dead, roughly in the order you hit them.
       the whole process, and nothing else you do shortens it.
 - [ ] **A signed `.aab`.** See `../android/README.md`. An unsigned bundle is
       rejected at upload.
-- [ ] **Privacy policy URL.** Required for every app, including one that
-      collects nothing. A GitHub Pages page saying "this app collects no
-      data, has no accounts and sends nothing anywhere" is enough, and in
-      this build it is also true.
+- [x] **Privacy policy URL.** ✅ Written and published at
+      `https://fatalibuilders-cloud.github.io/AI_Memory_Open/privacy/`
+      (source: `web/privacy/index.html`). It was written against what the
+      code actually does — one `localStorage` key, no analytics, no ad SDK,
+      and no network calls of the game's own — rather than from a template.
+      **It must be updated in the same release that switches ads on**, because
+      an ad provider collects a device identifier that this version does not.
 - [ ] **Data safety form.** This build has no `INTERNET` permission and no
       analytics, so every answer is "no data collected, no data shared".
       That changes the day AdMob goes in — the ad SDK collects a device
