@@ -110,7 +110,7 @@ Once the game is at the root of an origin you control:
 
    | Field | Use | Why |
    |---|---|---|
-   | Package ID | `com.fatalibuilders.nairobiwild` | **Permanent.** Play binds it on first upload and it can never change. The same id is already in `android/app/build.gradle.kts`, so the two routes stay interchangeable. |
+   | Package ID | `ke.nairobiwild.game` | **Permanent.** Play binds it on first upload and it can never change. The same id is already in `android/app/build.gradle.kts`, so the two routes stay interchangeable. |
    | App name | Nairobi Wild | |
    | Launcher name | Nairobi Wild | what shows under the icon |
    | App version | `0.7` | |

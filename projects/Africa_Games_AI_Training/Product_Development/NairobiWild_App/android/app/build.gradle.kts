@@ -31,13 +31,15 @@ val storeFilePath = secret("storeFile", "NW_KEYSTORE_FILE")
 val hasSigning = storeFilePath != null && rootProject.file(storeFilePath).exists()
 
 android {
-    namespace = "com.fatalibuilders.nairobiwild"
+    namespace = "ke.nairobiwild.game"
     compileSdk = 36
 
     defaultConfig {
         // PERMANENT. Play binds this to the listing on first upload and it can
-        // never be changed. Decide now, not after the first release.
-        applicationId = "com.fatalibuilders.nairobiwild"
+        // never be changed. Nairobi Wild is its own product, so the id carries
+        // no studio name: a game should not be filed under whoever happened to
+        // build it, and the owner's other work is unrelated to this.
+        applicationId = "ke.nairobiwild.game"
 
         // Android 5.0. Deliberately low: in this market a four-year-old phone
         // is a new phone, and the game asks nothing of the hardware.

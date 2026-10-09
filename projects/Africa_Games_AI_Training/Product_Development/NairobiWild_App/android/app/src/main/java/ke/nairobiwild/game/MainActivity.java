@@ -1,4 +1,4 @@
-package com.fatalibuilders.nairobiwild;
+package ke.nairobiwild.game;
 
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;

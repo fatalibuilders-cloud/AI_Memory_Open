@@ -36,7 +36,7 @@ Four decisions that are hard to reverse later:
 - **No `INTERNET` permission.** Everything is in `assets`, so Play's
   Data-safety form is an honest row of "no data collected". Online duels and
   the recorded pack are off in this build; both already degrade cleanly.
-- **`applicationId` is permanent.** `com.fatalibuilders.nairobiwild`, flagged
+- **`applicationId` is permanent.** `ke.nairobiwild.game`, flagged
   loudly in the README because Play binds it on first upload and it can
   never be changed.
 

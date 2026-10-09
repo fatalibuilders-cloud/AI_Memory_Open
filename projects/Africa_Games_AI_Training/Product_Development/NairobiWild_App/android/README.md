@@ -114,11 +114,18 @@ breakage.
 
 ## Decisions worth knowing before you change them
 
-**`applicationId` is `com.fatalibuilders.nairobiwild` and is permanent.**
+**`applicationId` is `ke.nairobiwild.game` and is permanent.**
 Play binds it to the listing on first upload and it can never be changed —
 a different id is a different app, with no ratings, no installs and no
 updates for anyone who already has it. Change it now if you want something
-else. It does not have to match a domain you own.
+else; it does not have to match a domain you own.
+
+It carries no studio name on purpose. Nairobi Wild is its own product, and a
+game filed under whoever happened to build it ages badly — it ties the title
+to an unrelated business, and anyone inspecting the app sees that business's
+name rather than the game's. `ke` says where it was made, which is the brand.
+The Java package matches it, so the studio name appears nowhere in the built
+app at all.
 
 **No `INTERNET` permission.** Everything ships in `assets`, so the app asks
 for nothing and the Data-safety form is an honest row of "no". The cost:
