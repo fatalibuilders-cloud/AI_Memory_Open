@@ -78,9 +78,7 @@ belongs.
 
 Things that stop a submission dead, roughly in the order you hit them.
 
-- [ ] **Play Developer account** — one-time **$25**, and Google verifies
-      your identity (a national ID and an address that matches). Allow days,
-      not minutes, for verification.
+- [x] **Play Developer account.** ✅ The owner already has one.
 - [ ] **Closed testing before production.** A personal developer account
       opened after Nov 2023 must run a closed test with **at least 12
       testers who stay opted in for 14 continuous days** before it can apply
@@ -114,6 +112,73 @@ Things that stop a submission dead, roughly in the order you hit them.
       device, and that is the one test no amount of CI replaces.
 
 ---
+
+## The two forms people get wrong
+
+These are the ones where guessing costs you a rejection or, worse, a policy
+strike months later. The answers below were read off the code, not guessed —
+see `web/privacy/index.html` for the audit they came from. **They describe the
+current build only. The day ads ship, every "No" about advertising becomes a
+"Yes", and the privacy policy must change in the same release.**
+
+### Data safety
+
+| Question | Answer |
+|---|---|
+| Does your app collect or share any of the required user data types? | **No** |
+| Is all of the user data collected by your app encrypted in transit? | n/a — nothing is collected |
+| Do you provide a way for users to request that their data be deleted? | n/a — nothing is collected. The save lives on the device; uninstalling removes it |
+
+Why that is honest and not optimistic: the app holds no `INTERNET`
+permission, contains no analytics SDK and no ad SDK, and writes exactly one
+`localStorage` key on the device. Play counts data only when it leaves the
+device. Nothing does.
+
+If a reviewer queries it, the supporting facts are: no network permission in
+`AndroidManifest.xml`, and no third-party SDK in `app/build.gradle.kts` —
+the only dependencies are AndroidX appcompat and webkit.
+
+### Content rating questionnaire
+
+Answer the category as **Game**, then:
+
+| Question | Answer |
+|---|---|
+| Violence of any kind | No |
+| Sexuality, nudity | No |
+| Profanity or crude humour | No |
+| Controlled substances | No |
+| Gambling, simulated gambling, or real-money contests | **No** |
+| User-generated content or user-to-user communication | **No** |
+| Does the app share the user's location | No |
+| Does the app allow purchases | No (today) |
+| Does the app contain ads | No (today) |
+
+Two worth pausing on:
+
+- **Gambling: No.** Coins are earned by playing, cannot be bought with real
+  money today, and cannot be cashed out. That stays true only while the
+  no-cash-out rule in decision #7 holds.
+- **User-to-user communication: No.** Duel challenge links are a URL the
+  player sends through their own messaging app. There is no chat, no
+  profile, no server, and no way for one player to send another arbitrary
+  text. If a chat feature ever ships, this answer changes and the rating
+  with it.
+
+Expect PEGI 3 / ESRB Everyone.
+
+### Target audience and Families policy
+
+The game is suitable for children, which makes this question a trap: saying
+it **targets** children puts you under the **Families policy**, which
+sharply narrows your ad options and adds requirements. Saying it targets
+adults while the artwork and difficulty obviously appeal to children is also
+wrong.
+
+Decide this **before** building the ad integration, not after — it changes
+which ad SDKs and ad formats are permitted (Risk #2). The usual answer for a
+game like this is a broad age range including under-13, and accepting the
+Families constraints.
 
 ## Two things that will cost you money if you get them wrong
 
