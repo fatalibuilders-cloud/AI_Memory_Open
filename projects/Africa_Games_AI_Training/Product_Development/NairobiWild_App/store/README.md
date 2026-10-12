@@ -74,6 +74,16 @@ belongs.
 
 ---
 
+## The upload runbook
+
+The step-by-step version of everything below — key, signed bundle, console
+forms, internal testing, in order, with every value ready to copy — is a
+private page published for the owner:
+<https://claude.ai/artifact/D1viQrSosG59H8ypC9dHGZ>
+
+This file stays the source of truth for the copy and the answers; the runbook
+is the working surface for one upload.
+
 ## The submission checklist
 
 Things that stop a submission dead, roughly in the order you hit them.
