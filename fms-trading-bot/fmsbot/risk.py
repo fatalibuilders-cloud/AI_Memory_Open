@@ -49,6 +49,9 @@ class RiskManager:
 
     def __init__(self, settings: Settings, state_file: Optional[str] = None):
         self.s = settings
+        #: The day that just ended, until something reports it. None when
+        #: there is nothing new to say.
+        self.finished_day: Optional[dict] = None
         self.state_path = Path(state_file) if state_file else None
         self.stats = DayStats()
         self._load()
@@ -103,6 +106,18 @@ class RiskManager:
         # to hand; every gate that matters passes the real figure.
         equity = balance if equity is None else equity
         if self.stats.day != date.today():
+            # Keep what the finished day did before throwing it away. A
+            # bot that is connected and quiet gives the operator nothing
+            # to read, and "some days it just sits there" is the single
+            # hardest thing to diagnose after the fact.
+            if self.stats.start_equity or self.stats.trades:
+                moved, pct = self.day_pnl(equity)
+                self.finished_day = {
+                    "day": self.stats.day,
+                    "trades": self.stats.trades,
+                    "pnl": moved,
+                    "pct": pct,
+                }
             self.stats = DayStats(start_balance=balance, start_equity=equity)
             log.info("New trading day, start balance %.2f, equity %.2f",
                      balance, equity)

@@ -737,7 +737,27 @@ configuration changes. Nothing the operator could do at any of those
 hours would have changed it, and the repetition hides the messages that
 do matter.
 
-`/pace` shows the same thing on demand. A bot quietly missing its target
+`/pace` shows the same thing on demand.
+
+### One message a day, trades or not
+
+The hourly pace report only exists when a trade rate is configured, and
+the presets for small accounts set that to zero — so a quiet day left no
+record at all, and "the bot has been idle some days yet connected" could
+only be answered by guessing. Every day now gets a line of its own when
+it ends:
+
+```
+📊 [exness] 2026-10-12: 0 trade(s), +0.00 (+0.00%)
+No trades, and nothing refused any: the strategy found no setup all day.
+On M15 with one setup per symbol per session that is an ordinary day,
+not a fault.
+Record so far: 23 trades, profit factor 0.84, proving
+```
+
+If something *did* refuse them, it names what, and how many times. Three
+possible answers — it traded, something blocked it, or there was no setup
+— and before this there was no way to tell them apart. A bot quietly missing its target
 while you adjust the wrong setting is worse than one that tells you which
 gate is closed.
 

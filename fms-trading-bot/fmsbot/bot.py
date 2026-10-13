@@ -689,6 +689,7 @@ class TradingBot:
         positions = self._enforce_loss_cap(session, positions)
         self._protect_profits(session, positions)
         self._trail_stops(session, positions)
+        self._report_finished_day(session)
         if session.pace:
             report = session.pace.shortfall_report(
                 session.risk.stats.entry_times, len(session.active_symbols()))
@@ -699,6 +700,43 @@ class TradingBot:
                 report += self._day_so_far(session)
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
+
+    def _report_finished_day(self, session: BrokerSession) -> None:
+        """One message a day, whether or not anything happened.
+
+        A bot that is connected and quiet tells the operator nothing, and
+        "some days it just sits there" is the hardest thing to diagnose
+        after the fact — the hourly pace report only exists when a trade
+        rate is configured, and the preset for a small account sets that
+        to zero. So the day gets a line of its own either way.
+        """
+        done = session.risk.finished_day
+        if not done:
+            return
+        session.risk.finished_day = None
+        lines = [f"📊 [{session.name}] {done['day'].isoformat()}: "
+                 f"{done['trades']} trade(s), {done['pnl']:+.2f} "
+                 f"({done['pct']:+.2f}%)"]
+        if not done["trades"]:
+            blocks = session.pace.blocks if session.pace else None
+            if blocks:
+                lines.append("No trades. What refused them:")
+                for label, count in blocks.most_common(3):
+                    lines.append(f"  {count} x {label}")
+            else:
+                lines.append("No trades, and nothing refused any: the "
+                             "strategy found no setup all day. On M15 with "
+                             "one setup per symbol per session that is an "
+                             "ordinary day, not a fault.")
+        if session.pace:
+            session.pace.blocks.clear()
+        if session.evidence and session.evidence.count:
+            ev = session.evidence
+            pf = ev.profit_factor
+            lines.append(f"Record so far: {ev.count} trades, profit factor "
+                         f"{'inf' if pf == float('inf') else f'{pf:.2f}'}, "
+                         f"{ev.verdict()}")
+        self.remote.broadcast("\n".join(lines))
 
     def _day_so_far(self, session: BrokerSession) -> str:
         """The day's result in money, and when the limits reset."""
