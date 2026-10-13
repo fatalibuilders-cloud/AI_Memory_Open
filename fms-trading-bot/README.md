@@ -1393,6 +1393,21 @@ demo account whose job is to produce a month of trades to measure. Scale
 the account, not the risk: at $1,000 the same trades are 0.1-0.5% each,
 which is what they should be.
 
+`/evidence` separates break-even scratches from real losses. With a
+`50:0` rung in use the stop moves out of risk at half the target, so a
+trade that then retraces closes at -0.16 against a 2.12 stop — it did not
+lose, and filing it under losses reads as a 20% win rate on a
+configuration that is doing what it was built to do:
+
+```
+win rate 25.0% (5 of 20)
+  of those, 10 were break-even scratches — 50.0% of the 10 that
+  resolved were wins
+```
+
+The profit factor still carries them, because they are not free: each one
+pays the spread.
+
 **What a month can tell you.** Four trades a day over twenty trading days
 is about eighty — enough for the evidence gate to reach a verdict, not
 enough to be sure of it. At 2-3% a trade the spread of outcomes is very

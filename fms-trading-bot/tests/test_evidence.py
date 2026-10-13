@@ -99,3 +99,79 @@ def test_the_fingerprint_ignores_settings_that_do_not_change_a_trade():
     c = settings(SYMBOLS="EURUSDm", TIMEFRAME="M5", ATR_SL_MULT=2.5)
     assert fingerprint(c, "ema_cross") != before, \
         "changing the exits must start the scoring again"
+
+
+def test_a_break_even_scratch_is_not_counted_as_a_lost_trade():
+    """The micro account's trades close at -0.16 against a 2.12 stop,
+    because the rung moved the stop out of risk. Counting those as
+    losses makes a working configuration read as a 20% win rate."""
+    from fmsbot.evidence import Evidence
+
+    ev = Evidence(fingerprint="x")
+    for _ in range(5):
+        ev.record(+4.24)                      # 2R winners
+    for _ in range(5):
+        ev.record(-2.12)                      # full stops
+    for _ in range(10):
+        ev.record(-0.16, scratch=True)        # taken out of risk
+
+    assert ev.count == 20
+    assert ev.scratches == 10
+    assert ev.decided == 10
+    assert abs(ev.win_rate - 25.0) < 0.01          # raw, over everything
+    assert abs(ev.decided_win_rate - 50.0) < 0.01  # over what resolved
+
+
+def test_the_scratches_still_cost_what_they_cost():
+    """They are not free: the profit factor must still carry them."""
+    from fmsbot.evidence import Evidence
+
+    ev = Evidence(fingerprint="x")
+    ev.record(+4.00)
+    ev.record(-2.00)
+    clean = ev.profit_factor
+    ev.record(-0.16, scratch=True)
+    assert ev.profit_factor < clean
+
+
+def test_a_record_written_before_scratches_existed_still_loads():
+    import json
+    import tempfile
+    from pathlib import Path
+    from fmsbot.evidence import Evidence
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp, "evidence.json")
+        path.write_text(json.dumps({
+            "fingerprint": "abc",
+            "pnls": [1.0, -2.0, 3.0],
+            "started": 0.0,
+        }), encoding="utf-8")
+        ev = Evidence.load(path, "abc")
+        assert ev.count == 3
+        assert ev.scratches == 0
+        assert len(ev.scratched) == len(ev.pnls)
+        assert ev.decided == 3
+
+
+def test_the_two_lists_stay_the_same_length_through_a_reset():
+    from fmsbot.evidence import Evidence
+
+    ev = Evidence(fingerprint="x")
+    ev.record(-1.0, scratch=True)
+    ev.reset()
+    assert ev.scratched == [] and ev.pnls == []
+    ev.record(-1.0)
+    assert len(ev.scratched) == len(ev.pnls) == 1
+
+
+def test_the_summary_says_how_many_were_scratches():
+    from fmsbot.evidence import Evidence
+
+    ev = Evidence(fingerprint="x", min_trades=3)
+    ev.record(+4.00)
+    ev.record(-2.00)
+    ev.record(-0.16, scratch=True)
+    text = ev.explain()
+    assert "1 were break-even scratches" in text or "scratches" in text
+    assert "50.0%" in text, text

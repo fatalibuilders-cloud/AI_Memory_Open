@@ -675,7 +675,7 @@ class TradingBot:
             if session.evidence:
                 symbol = next((q.symbol for q in positions if q.ticket == ticket),
                               "")
-                session.evidence.record(pnl, symbol)
+                session.evidence.record(pnl, symbol, scratch=scratch)
                 self._announce_verdict(session)
                 if symbol:
                     self._retire_losing_symbol(session, symbol)

@@ -45,6 +45,11 @@ class Evidence:
 
     fingerprint: str = ""
     pnls: list[float] = field(default_factory=list)
+    #: Which of those closes were break-even scratches — trades whose stop
+    #: had already been moved out of risk. They are neither wins nor
+    #: losses, and counting them as losses makes a working configuration
+    #: read as a 20% win rate when half its "losses" cost 7% of a stop.
+    scratched: list[bool] = field(default_factory=list)
     #: the same trades split by instrument, so a symbol that is losing can
     #: be dropped without waiting for it to sink the whole account
     by_symbol: dict[str, list[float]] = field(default_factory=dict)
@@ -83,6 +88,11 @@ class Evidence:
                      "about this one.")
             return ev
         ev.pnls = [float(x) for x in data.get("pnls", [])]
+        # A record written before this field existed knows of no scratches;
+        # padding keeps the two lists the same length whatever happens.
+        ev.scratched = [bool(x) for x in data.get("scratched", [])]
+        ev.scratched += [False] * (len(ev.pnls) - len(ev.scratched))
+        del ev.scratched[len(ev.pnls):]
         ev.by_symbol = {k: [float(x) for x in v]
                         for k, v in (data.get("by_symbol") or {}).items()}
         ev.started = float(data.get("started", ev.started))
@@ -96,6 +106,7 @@ class Evidence:
             self.path.write_text(json.dumps({
                 "fingerprint": self.fingerprint,
                 "pnls": self.pnls,
+                "scratched": self.scratched,
                 "by_symbol": self.by_symbol,
                 "started": self.started,
                 "announced": self.announced,
@@ -105,13 +116,16 @@ class Evidence:
 
     def reset(self) -> None:
         self.pnls, self.started, self.announced = [], time.time(), ""
+        self.scratched = []
         self.by_symbol = {}
         self.save()
 
     # -- recording -------------------------------------------------------
 
-    def record(self, pnl: float, symbol: str = "") -> None:
+    def record(self, pnl: float, symbol: str = "",
+               scratch: bool = False) -> None:
         self.pnls.append(float(pnl))
+        self.scratched.append(bool(scratch))
         if symbol:
             self.by_symbol.setdefault(symbol, []).append(float(pnl))
         self.save()
@@ -139,8 +153,28 @@ class Evidence:
         return sum(self.pnls)
 
     @property
+    def scratches(self) -> int:
+        """Closes taken out of risk before they resolved either way."""
+        return sum(1 for s in self.scratched if s)
+
+    @property
+    def decided(self) -> int:
+        """Trades that actually won or lost."""
+        return self.count - self.scratches
+
+    @property
     def win_rate(self) -> float:
         return 100.0 * len(self.wins) / self.count if self.pnls else 0.0
+
+    @property
+    def decided_win_rate(self) -> float:
+        """Win rate over the trades that were allowed to resolve.
+
+        The honest denominator when a break-even rung is in use: a trade
+        scratched at -0.16 against a 2.12 stop did not lose, and putting
+        it in the losing column answers a question nobody asked.
+        """
+        return 100.0 * len(self.wins) / self.decided if self.decided else 0.0
 
     @property
     def profit_factor(self) -> float:
@@ -208,6 +242,11 @@ class Evidence:
             f"win rate {self.win_rate:.1f}% ({len(self.wins)} of {self.count})",
             f"average trade {self.mean:+.4f}",
         ]
+        if self.scratches:
+            lines.append(
+                f"  of those, {self.scratches} were break-even scratches — "
+                f"{self.decided_win_rate:.1f}% of the {self.decided} that "
+                f"resolved were wins")
         if self.count >= 2:
             lines.append(f"z {self.z:+.2f} against a zero-edge null")
         if v == PROVING and self.count < self.min_trades:
