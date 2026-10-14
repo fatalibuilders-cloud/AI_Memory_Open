@@ -60,6 +60,8 @@ class BrokerSession:
     reconnect_attempt: int = 0
     #: consecutive order failures caused by a lost trade-server link
     connection_failures: int = 0
+    #: The balance tier the limits are currently set to, for AUTO_SCALE.
+    tier: str = ""
     last_block: str = ""          # why the most recent signal was refused
     #: A refusal that is a permanent property of the settings repeats on
     #: every signal. Ten identical messages in fifteen minutes bury the

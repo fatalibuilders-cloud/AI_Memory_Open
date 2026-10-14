@@ -1384,6 +1384,43 @@ copies of the same paragraph in fifteen minutes buried the actual trades
 between them, and `/pace` names this block with its own fix instead of
 filing it under "other".
 
+## One configuration from $100 to $100,000
+
+```env
+AUTO_SCALE=true
+```
+
+Every configuration failure in this project had the same shape. The
+broker's smallest trade is 0.01 lot; what that costs is fixed, and the
+balance is not. On $100 a 21-pip EURUSD stop is 2.1% of everything; on
+$10,000 the same trade is 0.02%. No single set of percentages is right at
+both ends — and a percentage can never buy a fraction of the minimum lot,
+which is how a 0.5% rule came to refuse every order on a hundred-dollar
+account.
+
+So the limits follow the balance, checked at startup and at each day's
+end:
+
+| balance | per trade | daily | trades/day |
+|---|---|---|---|
+| under $500 | 0.01 lot, max $3 | 10% | 4 |
+| $500 – $2,000 | 0.01 lot, max $5 | 6% | 6 |
+| $2,000 – $10,000 | 0.5% (~$12) | 3% | 10 |
+| $10,000+ | 0.5% | 2% | 8 |
+
+Risk per trade **falls** as the account grows, because the minimum lot
+stops binding. It rises as the account shrinks, because below a certain
+size there is no other way to place a trade at all — that is the real
+cost of trading a small account, stated rather than hidden.
+
+**The strategy never changes with the tier.** Entries, exits and
+timeframe are identical in all four, which is why a tier change does not
+reset the evidence record: the same trades in a different size are still
+evidence about the same thing. Every tier is checked by tests against the
+two failures that produced weeks of silence — a cap below what the
+smallest possible trade costs, and a daily budget that cannot pay for two
+trades.
+
 ## A $100 account, for a month, on demo
 
 ```powershell

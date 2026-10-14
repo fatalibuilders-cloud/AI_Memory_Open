@@ -333,6 +333,11 @@ class Settings:
     #: signal that conflicts with a higher one. Empty uses htf_ratio alone,
     #: which is what every earlier test ran, so results stay comparable.
     htf_ratios: str = ""
+    #: Move the size and the limits with the balance instead of leaving
+    #: them where a preset put them. The strategy never changes with it,
+    #: so the evidence record survives a tier change: the same trades,
+    #: sized differently, are still evidence about the same thing.
+    auto_scale: bool = False
     #: Hours (UTC) in which trades may be OPENED, e.g. "7-16" for the
     #: London/New York overlap, "7-11,13-17" for two windows. Empty trades
     #: every hour. Exits are never blocked by this: a position already
@@ -635,6 +640,7 @@ class Settings:
             strategy=_clean_value(os.environ.get("STRATEGY", "")),
             htf_ratio=_i("HTF_RATIO", 12),
             htf_ratios=_clean_value(os.environ.get("HTF_RATIOS", "")),
+            auto_scale=_b("AUTO_SCALE", False),
             session_hours=_clean_value(os.environ.get("SESSION_HOURS", "")),
             momentum_body_atr=_f("MOMENTUM_BODY_ATR", 0.0),
             session_bars=_i("SESSION_BARS", 288),

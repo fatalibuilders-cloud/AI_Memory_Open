@@ -16,7 +16,7 @@ from datetime import date, datetime, time as dtime, timedelta
 from typing import Optional
 
 from .broker.base import BrokerError
-from . import envfile, evidence, pace, review
+from . import envfile, evidence, pace, review, scaling
 from .config import Settings
 from .indicators import atr
 from .session import RECONNECT_DELAYS, BrokerSession, _Pending, build_sessions
@@ -127,6 +127,8 @@ class TradingBot:
             log.info("  %-10s %s  symbols: %s", s.name,
                      "connected" if s.connected else "OFFLINE", ", ".join(s.symbols))
         self._warn_interval_mode()
+        for session in live:
+            self._autoscale(session, announce=True)
         self._warn_trade_cap(live)
 
         lines = [f"🤖 Bot online ({state}) — {len(live)} account(s):"]
@@ -701,6 +703,37 @@ class TradingBot:
                 log.info("[%s] behind pace:\n%s", session.name, report)
                 self.remote.broadcast(f"🐢 [{session.name}] behind pace\n\n{report}")
 
+    def _autoscale(self, session: BrokerSession, announce: bool = False) -> None:
+        """Move the limits onto the tier this balance belongs to.
+
+        Checked at startup and again whenever a day ends, which is often
+        enough: a balance does not cross a tier boundary intraday without
+        something having gone very wrong, and re-reading it on every tick
+        would let one bad hour change the rules mid-trade.
+        """
+        if not self.s.auto_scale:
+            return
+        try:
+            balance = session.broker.balance()
+        except BrokerError:
+            return
+        tier = scaling.tier_for(balance)
+        moved = scaling.apply(self.s, tier)
+        if not moved and not announce:
+            return
+        if moved or session.tier != tier.name:
+            lines = [f"⚖️ [{session.name}] {scaling.describe(tier, balance)}"]
+            if moved and session.tier:
+                lines.append("")
+                lines.append("Changed:")
+                for field, old_v, new_v in moved:
+                    lines.append(f"  {field}: {old_v} -> {new_v}")
+                lines.append("The strategy is unchanged, so the trade record "
+                             "carries over — these are the same trades in a "
+                             "different size.")
+            self.remote.broadcast("\n".join(lines))
+        session.tier = tier.name
+
     def _report_finished_day(self, session: BrokerSession) -> None:
         """One message a day, whether or not anything happened.
 
@@ -714,6 +747,9 @@ class TradingBot:
         if not done:
             return
         session.risk.finished_day = None
+        # A new day is the right moment to re-read the balance: the
+        # limits that bound it should be the ones its size deserves.
+        self._autoscale(session)
         lines = [f"📊 [{session.name}] {done['day'].isoformat()}: "
                  f"{done['trades']} trade(s), {done['pnl']:+.2f} "
                  f"({done['pct']:+.2f}%)"]

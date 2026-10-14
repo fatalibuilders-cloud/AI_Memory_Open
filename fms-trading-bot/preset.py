@@ -174,6 +174,7 @@ PRESETS["small"] = {
     # at a 20-pip stop EURUSD's 0.8-pip spread is 4% of the risk, and at
     # the 1.7-pip stop a thousand trades a day demands it is 47%.
     "TIMEFRAME": "M15",
+    "AUTO_SCALE": "true",
     "HTF_RATIO": "4",               # 1H trend from M15 bars
     "SESSION_BARS": "96",           # one day of M15
     "SWEEP_REJECT": "0.5",
@@ -217,6 +218,10 @@ PRESETS["micro"] = {
     "STRATEGY": "liquidity_sweep",
     "ENTRY_MODE": "signal",
     "TIMEFRAME": "M15",
+    # The size and the limits follow the balance from here on, so the
+    # same configuration works at $100 and at $100,000 without anyone
+    # re-running a preset. The strategy never changes with it.
+    "AUTO_SCALE": "true",
     "HTF_RATIO": "4",
     "SESSION_BARS": "96",
     "SWEEP_REJECT": "0.5",
